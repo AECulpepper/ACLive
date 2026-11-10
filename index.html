@@ -16,37 +16,19 @@
    LiveTrack = water blue, inReach = iron (validated pair, both modes)
    ========================================================= */
 :root {
-  color-scheme: light;
-  --bg: #EDF1EF; --panel: #F8FAF9; --panel-2: #E6ECE9; --ink: #1B2A2F; --muted: #5C6B6F; --line: #D3DBD8;
-  --spruce: #2F5D50; --bad: #A23B2A;
-  --series-lt: #1570A0; --series-ir: #B5652B; --plan: #97A4A1; --done-fill: #CFE2EB;
-  --good: #2F7D4F; --warning: #C08A12; --critical: #A23B2A;
-  --good-text: #2F6B47; --warn-text: #8A5F00; --crit-text: #A23B2A;
+  color-scheme: dark;
+  --bg: #302F2F; --panel: #444343; --panel-2: #504E4D; --ink: #F0EEEC; --muted: #BAB6B2; --line: #5A5857;
+  --spruce: #9CCBB9; --bad: #F09A88;
+  --series-lt: #4299CC; --series-ir: #CF7D40; --plan: #8A8682; --done-fill: #2F4B5E;   /* validated on #444343 */
+  --good: #5DBB7E; --warning: #E0B54A; --critical: #E07A66;
+  --good-text: #8FD3A6; --warn-text: #EBC66A; --crit-text: #F09A88;
   /* aliases used by the drawing code */
   --surface-1: var(--panel); --surface-2: var(--panel-2); --text-primary: var(--ink); --text-secondary: var(--muted);
-  --text-muted: #7A8886; --grid: var(--line); --border: var(--line);
+  --text-muted: #A5A19D; --grid: var(--line); --border: var(--line);
   --font: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --r-sm: 4px; --r-md: 8px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --bg: #12201F; --panel: #182A2A; --panel-2: #1F3433; --ink: #E4ECEA; --muted: #93A5A3; --line: #2A3E3D;
-    --spruce: #8CC4B3; --bad: #E07A66;
-    --series-lt: #3A93C4; --series-ir: #C9773A; --plan: #5E706E; --done-fill: #1D4152;
-    --good: #5DBB7E; --warning: #E0B54A; --critical: #E07A66;
-    --good-text: #7CCB97; --warn-text: #E0B54A; --crit-text: #E8907E; --text-muted: #7F918F;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #12201F; --panel: #182A2A; --panel-2: #1F3433; --ink: #E4ECEA; --muted: #93A5A3; --line: #2A3E3D;
-  --spruce: #8CC4B3; --bad: #E07A66;
-  --series-lt: #3A93C4; --series-ir: #C9773A; --plan: #5E706E; --done-fill: #1D4152;
-  --good: #5DBB7E; --warning: #E0B54A; --critical: #E07A66;
-  --good-text: #7CCB97; --warn-text: #E0B54A; --crit-text: #E8907E; --text-muted: #7F918F;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -130,7 +112,9 @@ td.srcs .sw { margin-right: 4px; }
 .card-h .meta { font-size: 0.85rem; color: var(--muted); }
 .card-b { padding: 10px 16px 16px; }
 
-.tiles { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+.alt { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.3; }
+td .alt { font-size: 0.78rem; }
 .tile { padding: 12px 14px; }
 .tile .label { font-size: 0.82rem; color: var(--muted); }
 .tile .value { font-family: var(--font-display); font-weight: 600; font-size: 1.7rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
@@ -171,7 +155,12 @@ td.srcs .sw { margin-right: 4px; }
 .bar { height: 5px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 10px; }
 .bar > span { display: block; height: 100%; background: var(--series-lt); border-radius: 3px; }
 
-#profile { position: relative; }
+#profile, #effort { position: relative; }
+#effort svg { display: block; width: 100%; height: 170px; }
+.effort-stats { display: flex; flex-wrap: wrap; gap: 10px 36px; margin-bottom: 6px; }
+.effort-stats .k { font-size: 0.82rem; color: var(--muted); }
+.effort-stats .v { font-family: var(--font-display); font-weight: 600; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.effort-stats .v small { font-family: var(--font); font-weight: 400; font-size: 0.8rem; color: var(--muted); margin-left: 3px; }
 #profile svg { display: block; width: 100%; height: 230px; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm);
        padding: 6px 9px; font-size: 0.82rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; display: none; z-index: 5; }
@@ -216,7 +205,7 @@ footer p { margin: 0 0 6px; }
 .fallback-map { width: 100%; height: 100%; }
 
 @media (max-width: 1050px) {
-  .tiles { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .tiles { grid-template-columns: repeat(4, minmax(0,1fr)); }
   .grid-main, .grid-2 { grid-template-columns: minmax(0,1fr); }
   .side { order: -1; }
   #map { height: 380px; }
@@ -228,6 +217,7 @@ footer p { margin: 0 0 6px; }
   .debug-grid { grid-template-columns: 1fr; }
   .hide-narrow, .hide-sm { display: none; }
   .show-narrow { display: inline; }
+  .act-sub { line-height: 1.45; }
   td { white-space: normal; }
   .now-thumb svg { width: 100%; height: auto; }
   .now-thumb { flex: 1 1 100%; }
@@ -247,7 +237,6 @@ footer p { margin: 0 0 6px; }
       <span class="dot" aria-hidden="true"></span>
       <span id="siteStatusText">Loading…</span>
       <button type="button" id="refresh">Refresh</button>
-      <button type="button" id="themeBtn" title="Toggle light/dark" aria-label="Toggle light/dark"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style="vertical-align:-2px"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
     </div>
   </header>
 
@@ -258,7 +247,7 @@ footer p { margin: 0 0 6px; }
       <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted" id="actCount"></span></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th></th><th>Activity</th><th class="num hide-narrow">Distance</th><th class="num hide-narrow">Vertical</th><th class="num hide-narrow">Time</th><th class="hide-narrow">Sources</th></tr></thead>
+          <thead><tr><th></th><th>Activity</th><th class="num hide-narrow">Distance</th><th class="num hide-narrow">Vertical gain</th><th class="num hide-narrow">High</th><th class="num hide-narrow">Low</th><th class="num hide-narrow">Avg HR</th><th class="num hide-narrow">Time</th><th class="hide-narrow">Sources</th></tr></thead>
           <tbody id="actBody"></tbody>
         </table>
       </div>
@@ -304,9 +293,17 @@ footer p { margin: 0 0 6px; }
       <div class="card-b"><div id="profile"><div class="tip" id="ptip"></div></div></div>
     </section>
 
+    <section class="card" id="effortCard" style="margin-top:14px">
+      <div class="card-h"><h2>Heart rate · effort</h2><span class="meta">hover for details</span></div>
+      <div class="card-b">
+        <div class="effort-stats" id="effortStats"></div>
+        <div id="effort"><div class="tip" id="etip"></div></div>
+      </div>
+    </section>
+
     <section class="grid-2">
       <div class="card">
-        <div class="card-h"><h2>Checkpoints</h2><span class="meta">plan vs actual · times MT</span></div>
+        <div class="card-h"><h2 id="cpTitle">Checkpoints</h2><span class="meta" id="cpMeta">plan vs actual · times MT</span></div>
         <div class="card-b" style="overflow-x:auto"><table id="cpTable"></table></div>
       </div>
       <div class="card">
@@ -347,7 +344,7 @@ CONFIG.dataSource = CONFIG.dataSource || (new URLSearchParams(location.search).h
 
 const $ = s => document.querySelector(s);
 const MIN = 60e3, HR = 60*MIN;
-const fmtTime = (t, opts={}) => new Date(t).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', timeZone: CONFIG.tz, ...opts });
+const fmtTime = (t, opts={}) => new Date(t).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hourCycle:'h23', timeZone: CONFIG.tz, ...opts });
 const fmtDay = t => new Date(t).toLocaleDateString('en-US', { weekday:'short', timeZone: CONFIG.tz });
 const fmtDur = ms => { const neg = ms < 0; ms = Math.abs(ms); const h = Math.floor(ms/HR), m = Math.round((ms%HR)/MIN);
   const mm = m === 60 ? 0 : m, hh = m === 60 ? h+1 : h; return (neg?'−':'') + (hh ? `${hh}h ${String(mm).padStart(2,'0')}m` : `${mm}m`); };
@@ -355,6 +352,13 @@ const fmtAge = ms => ms < MIN ? 'just now' : ms < HR ? `${Math.round(ms/MIN)} mi
 const fmtClock = ms => { const h = Math.floor(ms/HR), m = Math.floor((ms%HR)/MIN); return `${h}:${String(m).padStart(2,'0')}`; };
 const fmtPace = minPerMi => { const m = Math.floor(minPerMi), s = Math.round((minPerMi-m)*60); return `${m}:${String(s===60?0:s).padStart(2,'0')}`; };
 const n0 = x => Math.round(x).toLocaleString('en-US');
+const KM_PER_MI = 1.609344, M_PER_FT = 0.3048;
+const km = mi => (mi * KM_PER_MI).toFixed(1);
+const mOf = ft => n0(ft * M_PER_FT);
+const fmtMi = mi => `${mi.toFixed(1)} mi · ${km(mi)} km`;            // "6.4 mi · 10.3 km"
+const fmtFt = ft => `${n0(ft)} ft · ${mOf(ft)} m`;                  // "8,034 ft · 2,449 m"
+const miKm = mi => `mi ${mi.toFixed(1)} · km ${km(mi)}`;            // "mi 38.3 · km 61.6"
+const alt = t => `<div class="alt">${t}</div>`;
 const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
 const cssv = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 function freshness(ageMs, ended) {
@@ -506,7 +510,8 @@ function buildMock() {   // id: mock-ct (live fastpack)
     if (!inService(c.mi)) continue;
     const grade = k > 0 ? (c.ele - course[k-1].ele)/(STEP*5280) : 0;
     points.push({ t:new Date(t).toISOString(), mi:c.mi, lat:c.lat, lon:c.lon, ele:Math.round(c.ele), src:'livetrack',
-                  hr: Math.round(clamp(118 + grade*420 + 6*Math.sin(t/7e5), 95, 172)), session: t < camp1In ? s1 : s2 });
+                  hr: Math.round(clamp(118 + grade*420 + 6*Math.sin(t/7e5), 95, 172)), session: t < camp1In ? s1 : s2,
+                  st:'MOVING', cad: Math.round(clamp(150 - grade*300, 120, 172)), pw: Math.round(clamp(230 + grade*900, 120, 360)), lagS: 9 + Math.round(6*Math.random()) });
   }
   // inReach: every 10 min, tracking off overnight
   for (let t = t0; t <= absAct(kNow) + 1; t += 10*MIN) {
@@ -568,7 +573,12 @@ function buildMockFreeform(id) {
       const h = Math.sin(dLat/2)**2 + Math.cos(lat*rad)*Math.cos(prev.lat*rad)*Math.sin(dLon/2)**2; const d = 2*R*Math.asin(Math.sqrt(h));
       mi += d; t += d * m.pace * MIN * (1 + 0.15*Math.sin(i/9)); }
     prev = { lat, lon };
-    pts.push({ t:new Date(t).toISOString(), mi:+mi.toFixed(3), lat, lon, ele:Math.round(ele), src: m.irOnly ? 'inreach' : 'livetrack', hr: m.irOnly ? undefined : Math.round(128 + 18*Math.sin(i/11)), session:'mock' });
+    const stop = !m.irOnly && i >= 70 && i < 82;               // a ~6-min stop partway through
+    if (stop) t += 30e3;
+    pts.push({ t:new Date(t).toISOString(), mi:+mi.toFixed(3), lat, lon, ele:Math.round(ele), src: m.irOnly ? 'inreach' : 'livetrack',
+      hr: m.irOnly ? undefined : Math.round((stop ? 104 : 136) + 14*Math.sin(i/11)), session:'mock',
+      st: m.irOnly ? undefined : stop ? 'STATIONARY' : 'MOVING', cad: m.irOnly || stop ? (m.irOnly ? undefined : 0) : Math.round(164 + 6*Math.sin(i/5)),
+      pw: m.irOnly ? undefined : stop ? 0 : Math.round(285 + 45*Math.sin(i/8)), lagS: m.irOnly ? undefined : 8 + (i % 4) * 3 });
   }
   let out = m.irOnly ? pts.filter((_, i) => i % 6 === 0) : pts;
   if (m.ir && !m.irOnly) out = out.concat(pts.filter((_, i) => i % 12 === 0).map(p => ({ ...p, src:'inreach', hr:undefined, session:'mapshare' })));
@@ -590,6 +600,7 @@ function mockActivities() {
       last_t: s.last?.t, last_lt: s.lastLT?.t ?? null, last_ir: s.lastIR?.t ?? null,
       dist_mi: s.curMi, gain_ft: s.gainSoFar, n_lt: s.lt.length, n_ir: s.ir.length, msgs: d.messages.length,
       thumb: s.pts.filter((_, i) => i % step === 0).map(p => [p.lat, p.lon]), last: s.last ? { lat:s.last.lat, lon:s.last.lon, t:s.last.t } : null,
+      ele_max_ft: s.eleHigh, ele_min_ft: s.eleLow, moving_s: s.movingMs != null ? Math.round(s.movingMs / 1000) : null, hr_avg: s.hr?.avg ?? null, hr_max: s.hr?.max ?? null, hr_min: s.hr?.min ?? null,
       asOf: d.asOf };
   });
 }
@@ -623,7 +634,10 @@ function derive(d) {
   }
   if (movMi > 0.2) { recentPace = movMin/movMi; if (planMin > 0) ratio = clamp(movMin/planMin, 0.6, 2.5); }
 
-  const cps = (d.checkpoints || []).map(c => ({ ...c, pa: Date.parse(c.plannedArrive),
+  // Courses from the watch have no planned times: derive them from the pace model
+  const cps = (d.checkpoints || []).map(c => ({ ...c, plannedDwellMin: c.plannedDwellMin ?? 0,
+    plannedArrive: c.plannedArrive ?? new Date(Date.parse(d.trip.start) + planMovingMin(d.course, 0, c.mi) * MIN).toISOString() }))
+    .map(c => ({ ...c, pa: Date.parse(c.plannedArrive),
     aa: c.actualArrive ? Date.parse(c.actualArrive) : null, ad: c.actualDepart ? Date.parse(c.actualDepart) : null }));
   let prevCp = null, nextCp = null, delta = null;
   if (!freeform && cps.length) {
@@ -653,7 +667,30 @@ function derive(d) {
     fromStart = { mi: 2*R*Math.asin(Math.sqrt(h)), dir: ['N','NE','E','SE','S','SW','W','NW'][Math.round(brg/45) % 8] };
   }
   const ended = d.trip?.status === 'ended';
-  return { ended, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
+  // Moving time from Garmin's MOVING/STATIONARY flag; stops = STATIONARY runs of 2+ min
+  const hasStatus = lt.some(p => p.st);
+  let movingMs = null; const stops = [];
+  if (hasStatus) {
+    movingMs = 0; let run = null;
+    for (let i = 1; i < lt.length; i++) {
+      const a = lt[i-1], b = lt[i], dt = b.ts - a.ts;
+      if (b.st === 'MOVING' && dt > 0 && dt <= 60e3) movingMs += dt;
+      if (b.st === 'STATIONARY') { run = run || { start: a.ts, p: b }; run.end = b.ts; }
+      else if (run) { if (run.end - run.start >= 2*MIN) stops.push(run); run = null; }
+    }
+    if (run && run.end - run.start >= 2*MIN) stops.push({ ...run, open: !ended });
+  }
+  const movingLt = lt.filter(p => p.st === 'MOVING');
+  const avg = a => a.length ? Math.round(a.reduce((x,y) => x+y, 0) / a.length) : null;
+  const cadVals = movingLt.map(p => p.cad).filter(v => v > 0), pwVals = movingLt.map(p => p.pw).filter(v => v > 0);
+  const effort = { cadAvg: avg(cadVals), pwAvg: avg(pwVals), pwMax: pwVals.length ? Math.max(...pwVals) : null };
+  const lags = lt.slice(-30).map(p => p.lagS).filter(v => v != null).sort((a,b) => a-b);
+  const lagMed = lags.length ? lags[Math.floor(lags.length/2)] : null;
+  const hrs = lt.map(p => p.hr).filter(h => h > 0);
+  const hr = hrs.length ? { avg: Math.round(hrs.reduce((a,b) => a+b, 0) / hrs.length), max: Math.max(...hrs), min: Math.min(...hrs) } : null;
+  const eles = pts.map(p => p.ele).filter(e => e != null);
+  const eleHigh = eles.length ? Math.max(...eles) : null, eleLow = eles.length ? Math.min(...eles) : null;
+  return { ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
            totalMi, gainSoFar, gainTotal: freeform ? null : gainBetween(course, 0, course.at(-1).mi), maxEle, fromStart };
 }
 /* =========================================================================
@@ -676,20 +713,30 @@ function renderTiles(d, s) {
   const hrAge = s.lastLT ? s.now - s.lastLT.ts : null;
   const behind = s.delta > 5*MIN, ahead = s.delta < -5*MIN;
   const third = s.freeform
-    ? { label:'From start', value: s.fromStart ? `${s.fromStart.mi.toFixed(1)}<small>mi</small>` : '—', foot: s.fromStart ? `straight line, ${s.fromStart.dir} of start` : 'waiting for fixes' }
-    : { label:'Vs plan', value: Math.abs(s.delta) < 5*MIN ? 'On plan' : fmtDur(Math.abs(s.delta)),
+    ? { label:'From start', value: s.fromStart ? `${s.fromStart.mi.toFixed(1)}<small>mi</small>` : '—', alt: s.fromStart ? `${km(s.fromStart.mi)} km` : '',
+        foot: s.fromStart ? `straight line, ${s.fromStart.dir} of start` : 'waiting for fixes' }
+    : { label:'Vs plan', value: Math.abs(s.delta) < 5*MIN ? 'On plan' : fmtDur(Math.abs(s.delta)), alt: '',
         foot: behind ? 'behind plan' : ahead ? 'ahead of plan' : 'within 5 min', footCls: behind ? 'behind' : ahead ? 'ahead' : '' };
+  const liveHr = !s.ended && s.lastLT?.hr && hrAge <= 20*MIN;
   const tiles = [
-    { label:'Distance', value:`${s.curMi.toFixed(1)}<small>mi</small>`, foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(0)} · ${Math.round(s.curMi/s.totalMi*100)}%` },
-    { label: s.ended ? 'Total time' : 'Elapsed', value: s.last ? fmtClock(elapsed) : '—', foot: s.last ? `started ${fmtDay(s.start)} ${fmtTime(s.start)}` : 'not started' },
+    { label:'Distance', value:`${s.curMi.toFixed(1)}<small>mi</small>`, alt:`${km(s.curMi)} km`,
+      foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.curMi/s.totalMi*100)}%` },
+    { label: s.ended ? 'Total time' : 'Elapsed', value: s.last ? fmtClock(elapsed) : '—',
+      alt: s.movingMs != null ? `moving ${fmtClock(s.movingMs)} · stopped ${fmtClock(Math.max(0, elapsed - s.movingMs))}` : '',
+      foot: s.last ? `started ${fmtDay(s.start)} ${fmtTime(s.start)}` : 'not started' },
     third,
-    { label:'Vertical', value:`${n0(s.gainSoFar)}<small>ft</small>`, foot: s.freeform ? (s.maxEle > 0 ? `high point ${n0(s.maxEle)} ft` : 'gain so far') : `of ${n0(s.gainTotal)} ft gain` },
-    { label: s.ended ? 'Moving pace' : 'Recent pace', value: s.recentPace ? `${fmtPace(s.recentPace)}<small>/mi</small>` : '—', foot: s.ended ? 'average, stops excluded' : 'moving, last 2 h' },
-    { label:'Heart rate', value: s.lastLT?.hr ? `${s.lastLT.hr}<small>bpm</small>` : '—',
-      foot: hrAge == null ? 'LiveTrack only' : s.ended ? 'last reading' : hrAge > 20*MIN ? `<span class="stale-tag">⚠ as of ${fmtAge(hrAge)}</span>` : 'live' },
+    { label:'Vertical gain', value:`${n0(s.gainSoFar)}<small>ft</small>`, alt:`${mOf(s.gainSoFar)} m`,
+      foot: s.freeform ? 'so far' : `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` },
+    { label:'High · low', value: s.eleHigh != null ? `${n0(s.eleHigh)}<small>ft</small>` : '—', alt: s.eleHigh != null ? `${mOf(s.eleHigh)} m` : '',
+      foot: s.eleLow != null ? `low ${n0(s.eleLow)} ft<br>${mOf(s.eleLow)} m` : '' },
+    { label: s.ended ? 'Moving pace' : 'Recent pace', value: s.recentPace ? `${fmtPace(s.recentPace)}<small>/mi</small>` : '—',
+      alt: s.recentPace ? `${fmtPace(s.recentPace / KM_PER_MI)} /km` : '', foot: s.ended ? 'average, stops excluded' : 'moving, last 2 h' },
+    { label:'Heart rate', value: liveHr ? `${s.lastLT.hr}<small>bpm now</small>` : s.hr ? `${s.hr.avg}<small>bpm avg</small>` : '—',
+      alt: s.hr ? (liveHr ? `avg ${s.hr.avg} · max ${s.hr.max}<br>min ${s.hr.min}` : `max ${s.hr.max} · min ${s.hr.min}`) : '',
+      foot: !s.hr ? 'no heart-rate data' : liveHr ? 'live' : s.ended ? 'whole activity' : `<span class="stale-tag">⚠ last reading ${fmtAge(hrAge)}</span>` },
   ];
   $('#tiles').innerHTML = tiles.map(t => `
-    <div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>
+    <div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>${t.alt ? alt(t.alt) : ''}
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`).join('');
 }
 function renderFresh(d, s) {
@@ -705,10 +752,10 @@ function renderFresh(d, s) {
   let note = '';
   const ltAge = s.lastLT ? s.now - s.lastLT.ts : Infinity, irAge = s.lastIR ? s.now - s.lastIR.ts : Infinity;
   if (s.ended) note = '';
-  else if (s.lastLT && ltAge > 30*MIN && irAge <= 20*MIN) note = `No cell service since ${fmtTime(s.lastLT.ts)} (mi ${s.lastLT.mi.toFixed(1)}). Satellite tracking is working normally — this is expected in the backcountry.`;
+  else if (s.lastLT && ltAge > 30*MIN && irAge <= 20*MIN) note = `No cell service since ${fmtTime(s.lastLT.ts)} (${miKm(s.lastLT.mi)}). Satellite tracking is working normally — this is expected in the backcountry.`;
   else if (ltAge > 30*MIN && irAge > 30*MIN) note = `Both sources quiet. inReach sends every 10 min; gaps of 20–40 min are common in deep canyons or under heavy tree cover.`;
   $('#fresh').innerHTML =
-    row('LiveTrack', 'var(--series-lt)', s.lastLT, today(s.lt), 'phone · cell') +
+    row('LiveTrack', 'var(--series-lt)', s.lastLT, today(s.lt), 'phone · cell' + (s.lagMed != null ? ` · ~${s.lagMed} s delay` : '')) +
     row('inReach', 'var(--series-ir)', s.lastIR, today(s.ir), 'satellite · 10 min') +
     (note ? `<div class="note-box">${note}</div>` : '');
 }
@@ -722,8 +769,8 @@ function renderNext(d, s) {
     $('#next').innerHTML = L ? (s.ended ? `<div class="src-sub" style="margin-bottom:8px">Finished ${fmtDate(L.ts)} at ${fmtTime(L.ts)}</div>` : '') + `
       <div class="next-grid" style="margin-top:0">
         <div class="kv"><div class="k">${s.ended ? 'End position' : 'Last position'}</div><div class="v" style="font-size:15px">${L.lat.toFixed(5)}, ${L.lon.toFixed(5)}</div></div>
-        <div class="kv"><div class="k">Elevation</div><div class="v">${L.ele != null ? n0(L.ele) : '—'} <small>ft</small></div></div>
-        <div class="kv"><div class="k">From start</div><div class="v">${s.fromStart.mi.toFixed(1)} <small>mi ${s.fromStart.dir}</small></div></div>
+        <div class="kv"><div class="k">Elevation</div><div class="v">${L.ele != null ? n0(L.ele) : '—'} <small>ft</small></div>${L.ele != null ? alt(mOf(L.ele) + ' m') : ''}</div>
+        <div class="kv"><div class="k">From start</div><div class="v">${s.fromStart.mi.toFixed(1)} <small>mi ${s.fromStart.dir}</small></div>${alt(km(s.fromStart.mi) + ' km')}</div>
         <div class="kv"><div class="k">Last fix via</div><div class="v" style="font-size:15px">${L.src === 'inreach' ? 'inReach' : 'LiveTrack'} · ${fmtTime(L.ts)}</div></div>
       </div>
       <div class="src-sub" style="margin-top:8px"><a href="https://www.google.com/maps?q=${L.lat},${L.lon}" target="_blank" rel="noopener">Open last position in Google Maps</a></div>`
@@ -737,12 +784,12 @@ function renderNext(d, s) {
   const prev = s.prevCp, pct = clamp((s.curMi - prev.mi)/(c.mi - prev.mi), 0, 1);
   const spread = Math.max(10*MIN, (c.proj - s.last.ts)*0.15);
   const dCls = c.projDelta > 5*MIN ? 'delta-pos' : c.projDelta < -5*MIN ? 'delta-neg' : '';
-  $('#nextMeta').textContent = `mi ${c.mi.toFixed(1)}`;
+  $('#nextMeta').textContent = miKm(c.mi);
   $('#next').innerHTML = `
     <div class="next-name">${c.name}</div>
     <div class="next-grid">
-      <div class="kv"><div class="k">Distance to go</div><div class="v">${distTo.toFixed(1)} <small>mi</small></div></div>
-      <div class="kv"><div class="k">Climb to go</div><div class="v">${n0(gainTo)} <small>ft</small></div></div>
+      <div class="kv"><div class="k">Distance to go</div><div class="v">${distTo.toFixed(1)} <small>mi</small></div>${alt(km(distTo) + ' km')}</div>
+      <div class="kv"><div class="k">Climb to go</div><div class="v">${n0(gainTo)} <small>ft</small></div>${alt(mOf(gainTo) + ' m')}</div>
       <div class="kv"><div class="k">Projected arrival</div><div class="v">${fmtTime(c.proj)} <small>±${Math.round(spread/MIN)}m</small></div></div>
       <div class="kv"><div class="k">Planned</div><div class="v">${fmtTime(c.pa)} <small class="${dCls}">${c.projDelta > 0 ? '+' : ''}${fmtDur(c.projDelta)}</small></div></div>
     </div>
@@ -784,12 +831,12 @@ function renderMap(d, s) {
   // inReach dots joined by thin dashed line
   L.polyline(s.ir.map(p => [p.lat, p.lon]), { color: ir, weight: 2, opacity: .7, dashArray: '2 5' }).addTo(mapLayers);
   s.ir.forEach(p => L.circleMarker([p.lat, p.lon], { radius: 5, color: '#fff', weight: 2, fillColor: ir, fillOpacity: 1 })
-    .bindTooltip(`<b>inReach</b> · ${fmtDay(p.ts)} ${fmtTime(p.ts)}<br>mi ${p.mi.toFixed(1)}${p.ele != null ? ' · ' + n0(p.ele) + ' ft' : ''}`).addTo(mapLayers));
+    .bindTooltip(`<b>inReach</b> · ${fmtDay(p.ts)} ${fmtTime(p.ts)}<br>${miKm(p.mi)}${p.ele != null ? '<br>' + fmtFt(p.ele) : ''}`).addTo(mapLayers));
 
   s.cps.forEach(c => {
     const ll = eleAt(s.course, c.mi);
     L.marker([ll.lat, ll.lon], { icon: L.divIcon({ className: 'cp-ic' + (c.type === 'camp' ? ' camp' : ''), iconSize: [12,12] }) })
-      .bindTooltip(`<b>${c.name}</b><br>mi ${c.mi.toFixed(1)} · plan ${fmtDay(c.pa)} ${fmtTime(c.pa)}`).addTo(mapLayers);
+      .bindTooltip(`<b>${c.name}</b><br>${miKm(c.mi)} · plan ${fmtDay(c.pa)} ${fmtTime(c.pa)}`).addTo(mapLayers);
   });
   d.messages.forEach(m => L.circleMarker([m.lat, m.lon], { radius: 8, color: ir, weight: 2, fillColor: '#fff', fillOpacity: 1 })
     .bindPopup(`<b>Message · ${fmtDay(m.t)} ${fmtTime(m.t)}</b><br>“${m.text}”`).addTo(mapLayers));
@@ -816,7 +863,7 @@ function renderMapFallback(d, s) {     // if Leaflet CDN is blocked: plain SVG t
 function renderProfile(d, s) {
   const host = $('#profile'), W = host.clientWidth, H = 230;
   if (s.course.length < 2) { host.querySelector('svg')?.remove(); host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} 60"><text x="10" y="34" font-size="12" fill="var(--text-muted)">Elevation profile appears once there are a few positions.</text></svg>`); return; }
-  const m = { l: 46, r: 12, t: 44, b: 26 };
+  const m = { l: 46, r: 46, t: 44, b: 26 };   // right margin holds the meters axis
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const eles = s.course.map(c => c.ele);
   const step = (Math.max(...eles) - Math.min(...eles)) < 1500 ? 200 : 1000;
@@ -830,7 +877,18 @@ function renderProfile(d, s) {
     <text x="${m.l-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${step === 1000 ? (e/1000).toFixed(0) + 'k' : (e/1000).toFixed(1) + 'k'}</text>`;
   const miStep = s.totalMi > 40 ? 10 : s.totalMi > 15 ? 5 : s.totalMi > 4 ? 1 : 0.5;
   for (let mi = 0; mi <= s.totalMi + 1e-9; mi += miStep) grid += `<text x="${X(mi)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${+mi.toFixed(1)}</text>`;
-  if (W >= 600) grid += `<text x="${W-m.r}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--text-muted)">mi</text>`;
+  if (W >= 600) grid += `<text x="${W-4}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--text-muted)">mi</text>`;
+  grid += `<text x="${m.l-6}" y="${m.t-12}" text-anchor="end" font-size="11" fill="var(--text-muted)">ft</text>`;
+  // Right-hand axis: the same elevations in meters (labels only; gridlines follow feet)
+  const m0 = e0 * M_PER_FT, m1 = e1 * M_PER_FT, mSpan = m1 - m0;
+  const mStep = [10, 20, 50, 100, 200, 250, 500, 1000].find(st => mSpan / st <= 7) || 1000;
+  for (let mv = Math.ceil(m0 / mStep) * mStep; mv <= m1 + 1e-9; mv += mStep) {
+    const y = Y(mv / M_PER_FT);
+    grid += `<line x1="${W-m.r}" x2="${W-m.r+4}" y1="${y}" y2="${y}" stroke="var(--text-muted)"/>
+      <text x="${W-m.r+7}" y="${y+4}" font-size="11" fill="var(--text-muted)">${mv >= 1000 ? (mv/1000).toFixed(mStep >= 1000 ? 0 : mStep >= 100 ? 1 : 2).replace(/\.?0+$/, '') + 'k' : mv}</text>`;
+  }
+  grid += `<line x1="${W-m.r}" x2="${W-m.r}" y1="${m.t}" y2="${Y(e0)}" stroke="var(--grid)"/>
+    <text x="${W-m.r+7}" y="${m.t-12}" font-size="11" fill="var(--text-muted)">m</text>`;
   // checkpoint ticks + labels (skip labels that would collide)
   // labels on two rows; a label that fits neither row is skipped (still in tooltip/table)
   const rowEnd = [-1e9, -1e9], cpSvg0 = [];
@@ -876,7 +934,7 @@ function renderProfile(d, s) {
                 + s.cps.filter(c => c.mi > s.curMi && c.mi < mi).reduce((a,c) => a + c.plannedDwellMin*MIN, 0);
       when = `<div class="row">Projected ≈ ${fmtDay(eta)} ${fmtTime(eta)}</div>`;
     }
-    tip.innerHTML = `<b>mi ${mi.toFixed(1)}</b> · ${n0(p.ele)} ft${when}`;
+    tip.innerHTML = `<b>${miKm(mi)}</b><div class="row">${fmtFt(p.ele)}</div>${when}`;
     tip.style.display = 'block';
     const tx = X(mi) + 12, tw = tip.offsetWidth;
     tip.style.left = (tx + tw > W ? X(mi) - tw - 12 : tx) + 'px'; tip.style.top = (m.t + 6) + 'px';
@@ -886,9 +944,71 @@ function renderProfile(d, s) {
   hit.addEventListener('mouseleave', out); hit.addEventListener('touchend', out);
 }
 
+/* ---- Heart rate · effort ---- */
+function renderEffort(d, s) {
+  const card = $('#effortCard');
+  const pts = s.lt.filter(p => p.hr > 0);
+  if (!pts.length && s.effort.cadAvg == null && s.effort.pwAvg == null) { card.hidden = true; return; }
+  card.hidden = false;
+  const lastLT = s.lastLT, live = !s.ended && lastLT && s.now - lastLT.ts <= 20*MIN;
+  const stat = (k, v, unit, sub) => v == null ? '' : `<div><div class="k">${k}</div><div class="v">${v}<small>${unit}</small></div>${sub ? alt(sub) : ''}</div>`;
+  $('#effortStats').innerHTML =
+    stat('Heart rate', s.hr?.avg, 'bpm avg', s.hr ? `max ${s.hr.max} · min ${s.hr.min}${live && lastLT.hr ? ` · now ${lastLT.hr}` : ''}` : '') +
+    stat('Cadence', s.effort.cadAvg, 'spm avg', live && lastLT.cad ? `now ${lastLT.cad}` : 'while moving') +
+    stat('Power', s.effort.pwAvg, 'W avg', s.effort.pwMax ? `max ${s.effort.pwMax}${live && lastLT.pw != null ? ` · now ${lastLT.pw}` : ''}` : '');
+  const host = $('#effort'); host.querySelector('svg')?.remove();
+  if (pts.length < 2) return;
+  const W = host.clientWidth, H = 170, m = { l: 46, r: 12, t: 10, b: 24 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const t0 = pts[0].ts, t1 = pts.at(-1).ts;
+  const hMin = Math.floor((s.hr.min - 5) / 10) * 10, hMax = Math.ceil((s.hr.max + 5) / 10) * 10;
+  const X = t => m.l + (t - t0) / Math.max(t1 - t0, 1) * iw, Y = h => m.t + (1 - (h - hMin) / (hMax - hMin)) * ih;
+  let path = '', prev = null;
+  for (const p of pts) { path += `${prev && p.ts - prev.ts <= 5*MIN ? 'L' : 'M'}${X(p.ts).toFixed(1)},${Y(p.hr).toFixed(1)}`; prev = p; }
+  let grid = '';
+  for (let h = hMin; h <= hMax; h += 20) grid += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(h)}" y2="${Y(h)}" stroke="var(--grid)"/>
+    <text x="${m.l-6}" y="${Y(h)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${h}</text>`;
+  grid += `<text x="${m.l-6}" y="${m.t+2}" text-anchor="end" font-size="11" fill="var(--text-muted)" dy="-2"></text>`;
+  const span = t1 - t0, step = span > 12*HR ? 3*HR : span > 4*HR ? HR : span > 90*MIN ? 30*MIN : 15*MIN;
+  for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step)
+    grid += `<text x="${X(t)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${fmtTime(t)}</text>`;
+  const stopsSvg = s.stops.map(x => `<rect x="${X(x.start)}" y="${m.t}" width="${Math.max(2, X(x.end) - X(x.start))}" height="${ih}" fill="var(--panel-2)"/>`).join('');
+  host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Heart rate over time">
+    ${stopsSvg}${grid}
+    <path d="${path}" fill="none" stroke="var(--series-lt)" stroke-width="2" stroke-linejoin="round"/>
+    <g id="exh" style="display:none"><line id="exl" y1="${m.t}" y2="${m.t+ih}" stroke="var(--text-muted)"/><circle id="exc" r="4.5" fill="var(--surface-1)" stroke="var(--text-primary)" stroke-width="2"/></g>
+    <rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent" id="ehit"/></svg>`);
+  const tip = $('#etip'), hit = host.querySelector('#ehit'), xh = host.querySelector('#exh');
+  const move = ev => {
+    const r = host.getBoundingClientRect(), px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const t = t0 + clamp((px - m.l) / iw, 0, 1) * (t1 - t0);
+    let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const md = (lo + hi) >> 1; pts[md].ts <= t ? lo = md : hi = md; }
+    const p = Math.abs(pts[lo].ts - t) < Math.abs(pts[hi].ts - t) ? pts[lo] : pts[hi];
+    xh.style.display = ''; host.querySelector('#exl').setAttribute('x1', X(p.ts)); host.querySelector('#exl').setAttribute('x2', X(p.ts));
+    host.querySelector('#exc').setAttribute('cx', X(p.ts)); host.querySelector('#exc').setAttribute('cy', Y(p.hr));
+    tip.innerHTML = `<b>${fmtTime(p.ts)}</b> · ${p.hr} bpm<div class="row">${[p.cad != null ? `${p.cad} spm` : '', p.pw != null ? `${p.pw} W` : '', p.st === 'STATIONARY' ? 'stopped' : ''].filter(Boolean).join(' · ')}</div><div class="row">${miKm(p.mi)}</div>`;
+    tip.style.display = 'block';
+    const tx = X(p.ts) + 12, tw = tip.offsetWidth; tip.style.left = (tx + tw > W ? X(p.ts) - tw - 12 : tx) + 'px'; tip.style.top = (m.t + 4) + 'px';
+  };
+  const out = () => { tip.style.display = 'none'; xh.style.display = 'none'; };
+  hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', move, { passive: true });
+  hit.addEventListener('mouseleave', out); hit.addEventListener('touchend', out);
+}
+
 /* ---- Checkpoints table ---- */
+function renderStops(s) {
+  $('#cpTitle').textContent = 'Stops'; $('#cpMeta').textContent = '2 min or longer · times MT';
+  if (!s.stops.length) { $('#cpTable').innerHTML = `<tbody><tr><td style="color:var(--text-muted);border:0">${s.movingMs == null ? 'Stops need LiveTrack data.' : 'No stops of 2 minutes or longer.'}</td></tr></tbody>`; return; }
+  const total = s.stops.reduce((a, x) => a + (x.end - x.start), 0);
+  $('#cpTable').innerHTML = `<thead><tr><th>Start</th><th class="num">Length</th><th class="num">Where</th><th class="num hide-sm">Elevation</th></tr></thead><tbody>` +
+    s.stops.map(x => `<tr><td>${fmtDay(x.start)} ${fmtTime(x.start)}${x.open ? ' <span class="muted">(now)</span>' : ''}</td>
+      <td class="num">${fmtDur(x.end - x.start)}</td>
+      <td class="num">mi ${x.p.mi.toFixed(1)}${alt('km ' + km(x.p.mi))}</td>
+      <td class="num hide-sm">${x.p.ele != null ? `${n0(x.p.ele)} <small>ft</small>${alt(mOf(x.p.ele) + ' m')}` : '—'}</td></tr>`).join('') +
+    `<tr><td class="muted">Total</td><td class="num"><b>${fmtDur(total)}</b></td><td class="num muted">${s.stops.length} stop${s.stops.length > 1 ? 's' : ''}</td><td class="hide-sm"></td></tr></tbody>`;
+}
 function renderCpTable(d, s) {
-  if (!s.cps.length) { $('#cpTable').innerHTML = '<tbody><tr><td style="color:var(--text-muted);border:0">No planned route for this activity, so no checkpoints. Days and stops will show in the timeline.</td></tr></tbody>'; return; }
+  if (!s.cps.length) return renderStops(s);
+  $('#cpTitle').textContent = 'Checkpoints'; $('#cpMeta').textContent = 'plan vs actual · times MT';
   const icon = { trailhead:'⌂', pass:'▲', road:'═', camp:'⛺', water:'≈', view:'◉' };
   const dcell = ms => ms == null ? '' : `<span class="${ms > 5*MIN ? 'delta-pos' : ms < -5*MIN ? 'delta-neg' : ''}">${ms > 0 ? '+' : ''}${fmtDur(ms)}</span>`;
   const rows = s.cps.map(c => {
@@ -898,29 +1018,30 @@ function renderCpTable(d, s) {
     const dl = c.aa ? c.aa - c.pa : c.projDelta;
     return `<tr class="${future ? 'future' : ''} ${isNext ? 'current' : ''}">
       <td><span class="type-ic">${icon[c.type] ?? '·'}</span>${c.name}</td>
-      <td class="num">${c.mi.toFixed(1)}</td>
+      <td class="num">${c.mi.toFixed(1)}${alt(km(c.mi) + ' km')}</td>
       <td class="hide-sm">${fmtDay(c.pa)} ${fmtTime(c.pa)}</td>
       <td>${actual}</td>
       <td class="num">${dcell(dl)}</td>
       <td class="num hide-sm">${dwell}</td></tr>`;
   }).join('');
-  $('#cpTable').innerHTML = `<thead><tr><th>Checkpoint</th><th class="num">Mi</th><th class="hide-sm">Planned</th><th>Actual / proj.</th><th class="num">Δ</th><th class="num hide-sm">Stop (act/plan)</th></tr></thead><tbody>${rows}</tbody>`;
+  $('#cpTable').innerHTML = `<thead><tr><th>Checkpoint</th><th class="num">Mi · km</th><th class="hide-sm">Planned</th><th>Actual / proj.</th><th class="num">Δ</th><th class="num hide-sm">Stop (act/plan)</th></tr></thead><tbody>${rows}</tbody>`;
 }
 
 /* ---- Timeline ---- */
 function renderTimeline(d, s) {
   const ev = [];
   d.messages.forEach(m => ev.push({ t: Date.parse(m.t), chip:'ir', tag:'inReach msg', html:`<span class="msg"><q>${m.text}</q></span>` }));
+  s.stops.forEach(x => ev.push({ t: x.start, chip:'gap', tag:'Stop', html:`${x.open ? 'Stopped, ' + fmtDur(x.end - x.start) + ' so far' : 'Stopped ' + fmtDur(x.end - x.start)} · ${miKm(x.p.mi)}` }));
   d.sessions.forEach(x => {
     ev.push({ t: Date.parse(x.start), chip:'lt', tag:'LiveTrack', html:'Session started' });
     if (x.end) ev.push({ t: Date.parse(x.end), chip:'lt', tag:'LiveTrack', html:'Session ended' });
   });
-  s.cps.filter(c => c.aa).forEach(c => ev.push({ t: c.aa, chip:'', tag:'Checkpoint', html:`Reached <b>${c.name}</b> · mi ${c.mi.toFixed(1)}` }));
+  s.cps.filter(c => c.aa).forEach(c => ev.push({ t: c.aa, chip:'', tag:'Checkpoint', html:`Reached <b>${c.name}</b> · ${miKm(c.mi)}` }));
   for (let i = 1; i < s.lt.length; i++) {
     const a = s.lt[i-1], b = s.lt[i];
-    if (b.ts - a.ts > 30*MIN && a.session === b.session) ev.push({ t: a.ts, chip:'gap', tag:'No cell', html:`Out of service ${fmtDur(b.ts - a.ts)} (mi ${a.mi.toFixed(1)}–${b.mi.toFixed(1)})` });
+    if (b.ts - a.ts > 30*MIN && a.session === b.session) ev.push({ t: a.ts, chip:'gap', tag:'No cell', html:`Out of service ${fmtDur(b.ts - a.ts)} (mi ${a.mi.toFixed(1)}–${b.mi.toFixed(1)} · km ${km(a.mi)}–${km(b.mi)})` });
   }
-  if (!s.ended && s.lastLT && s.now - s.lastLT.ts > 30*MIN) ev.push({ t: s.lastLT.ts, chip:'gap', tag:'No cell', html:`Out of service since mi ${s.lastLT.mi.toFixed(1)} — satellite only` });
+  if (!s.ended && s.lastLT && s.now - s.lastLT.ts > 30*MIN) ev.push({ t: s.lastLT.ts, chip:'gap', tag:'No cell', html:`Out of service since ${miKm(s.lastLT.mi)}: satellite only` });
   ev.sort((a,b) => b.t - a.t);
   $('#timeline').innerHTML = ev.map(e => `<li><div class="t"><b>${fmtTime(e.t)}</b>${fmtDay(e.t)}</div>
     <div><span class="chip ${e.chip}">${e.tag}</span>${e.html}</div></li>`).join('');
@@ -943,7 +1064,10 @@ function renderDebug(d, s) {
     livetrack_point_interval_s_median: med(ivals),
     livetrack_seen_lag_s_median: med(lags), livetrack_seen_lag_s_max: lags.at(-1) ?? null,
     livetrack_points_arriving_over_3min_late: late.length,
-    backfill_suspected: late.length > 0,
+    garmin_upload_delay_s_median: s.lagMed,
+    garmin_backfilled_points_over_2min: s.lt.filter(p => p.lagS > 120).length,
+    backfill_suspected: late.length > 0 || s.lt.some(p => p.lagS > 120),
+    moving_time: s.movingMs != null ? fmtClock(s.movingMs) : null, stops_2min_plus: s.stops.length,
     livetrack_gaps_over_2min: gaps.length, longest_gap: gaps.length ? fmtDur(Math.max(...gaps)) : null,
     sessions: (d.sessions || []).map(x => `${x.id.slice(0,8)}… ${x.status ?? ''}`),
     current_mi: +s.curMi.toFixed(2),
@@ -988,9 +1112,10 @@ function renderLanding() {
         <h2 class="now-title"><a href="#a/${encodeURIComponent(live.id)}">${esc(live.title)}</a></h2>
         <p class="muted now-meta">Started ${/^(Today|Yesterday)$/.test(relDay(live.start, now)) ? relDay(live.start, now).toLowerCase() : relDay(live.start, now)} at ${fmtTime(live.start)}</p>
         <div class="now-stats">
-          <div><div class="k">Distance</div><div class="v">${live.dist_mi.toFixed(1)}<small>mi</small></div></div>
+          <div><div class="k">Distance</div><div class="v">${live.dist_mi.toFixed(1)}<small>mi</small></div>${alt(km(live.dist_mi) + ' km')}</div>
           <div><div class="k">Elapsed</div><div class="v">${fmtClock((live.asOf ? Date.parse(live.asOf) : now) - Date.parse(live.start))}</div></div>
-          <div><div class="k">Vertical</div><div class="v">${n0(live.gain_ft)}<small>ft</small></div></div>
+          <div><div class="k">Vertical gain</div><div class="v">${n0(live.gain_ft)}<small>ft</small></div>${alt(mOf(live.gain_ft) + ' m')}</div>
+          ${live.ele_max_ft != null ? `<div><div class="k">High · low</div><div class="v">${n0(live.ele_max_ft)}<small>ft</small></div>${alt(`${mOf(live.ele_max_ft)} m · low ${fmtFt(live.ele_min_ft)}`)}</div>` : ''}
         </div>
         <div class="now-src">
           <span><i class="sw lt"></i>LiveTrack ${src(live.last_lt)}</span>
@@ -1012,18 +1137,21 @@ function renderLanding() {
   let month = '', rows = '';
   for (const a of past) {
     const mo = fmtMonth(a.start);
-    if (mo !== month) { month = mo; rows += `<tr class="group-row"><th colspan="6">${mo}</th></tr>`; }
+    if (mo !== month) { month = mo; rows += `<tr class="group-row"><th colspan="9">${mo}</th></tr>`; }
     const dur = a.end ? Date.parse(a.end) - Date.parse(a.start) : null;
     const srcs = [a.n_lt ? '<i class="sw lt" title="LiveTrack"></i>' : '', a.n_ir ? '<i class="sw ir" title="inReach"></i>' : ''].join('');
     rows += `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
       <td class="t-thumb">${thumbSvg(a.thumb, 56, 40, { sw:1.6, color: a.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</td>
-      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a><div class="act-sub">${fmtDate(a.start)} · ${fmtTime(a.start)}<span class="show-narrow"> · ${a.dist_mi.toFixed(1)} mi${dur != null ? ' · ' + fmtClock(dur) : ''}</span></div></td>
-      <td class="num hide-narrow">${a.dist_mi.toFixed(1)} <small>mi</small></td>
-      <td class="num hide-narrow">${n0(a.gain_ft)} <small>ft</small></td>
-      <td class="num hide-narrow">${dur != null ? fmtClock(dur) : '—'}</td>
+      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a><div class="act-sub">${fmtDate(a.start)} · ${fmtTime(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
+      <td class="num hide-narrow">${a.dist_mi.toFixed(1)} <small>mi</small>${alt(km(a.dist_mi) + ' km')}</td>
+      <td class="num hide-narrow">${n0(a.gain_ft)} <small>ft</small>${alt(mOf(a.gain_ft) + ' m')}</td>
+      <td class="num hide-narrow">${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${alt(mOf(a.ele_max_ft) + ' m')}` : '—'}</td>
+      <td class="num hide-narrow">${a.ele_min_ft != null ? `${n0(a.ele_min_ft)} <small>ft</small>${alt(mOf(a.ele_min_ft) + ' m')}` : '—'}</td>
+      <td class="num hide-narrow">${a.hr_avg ? `${a.hr_avg} <small>bpm</small>` : '—'}</td>
+      <td class="num hide-narrow">${dur != null ? fmtClock(dur) : '—'}${a.moving_s ? alt('moving ' + fmtClock(a.moving_s * 1000)) : ''}</td>
       <td class="srcs hide-narrow">${srcs}</td></tr>`;
   }
-  $('#actBody').innerHTML = rows || `<tr><td colspan="6" class="muted" style="padding:18px 14px">Nothing here yet.</td></tr>`;
+  $('#actBody').innerHTML = rows || `<tr><td colspan="9" class="muted" style="padding:18px 14px">Nothing here yet.</td></tr>`;
 }
 $('#actBody').addEventListener('click', e => { if (e.target.closest('a')) return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
 $('#actBody').addEventListener('keydown', e => { if (e.key !== 'Enter') return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
@@ -1037,7 +1165,7 @@ function renderAll() {
   const s = derive(DATA);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(DATA, s); renderTiles(DATA, s); renderFresh(DATA, s); renderNext(DATA, s);
-  renderMap(DATA, s); renderProfile(DATA, s); renderCpTable(DATA, s); renderTimeline(DATA, s); renderDebug(DATA, s);
+  renderMap(DATA, s); renderProfile(DATA, s); renderEffort(DATA, s); renderCpTable(DATA, s); renderTimeline(DATA, s); renderDebug(DATA, s);
 }
 
 /* =========================================================================
@@ -1063,15 +1191,9 @@ async function refreshDetail() {
 }
 addEventListener('hashchange', route);
 $('#refresh').addEventListener('click', () => { MOCK_CACHE = {}; CURRENT ? refreshDetail() : refreshLanding(); });
-$('#themeBtn').addEventListener('click', () => {
-  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('theme', r.dataset.theme); } catch {}
-  if (CURRENT && DATA) { resetMap(); renderAll(); }
-});
-try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
 if (new URLSearchParams(location.search).has('debug')) $('#debug').open = true;
 $('#mockBadge').hidden = CONFIG.dataSource !== 'mock';
-let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => DATA && CURRENT && renderProfile(DATA, derive(DATA)), 150); });
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && CURRENT) { const s = derive(DATA); renderProfile(DATA, s); renderEffort(DATA, s); } }, 150); });
 setInterval(() => {
   if (document.hidden) return;
   if (!CURRENT) refreshLanding();
