@@ -132,6 +132,13 @@ td .alt { font-size: 0.78rem; }
 .lg .ln { width: 18px; height: 4px; border-radius: 2px; background: var(--series-lt); }
 .lg .dt { width: 9px; height: 9px; border-radius: 50%; background: var(--series-ir); }
 .lg .pl { width: 18px; height: 0; border-top: 2px dashed var(--plan); }
+.lg .dz { width: 18px; height: 9px; border-radius: 4px; background: var(--plan); opacity: .75; }
+.view-tg { display: inline-flex; margin-top: 8px; border: 1px solid var(--border, #5a5959); border-radius: 8px; overflow: hidden; }
+.view-tg button { background: transparent; color: inherit; border: 0; padding: 5px 12px; font: inherit; font-size: .85rem; cursor: pointer; opacity: .75; }
+.view-tg button + button { border-left: 1px solid var(--border, #5a5959); }
+.view-tg button[aria-pressed="true"] { background: var(--series-lt); color: #fff; opacity: 1; font-weight: 600; }
+.cov { margin-top: 10px; }
+.cov .big { font-size: 1.6rem; font-weight: 600; } .cov .muted { font-size: .85rem; }
 
 .src-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 .src-row:first-child { border-top: 0; padding-top: 2px; }
@@ -258,7 +265,11 @@ footer p { margin: 0 0 6px; }
   <main id="detail" hidden>
     <a class="d-back" href="#">← All activities</a>
     <div class="d-head">
-      <div><h2 id="tripName">—</h2><div class="sub" id="tripSub"></div></div>
+      <div><h2 id="tripName">—</h2><div class="sub" id="tripSub"></div>
+        <div class="view-tg" id="viewTg" role="group" aria-label="Which data to show" hidden>
+          <button type="button" data-v="final" aria-pressed="true">Final · watch file</button>
+          <button type="button" data-v="live" aria-pressed="false">Live · what crew saw</button>
+        </div></div>
       <span class="pill" id="statusPill"><span class="dot"></span><span id="statusText">—</span></span>
     </div>
 
@@ -269,9 +280,10 @@ footer p { margin: 0 0 6px; }
         <div class="card-h">
           <h2>Map</h2>
           <div class="map-legend">
-            <span class="lg"><i class="ln"></i>LiveTrack</span>
+            <span class="lg"><i class="ln"></i><span id="lgMain">LiveTrack</span></span>
             <span class="lg"><i class="dt"></i>inReach</span>
             <span class="lg" id="lgPlan"><i class="pl"></i>Planned route</span>
+            <span class="lg" id="lgDz" hidden><i class="dz"></i>No live signal</span>
           </div>
         </div>
         <div class="card-b" style="padding:10px 0 0"><div id="map"></div></div>
@@ -611,7 +623,7 @@ function mockActivities() {
 function derive(d) {
   const now = d.asOf ? Date.parse(d.asOf) : Date.now();
   const pts = (d.points || []).filter(p => p.lat != null).map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a,b) => a.ts - b.ts);
-  const lt = pts.filter(p => p.src === 'livetrack'), ir = pts.filter(p => p.src === 'inreach');
+  const lt = pts.filter(p => p.src === 'livetrack' || p.src === 'import'), ir = pts.filter(p => p.src === 'inreach');
   const last = pts.at(-1) ?? null, lastLT = lt.at(-1) ?? null, lastIR = ir.at(-1) ?? null;
   const freeform = !d.course || d.course.length < 2;
   // In freeform the "course" is simply the track itself
@@ -702,14 +714,24 @@ function renderHeader(d, s) {
   $('#mockBadge').style.display = CONFIG.dataSource === 'mock' ? '' : 'none';
   const age = s.last ? s.now - s.last.ts : null, f = freshness(age, s.ended);
   const pill = $('#statusPill'); pill.className = 'pill ' + f.cls;
-  $('#statusText').textContent = s.ended ? `Finished · ${fmtDate(s.last?.ts ?? s.start)}` : s.last ? `${f.label} · last seen ${fmtAge(age)}` : 'Waiting for first position';
+  $('#statusText').textContent = s.ended ? `Finished · ${fmtDate(s.last?.ts ?? s.start)}` : s.last ? `${f.label} · last seen ${fmtAge(age)}`
+    : d.privacyHidden ? 'Started · position hidden near start (privacy)' : 'Waiting for first position';
+  $('#lgMain').textContent = d.trip?.kind === 'import' ? 'Track' : d.trip?.kind === 'final' ? 'Watch track' : 'LiveTrack';
+  const tg = $('#viewTg'); tg.hidden = !d._hasFinal;
+  tg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === (d.trip?.kind === 'final' ? 'final' : 'live'))));
+  $('#lgDz').hidden = !(d._cov && d._cov.zones.length);
   document.title = `${d.trip.name} · ACLive`;
   if (!s.last) pill.className = 'pill warning';
   $('#nowStamp').textContent = s.ended ? '' : 'as of ' + fmtTime(s.now);
 }
 
 function renderTiles(d, s) {
-  const elapsed = s.last ? (s.ended ? s.last.ts : s.now) - s.start : 0;
+  const imp = d.trip?.kind === 'import' || d.trip?.kind === 'final';
+  const elapsed = imp && d.trip.end ? Date.parse(d.trip.end) - Date.parse(d.trip.start) : s.last ? (s.ended ? s.last.ts : s.now) - s.start : 0;
+  if (imp) { if (d.trip.dist_mi != null) s = { ...s, curMi: d.trip.dist_mi }; if (d.trip.gain_ft != null) s = { ...s, gainSoFar: d.trip.gain_ft };
+             if (d.trip.moving_s != null) s = { ...s, movingMs: d.trip.moving_s * 1000 };
+             if (d.trip.ele_max_ft != null) s = { ...s, eleHigh: d.trip.ele_max_ft, eleLow: d.trip.ele_min_ft ?? s.eleLow };   // file totals, not thinned points
+             if (d.trip.hr_avg != null) s = { ...s, hr: { avg: d.trip.hr_avg, max: d.trip.hr_max, min: d.trip.hr_min } }; }
   const hrAge = s.lastLT ? s.now - s.lastLT.ts : null;
   const behind = s.delta > 5*MIN, ahead = s.delta < -5*MIN;
   const third = s.freeform
@@ -723,7 +745,7 @@ function renderTiles(d, s) {
       foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.curMi/s.totalMi*100)}%` },
     { label: s.ended ? 'Total time' : 'Elapsed', value: s.last ? fmtClock(elapsed) : '—',
       alt: s.movingMs != null ? `moving ${fmtClock(s.movingMs)} · stopped ${fmtClock(Math.max(0, elapsed - s.movingMs))}` : '',
-      foot: s.last ? `started ${fmtDay(s.start)} ${fmtTime(s.start)}` : 'not started' },
+      foot: s.last ? `started ${fmtDay(imp ? Date.parse(d.trip.start) : s.start)} ${fmtTime(imp ? Date.parse(d.trip.start) : s.start)}` : 'not started' },
     third,
     { label:'Vertical gain', value:`${n0(s.gainSoFar)}<small>ft</small>`, alt:`${mOf(s.gainSoFar)} m`,
       foot: s.freeform ? 'so far' : `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` },
@@ -740,6 +762,34 @@ function renderTiles(d, s) {
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`).join('');
 }
 function renderFresh(d, s) {
+  if (d.trip?.kind === 'final') {
+    $('#nowStamp').textContent = '';
+    const c = d._cov, pct = v => Math.round(v * 100) + '%';
+    const longest = c && c.zones.length ? c.zones.reduce((a, z) => z.end - z.start > a.end - a.start ? z : a) : null;
+    $('#fresh').innerHTML = `<div class="src-row">
+      <span class="src-sw" style="background:var(--series-lt)"></span>
+      <div><div class="src-name">Watch file</div><div class="src-sub">${esc((d.trip.final?.fmt || 'file').toUpperCase())} · ${s.lt.length} pts · complete track</div></div>
+      <div style="text-align:right"><span class="status neutral"><span class="ic">■</span>Final</span></div></div>
+      <div class="src-row">
+      <span class="src-sw" style="background:var(--series-ir)"></span>
+      <div><div class="src-name">inReach</div><div class="src-sub">satellite · ${s.ir.length} pts</div></div>
+      <div style="text-align:right"><div class="src-age">${s.lastIR ? fmtTime(s.lastIR.ts) : '—'}</div></div></div>
+      ${c && c.total > 0 ? `<div class="cov"><div class="muted">Live coverage</div>
+        <div class="big">${pct(c.realtime)}</div>
+        <div class="muted">of the activity, crew had a LiveTrack position less than 2 min old.${c.any - c.realtime >= 0.01 ? ` Another ${pct(c.any - c.realtime)} arrived late (sent once the phone got signal back).` : ''}</div>
+        <div class="muted" style="margin-top:6px">${c.zones.length ? `${c.zones.length} stretch${c.zones.length > 1 ? 'es' : ''} with no live signal (grey on the map). Longest: ${fmtDur(longest.end - longest.start)}, ${miKm(longest.mi0)} to ${miKm(longest.mi1)}.` : 'No stretches without live signal.'}</div></div>`
+        : '<div class="note-box">No LiveTrack points to compare with.</div>'}`;
+    return;
+  }
+  if (d.trip?.kind === 'import') {
+    $('#nowStamp').textContent = '';
+    $('#fresh').innerHTML = `<div class="src-row" style="border:0;padding-top:2px">
+      <span class="src-sw" style="background:var(--series-lt)"></span>
+      <div><div class="src-name">Imported activity</div><div class="src-sub">${esc(d.trip.subtitle.replace(/^Imported · /, ''))} · ${s.lt.length} pts</div></div>
+      <div style="text-align:right"><span class="status neutral"><span class="ic">■</span>Not live</span></div></div>
+      <div class="note-box">Uploaded from a file after the fact, so there's no live signal. The first and last 200 m are hidden unless the file was marked public.</div>`;
+    return;
+  }
   const row = (name, color, p, count, sub) => {
     const age = p ? s.now - p.ts : null, f = !p ? { cls:'neutral', icon:'–', label:'No data' } : freshness(age, s.ended);
     return `<div class="src-row">
@@ -771,7 +821,7 @@ function renderNext(d, s) {
         <div class="kv"><div class="k">${s.ended ? 'End position' : 'Last position'}</div><div class="v" style="font-size:15px">${L.lat.toFixed(5)}, ${L.lon.toFixed(5)}</div></div>
         <div class="kv"><div class="k">Elevation</div><div class="v">${L.ele != null ? n0(L.ele) : '—'} <small>ft</small></div>${L.ele != null ? alt(mOf(L.ele) + ' m') : ''}</div>
         <div class="kv"><div class="k">From start</div><div class="v">${s.fromStart.mi.toFixed(1)} <small>mi ${s.fromStart.dir}</small></div>${alt(km(s.fromStart.mi) + ' km')}</div>
-        <div class="kv"><div class="k">Last fix via</div><div class="v" style="font-size:15px">${L.src === 'inreach' ? 'inReach' : 'LiveTrack'} · ${fmtTime(L.ts)}</div></div>
+        <div class="kv"><div class="k">Last fix via</div><div class="v" style="font-size:15px">${L.src === 'inreach' ? 'inReach' : L.src === 'import' ? 'File' : 'LiveTrack'} · ${fmtTime(L.ts)}</div></div>
       </div>
       <div class="src-sub" style="margin-top:8px"><a href="https://www.google.com/maps?q=${L.lat},${L.lon}" target="_blank" rel="noopener">Open last position in Google Maps</a></div>`
       : '<div class="src-sub">Waiting for the first position. LiveTrack sessions appear once registered; inReach points appear within a few minutes of being sent.</div>';
@@ -822,6 +872,9 @@ function renderMap(d, s) {
 
   if (!s.freeform) L.polyline(s.course.map(c => [c.lat, c.lon]), { color: plan, weight: 3, dashArray: '6 6', opacity: .9 }).addTo(mapLayers);
 
+  // Final view: grey band under the stretches the crew could not see live
+  if (d._cov) d._cov.zones.forEach(z => L.polyline(s.lt.slice(z.i0, z.i1 + 1).map(p => [p.lat, p.lon]), { color: plan, weight: 13, opacity: .75 })
+    .bindTooltip(`<b>No live signal</b> · ${fmtDur(z.end - z.start)}<br>${fmtTime(z.start)}–${fmtTime(z.end)}`).addTo(mapLayers));
   // LiveTrack polylines, split at gaps > 5 min
   let seg = [];
   const flush = () => { if (seg.length > 1) L.polyline(seg, { color:'#fff', weight: 7, opacity: .85 }).addTo(mapLayers),
@@ -1030,6 +1083,7 @@ function renderCpTable(d, s) {
 /* ---- Timeline ---- */
 function renderTimeline(d, s) {
   const ev = [];
+  if (d._cov) d._cov.zones.forEach(z => ev.push({ t: z.start, chip:'gap', tag:'No live signal', html:`${fmtDur(z.end - z.start)} with no LiveTrack (${miKm(z.mi0)} to ${miKm(z.mi1)})` }));
   d.messages.forEach(m => ev.push({ t: Date.parse(m.t), chip:'ir', tag:'inReach msg', html:`<span class="msg"><q>${m.text}</q></span>` }));
   s.stops.forEach(x => ev.push({ t: x.start, chip:'gap', tag:'Stop', html:`${x.open ? 'Stopped, ' + fmtDur(x.end - x.start) + ' so far' : 'Stopped ' + fmtDur(x.end - x.start)} · ${miKm(x.p.mi)}` }));
   d.sessions.forEach(x => {
@@ -1090,8 +1144,58 @@ async function loadActivities() {
 }
 async function loadTrack(id) {
   if (CONFIG.dataSource === 'mock') return mockTrack(id === 'live' ? 'mock-ct' : id);
-  return getJson('/api/track' + (id && id !== 'live' ? `?activity=${encodeURIComponent(id)}` : ''));
+  const d = await getJson('/api/track' + (id && id !== 'live' ? `?activity=${encodeURIComponent(id)}` : ''));
+  // Imported activities arrive as compact rows: [t(s), lat, lon, ele(ft), hr, spm, W, moving(1/0), mi]
+  if (d.pointsCompact) {
+    d.points = d.pointsCompact.map(r => ({ t: new Date(r[0] * 1000).toISOString(), lat: r[1], lon: r[2], ele: r[3], hr: r[4] ?? undefined,
+      cad: r[5] ?? undefined, pw: r[6] ?? undefined, st: r[7] ? 'MOVING' : 'STATIONARY', mi: r[8], src: 'import', session: 'import' }));
+    delete d.pointsCompact;
+  }
+  // Live activity with the watch file merged in: same compact rows, kept beside the live points
+  if (d.finalCompact) {
+    d.final = d.finalCompact.map(r => ({ t: new Date(r[0] * 1000).toISOString(), lat: r[1], lon: r[2], ele: r[3], hr: r[4] ?? undefined,
+      cad: r[5] ?? undefined, pw: r[6] ?? undefined, st: r[7] ? 'MOVING' : 'STATIONARY', mi: r[8], src: 'import', session: 'final' }));
+    delete d.finalCompact;
+  }
+  return d;
 }
+
+/* ---- Final (watch file) vs Live (what crew saw) ---- */
+let VIEW = 'final';
+function nearestIdx(arr, t) {        // arr sorted ascending
+  let lo = 0, hi = arr.length - 1; if (hi < 0) return -1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < t) lo = m + 1; else hi = m; }
+  return lo > 0 && Math.abs(arr[lo - 1] - t) < Math.abs(arr[lo] - t) ? lo - 1 : lo;
+}
+// How much of the activity the crew could follow live, and where the live signal was missing
+function liveCoverage(fin, livePts) {
+  const lt = livePts.filter(p => p.src === 'livetrack').map(p => ({ ts: Date.parse(p.t), lag: p.seenLagS ?? 0 })).sort((a, b) => a.ts - b.ts);
+  const ts = lt.map(p => p.ts), f = fin.map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a, b) => a.ts - b.ts);
+  let total = 0, any = 0, rt = 0, z = null; const zones = [];
+  const close = () => { if (z && z.end - z.start >= 2*MIN) zones.push(z); z = null; };
+  for (let i = 1; i < f.length; i++) {
+    const a = f[i-1], b = f[i], dt = b.ts - a.ts;
+    if (dt <= 0 || dt > 15*MIN) continue;                 // watch paused: not counted either way
+    const j = nearestIdx(ts, b.ts), near = j >= 0 && Math.abs(ts[j] - b.ts) <= 2*MIN;
+    total += dt; if (near) { any += dt; if (lt[j].lag <= 180) rt += dt; }
+    if (!near) { if (!z) z = { start: a.ts, i0: i - 1, mi0: a.mi }; z.end = b.ts; z.i1 = i; z.mi1 = b.mi; } else close();
+  }
+  close();
+  return { total, any: total ? any / total : 0, realtime: total ? rt / total : 0, zones };
+}
+function viewOf(d) {
+  if (!d || !d.final || !d.final.length) return d;
+  if (VIEW === 'live') return { ...d, _hasFinal: true };
+  if (!d._finalView) {
+    const fts = d.final.map(p => Date.parse(p.t));
+    // inReach points get their distance from the watch track (nearest time)
+    const ir = d.points.filter(p => p.src === 'inreach').map(p => { const i = nearestIdx(fts, Date.parse(p.t)); return { ...p, mi: d.final[i]?.mi ?? p.mi }; });
+    d._finalView = { ...d, points: d.final.concat(ir), _hasFinal: true, _cov: liveCoverage(d.final, d.points),
+      trip: { ...d.trip, kind: 'final', start: d.trip.final_start || d.trip.start, end: d.trip.final_end || d.trip.end } };
+  }
+  return d._finalView;
+}
+$('#viewTg').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b || b.dataset.v === VIEW) return; VIEW = b.dataset.v; renderAll(); });
 
 /* =========================================================================
    LANDING
@@ -1139,7 +1243,9 @@ function renderLanding() {
     const mo = fmtMonth(a.start);
     if (mo !== month) { month = mo; rows += `<tr class="group-row"><th colspan="9">${mo}</th></tr>`; }
     const dur = a.end ? Date.parse(a.end) - Date.parse(a.start) : null;
-    const srcs = [a.n_lt ? '<i class="sw lt" title="LiveTrack"></i>' : '', a.n_ir ? '<i class="sw ir" title="inReach"></i>' : ''].join('');
+    const srcs = a.kind === 'import' ? `<span class="chip" title="${esc(a.source || '')}">${a.fmt ? esc(a.fmt.toUpperCase()) : 'File'}</span>`
+      : [a.n_lt ? '<i class="sw lt" title="LiveTrack"></i>' : '', a.n_ir ? '<i class="sw ir" title="inReach"></i>' : '',
+         a.final ? `<span class="chip" title="Watch file merged">${esc((a.final.fmt || 'file').toUpperCase())}</span>` : ''].join('');
     rows += `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
       <td class="t-thumb">${thumbSvg(a.thumb, 56, 40, { sw:1.6, color: a.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</td>
       <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a><div class="act-sub">${fmtDate(a.start)} · ${fmtTime(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
@@ -1162,10 +1268,10 @@ $('#actBody').addEventListener('keydown', e => { if (e.key !== 'Enter') return; 
 let DATA = null, CURRENT = null;
 function resetMap() { if (map) { map.remove(); map = null; } mapLayers = null; const old = document.getElementById('map'); old.replaceWith(Object.assign(document.createElement('div'), { id:'map' })); }
 function renderAll() {
-  const s = derive(DATA);
+  const D = viewOf(DATA), s = derive(D);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
-  renderHeader(DATA, s); renderTiles(DATA, s); renderFresh(DATA, s); renderNext(DATA, s);
-  renderMap(DATA, s); renderProfile(DATA, s); renderEffort(DATA, s); renderCpTable(DATA, s); renderTimeline(DATA, s); renderDebug(DATA, s);
+  renderHeader(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
+  renderMap(D, s); renderProfile(D, s); renderEffort(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
 }
 
 /* =========================================================================
@@ -1177,7 +1283,7 @@ async function route() {
   const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null;
   $('#landing').hidden = !!id; $('#detail').hidden = !id;
   if (!id) { document.title = 'ACLive'; CURRENT = null; await refreshLanding(); return; }
-  if (id !== CURRENT) { CURRENT = id; DATA = null; resetMap(); window.scrollTo(0, 0); }
+  if (id !== CURRENT) { CURRENT = id; DATA = null; VIEW = 'final'; resetMap(); window.scrollTo(0, 0); }
   await refreshDetail();
 }
 async function refreshLanding() {
@@ -1193,7 +1299,7 @@ addEventListener('hashchange', route);
 $('#refresh').addEventListener('click', () => { MOCK_CACHE = {}; CURRENT ? refreshDetail() : refreshLanding(); });
 if (new URLSearchParams(location.search).has('debug')) $('#debug').open = true;
 $('#mockBadge').hidden = CONFIG.dataSource !== 'mock';
-let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && CURRENT) { const s = derive(DATA); renderProfile(DATA, s); renderEffort(DATA, s); } }, 150); });
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && CURRENT) { const D = viewOf(DATA), s = derive(D); renderProfile(D, s); renderEffort(D, s); } }, 150); });
 setInterval(() => {
   if (document.hidden) return;
   if (!CURRENT) refreshLanding();
