@@ -20,6 +20,7 @@
   --bg: #302F2F; --panel: #444343; --panel-2: #504E4D; --ink: #F0EEEC; --muted: #BAB6B2; --line: #5A5857;
   --spruce: #9CCBB9; --bad: #F09A88;
   --series-lt: #4299CC; --series-ir: #CF7D40; --plan: #8A8682; --done-fill: #2F4B5E;   /* validated on #444343 */
+  --temp: #B79CE0; --precip: #6FA8DC; --night: rgba(0,0,0,.24);
   --good: #5DBB7E; --warning: #E0B54A; --critical: #E07A66;
   --good-text: #8FD3A6; --warn-text: #EBC66A; --crit-text: #F09A88;
   /* aliases used by the drawing code */
@@ -112,7 +113,33 @@ td.srcs .sw { margin-right: 4px; }
 .card-h .meta { font-size: 0.85rem; color: var(--muted); }
 .card-b { padding: 10px 16px 16px; }
 
-.tiles { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+.tiles { margin-bottom: 14px; }
+.tile-row { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; }
+.tile-row + .tile-row { margin-top: 12px; }
+.tile-row-h { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 0 0 6px 2px; }
+.tile-row + .tile-row-h { margin-top: 14px; }
+.ele-ahead { font-size: 11px; fill: var(--text-muted); }
+.alert-box { display: flex; gap: 12px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--warning);
+  border-radius: var(--r-md); padding: 10px 14px; margin: 0 0 14px; }
+.alert-box.severe { border-left-color: var(--critical); }
+.alert-box .ev { font-weight: 600; color: var(--warn-text); } .alert-box.severe .ev { color: var(--crit-text); }
+.alert-box .hl { font-size: .9rem; color: var(--muted); }
+.wx-top { display: grid; grid-template-columns: minmax(200px, 1fr) 3fr; gap: 18px; margin-bottom: 8px; }
+.wx-now .big { font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; line-height: 1.1; }
+.wx-now .big small { font-size: 1rem; color: var(--muted); font-weight: 500; }
+.wx-hours { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; }
+.wx-hours > div { background: var(--panel-2); border-radius: var(--r-sm); padding: 6px 4px; text-align: center; font-size: .82rem; line-height: 1.35; }
+.wx-hours .t { color: var(--muted); } .wx-hours .v { font-weight: 600; font-size: .95rem; } .wx-hours .storm { color: var(--warn-text); font-weight: 600; }
+.wx-stats { display: flex; flex-wrap: wrap; gap: 8px 26px; }
+.wx-stats .k { font-size: .8rem; color: var(--muted); } .wx-stats .v { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; }
+.wx-stats .v small { font-size: .85rem; color: var(--muted); font-weight: 500; }
+#wxChart { position: relative; margin-top: 6px; }
+.wx-legend { display: flex; gap: 16px; font-size: .8rem; color: var(--muted); margin-top: 4px; flex-wrap: wrap; }
+.wx-legend i { display: inline-block; vertical-align: middle; margin-right: 5px; }
+.sky-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: 14px; }
+.sky-table th, .sky-table td { padding: 6px 8px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.sky-table th { color: var(--muted); font-weight: 500; font-size: .8rem; } .sky-table td:first-child, .sky-table th:first-child { text-align: left; }
+@media (max-width: 760px) { .wx-top { grid-template-columns: 1fr; } .wx-hours { grid-template-columns: repeat(4, minmax(0,1fr)); } .wx-hours > div:nth-child(n+5) { display: none; } }
 .alt { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.3; }
 td .alt { font-size: 0.78rem; }
 .tile { padding: 12px 14px; }
@@ -212,14 +239,14 @@ footer p { margin: 0 0 6px; }
 .fallback-map { width: 100%; height: 100%; }
 
 @media (max-width: 1050px) {
-  .tiles { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .tile-row { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .grid-main, .grid-2 { grid-template-columns: minmax(0,1fr); }
   .side { order: -1; }
   #map { height: 380px; }
 }
 @media (max-width: 640px) {
   .wrap { padding: 20px 14px 40px; }
-  .tiles { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .tile-row { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .tile .value { font-size: 1.45rem; }
   .debug-grid { grid-template-columns: 1fr; }
   .hide-narrow, .hide-sm { display: none; }
@@ -273,6 +300,7 @@ footer p { margin: 0 0 6px; }
       <span class="pill" id="statusPill"><span class="dot"></span><span id="statusText">—</span></span>
     </div>
 
+    <div id="alerts"></div>
     <section class="tiles" id="tiles"></section>
 
     <section class="grid-main">
@@ -303,6 +331,16 @@ footer p { margin: 0 0 6px; }
     <section class="card">
       <div class="card-h"><h2>Elevation</h2><span class="meta">hover for details</span></div>
       <div class="card-b"><div id="profile"><div class="tip" id="ptip"></div></div></div>
+    </section>
+
+    <section class="card" id="wxCard" style="margin-top:14px">
+      <div class="card-h"><h2 id="wxTitle">Conditions</h2><span class="meta" id="wxMeta"></span></div>
+      <div class="card-b">
+        <div class="wx-top" id="wxTop"></div>
+        <div id="wxChart"><div class="tip" id="wtip"></div></div>
+        <div class="wx-legend" id="wxLegend"></div>
+        <div style="overflow-x:auto"><table class="sky-table" id="skyTable"></table></div>
+      </div>
     </section>
 
     <section class="card" id="effortCard" style="margin-top:14px">
@@ -438,6 +476,120 @@ function thumbSvg(pts, w, h, opts = {}) {
    Simulates: LiveTrack only in a few service zones, inReach every 10 min,
    two nights camped, current position ~mi 46 with LiveTrack stale.
    ========================================================================= */
+/* ---- Sun & moon (positional astronomy after SunCalc / Meeus, low precision: ~1 min) ---- */
+const SKY = (() => {
+  const rad = Math.PI / 180, e = rad * 23.4397, J2000 = 2451545;
+  const toDays = ms => ms / 864e5 + 2440587.5 - J2000;
+  const ra = (l, b) => Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l));
+  const dec = (l, b) => Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l));
+  const sidereal = (d, lw) => rad * (280.16 + 360.9856235 * d) - lw;
+  const alt = (H, phi, dc) => Math.asin(Math.sin(phi) * Math.sin(dc) + Math.cos(phi) * Math.cos(dc) * Math.cos(H));
+  const sunLon = d => { const M = rad * (357.5291 + 0.98560028 * d);
+    return M + rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + rad * 102.9372 + Math.PI; };
+  const moonC = d => { const L = rad * (218.316 + 13.176396 * d), M = rad * (134.963 + 13.064993 * d), F = rad * (93.272 + 13.229350 * d);
+    const l = L + rad * 6.289 * Math.sin(M), b = rad * 5.128 * Math.sin(F);
+    return { ra: ra(l, b), dec: dec(l, b), dist: 385001 - 20905 * Math.cos(M) }; };
+  const sunAlt = (ms, lat, lon) => { const d = toDays(ms), L = sunLon(d);
+    return alt(sidereal(d, rad * -lon) - ra(L, 0), rad * lat, dec(L, 0)) / rad; };
+  const moonAlt = (ms, lat, lon) => { const d = toDays(ms), c = moonC(d);
+    return alt(sidereal(d, rad * -lon) - c.ra, rad * lat, c.dec) / rad; };
+  const moonIllum = ms => { const d = toDays(ms), L = sunLon(d), s = { ra: ra(L, 0), dec: dec(L, 0) }, m = moonC(d), sd = 149598000;
+    const phi = Math.acos(Math.sin(s.dec) * Math.sin(m.dec) + Math.cos(s.dec) * Math.cos(m.dec) * Math.cos(s.ra - m.ra));
+    const inc = Math.atan2(sd * Math.sin(phi), m.dist - sd * Math.cos(phi));
+    const ang = Math.atan2(Math.cos(s.dec) * Math.sin(s.ra - m.ra), Math.sin(s.dec) * Math.cos(m.dec) - Math.cos(s.dec) * Math.sin(m.dec) * Math.cos(s.ra - m.ra));
+    const phase = 0.5 + 0.5 * inc * (ang < 0 ? -1 : 1) / Math.PI;
+    const names = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'];
+    return { fraction: (1 + Math.cos(inc)) / 2, phase, name: names[Math.round(phase * 8) % 8] }; };
+  // Times when altitude crosses h (scan every 5 min, then interpolate) between t0 and t1
+  const crossings = (fn, h, t0, t1, lat, lon) => { const out = [], st = 5 * 60e3; let pt = t0, pa = fn(t0, lat, lon) - h;
+    for (let t = t0 + st; t <= t1; t += st) { const a = fn(t, lat, lon) - h;
+      if ((pa < 0) !== (a < 0)) out.push({ t: pt + st * pa / (pa - a), up: a > 0 }); pt = t; pa = a; } return out; };
+  // One local day (dayStart..dayStart+24h): civil dawn, sunrise, sunset, civil dusk, moonrise/set, illumination
+  function day(dayStart, lat, lon) {
+    const t1 = dayStart + 864e5, c = (fn, h) => crossings(fn, h, dayStart, t1, lat, lon);
+    const first = (a, up) => a.find(x => x.up === up)?.t ?? null;
+    const sr = c(sunAlt, -0.833), cv = c(sunAlt, -6), mn = c(moonAlt, 0.133);
+    const noonish = sr.length ? (first(sr, true) + (first(sr, false) ?? t1)) / 2 : dayStart + 432e5;
+    return { dawn: first(cv, true), sunrise: first(sr, true), sunset: first(sr, false), dusk: first(cv, false),
+      dayLen: first(sr, true) && first(sr, false) ? first(sr, false) - first(sr, true) : null,
+      moonrise: first(mn, true), moonset: first(mn, false), moon: moonIllum(noonish) };
+  }
+  // Dark = sun more than 6° below the horizon (past civil dusk / before civil dawn)
+  const isDark = (ms, lat, lon) => sunAlt(ms, lat, lon) < -6;
+  return { sunAlt, moonAlt, moonIllum, day, isDark, crossings };
+})();
+
+/* ---- Night along the track: [{start, end, mi0, mi1}] where the sun is >6° below the horizon at your position ---- */
+function darkSpans(pts, untilTs) {
+  const out = []; if (!pts.length) return out;
+  const step = Math.max(1, Math.floor(pts.length / 3000)); let cur = null;
+  const add = (p, ts) => { const dk = SKY.isDark(ts, p.lat, p.lon);
+    if (dk) { if (!cur) cur = { start: ts, mi0: p.mi }; cur.end = ts; cur.mi1 = p.mi; } else if (cur) { out.push(cur); cur = null; } };
+  for (let i = 0; i < pts.length; i += step) add(pts[i], pts[i].ts);
+  add(pts.at(-1), pts.at(-1).ts);
+  if (untilTs) { const L = pts.at(-1); for (let t = L.ts + 5*MIN; t <= untilTs; t += 5*MIN) add(L, t); }   // live: forecast hours at last position
+  if (cur) out.push(cur);
+  return out;
+}
+const fC = f => Math.round((f - 32) * 5 / 9);
+const tempTxt = f => `${Math.round(f)}°F`, tempAlt = f => `${fC(f)} °C`;
+// Local midnight (CONFIG.tz) of the day containing t
+function localMidnight(t) {
+  const ymd = new Date(t).toLocaleDateString('en-CA', { timeZone: CONFIG.tz });
+  const off = new Date(t).toLocaleString('en-US', { timeZone: CONFIG.tz, timeZoneName: 'shortOffset' }).match(/GMT([+-]\d+)?/);
+  return Date.parse(ymd + 'T00:00:00Z') - (Number(off?.[1] || 0)) * HR;
+}
+// One row per local day the activity touches, at your position around midday that day
+function skyDays(s) {
+  if (!s.pts.length) return [];
+  const t0 = s.pts[0].ts, t1 = s.ended ? s.pts.at(-1).ts : Math.max(s.now, s.pts.at(-1).ts);
+  const rows = [];
+  for (let m = localMidnight(t0); m <= t1; m = localMidnight(m + 30*HR)) {
+    const noon = m + 12*HR; let p = s.pts[0];
+    for (const q of s.pts) { if (Math.abs(q.ts - noon) < Math.abs(p.ts - noon)) p = q; }
+    rows.push({ day: m, ...SKY.day(m, p.lat, p.lon) });
+    if (rows.length > 14) break;
+  }
+  return rows;
+}
+
+/* ---- Sample weather for demo mode. The live version will come from the Worker (Open-Meteo + NWS) in this same shape:
+   weather = { source, now:{t,temp_f,feels_f,wind_mph,gust_mph,precip_in,desc}, forecast:[{t,temp_f,pop,precip_in,wind_mph,gust_mph,storm,desc}],
+               along:[{t,lat,lon,ele_ft,temp_f,precip_in,wind_mph,gust_mph,desc}] }   alerts = [{event,headline,severity,ends,url}] ---- */
+function mockWeather(d) {
+  const pts = (d.points || []).filter(p => p.lat != null).map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a, b) => a.ts - b.ts);
+  if (!pts.length) return null;
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const tempAt = (t, p, ele) => { const doy = (t / 864e5) % 365.25, base = 47 + 24 * Math.cos((doy - 196) / 365.25 * 2 * Math.PI);
+    const sun = clamp(SKY.sunAlt(t - 2*HR, p.lat, p.lon) / 45, -0.6, 1);   // warmest ~2 h after the sun peaks
+    return base + 13 * sun - 3.6 * ((ele ?? 7000) - 7000) / 1000 + (rnd() - .5) * 2; };
+  const desc = (pr, tf) => pr > 0.02 ? (tf <= 33 ? 'Snow' : 'Rain') : pr > 0 ? (tf <= 33 ? 'Flurries' : 'Drizzle') : rnd() < .5 ? 'Partly cloudy' : 'Clear';
+  const along = [];
+  for (let t = Math.ceil(pts[0].ts / HR) * HR; t <= pts.at(-1).ts; t += HR) {
+    let p = pts.find(q => q.ts >= t) || pts.at(-1);
+    const tf = tempAt(t, p, p.ele), h = new Date(t).getUTCHours(), wet = (h >= 20 && h <= 23) && rnd() < .7;
+    const pr = wet ? +(rnd() * .08).toFixed(2) : 0, w = Math.round(5 + rnd() * 10);
+    along.push({ t: new Date(t).toISOString(), lat: p.lat, lon: p.lon, ele_ft: p.ele, temp_f: +tf.toFixed(1), precip_in: pr, wind_mph: w, gust_mph: Math.round(w * (1.5 + rnd() * .5)), desc: desc(pr, tf) });
+  }
+  const live = d.trip?.status !== 'ended', L = pts.at(-1);
+  if (!live) return { source: 'Open-Meteo (sample)', along };
+  const now = d.asOf ? Date.parse(d.asOf) : Date.now(), forecast = [];
+  for (let k = 1; k <= 12; k++) {
+    const t = Math.floor(now / HR) * HR + k * HR, tf = tempAt(t, L, L.ele), pop = Math.round(clamp(15 + 60 * Math.sin((k - 2) / 9 * Math.PI), 5, 80));
+    const pr = pop > 55 ? +(rnd() * .06).toFixed(2) : 0, w = Math.round(8 + k * 1.2 + rnd() * 5);
+    forecast.push({ t: new Date(t).toISOString(), temp_f: +tf.toFixed(1), pop, precip_in: pr, wind_mph: w, gust_mph: Math.round(w * 1.7), storm: pop > 65 && tf > 45, desc: desc(pr, tf) });
+  }
+  const tf = tempAt(now, L, L.ele), w = 11;
+  return { source: 'Open-Meteo (sample)', along, forecast,
+    now: { t: new Date(now).toISOString(), temp_f: +tf.toFixed(1), feels_f: +(tf - 6).toFixed(1), wind_mph: w, gust_mph: 22, precip_in: 0, desc: 'Partly cloudy' } };
+}
+function mockAlerts(d) {
+  if (d.trip?.status === 'ended') return [];
+  const ends = new Date((d.asOf ? Date.parse(d.asOf) : Date.now()) + 18*HR).toISOString();
+  return [{ event: 'Winter Weather Advisory', severity: 'Moderate', ends, url: 'https://www.weather.gov/pub/',
+    headline: 'Snow 3–6 in above 10,000 ft, gusts to 40 mph on passes. Travel on high trails could be difficult.' }];
+}
+
 function buildMock() {   // id: mock-ct (live fastpack)
   const now = Date.now();
   const WP = [
@@ -602,7 +754,8 @@ function buildMockFreeform(id) {
            sessions: m.irOnly ? [] : [{ id:'mock', start:pts[0].t, end, status:'ended' }], polls:[] };
 }
 let MOCK_CACHE = {};
-function mockTrack(id) { return MOCK_CACHE[id] ??= (id === 'mock-ct' ? buildMock() : buildMockFreeform(id)); }
+function mockTrack(id) { return MOCK_CACHE[id] ??= (() => { const d = id === 'mock-ct' ? buildMock() : buildMockFreeform(id);
+  d.weather = mockWeather(d); d.alerts = mockAlerts(d); return d; })(); }
 function mockActivities() {
   const ids = ['mock-ct', ...MOCK_PAST.map(m => m.id)];
   return ids.map(id => {
@@ -632,6 +785,14 @@ function derive(d) {
     let e = null;
     course = pts.map(p => { if (p.ele != null) e = p.ele; return { mi: p.mi, lat: p.lat, lon: p.lon, ele: e }; }).filter(c => c.ele != null);
   }
+  // Elevation rule: a course from the watch (LiveTrack) carries no usable elevation, so elevation comes from your
+  // recorded track only. Projected elevation ahead is shown only for a route from the repo (GPX with elevation).
+  let tpE = null;
+  const trackProf = pts.map(p => { if (p.ele != null) tpE = p.ele; return { mi: p.mi, lat: p.lat, lon: p.lon, ele: tpE }; }).filter(c => c.ele != null);
+  let cMin = Infinity, cMax = -Infinity;
+  if (!freeform) for (const c of course) if (c.ele != null) { if (c.ele < cMin) cMin = c.ele; if (c.ele > cMax) cMax = c.ele; }
+  const courseEle = !freeform && d.trip?.course_src !== 'watch' && cMax - cMin >= 1;
+  const profile = freeform || courseEle ? course : trackProf;
   const start = pts[0]?.ts ?? Date.parse(d.trip.start);
   const curMi = last ? last.mi : 0;
   const totalMi = freeform ? Math.max(curMi, 0.1) : course.at(-1).mi;
@@ -667,8 +828,12 @@ function derive(d) {
   }
   // vertical: planned course -> exact; freeform track -> 10 ft hysteresis to damp GPS/baro noise
   let gainSoFar = 0;
-  if (freeform) { let ref = course[0]?.ele; for (const c of course) { if (c.ele - ref >= 10) { gainSoFar += c.ele - ref; ref = c.ele; } else if (c.ele < ref) ref = c.ele; } }
+  if (!courseEle) { let ref = trackProf[0]?.ele; for (const c of trackProf) { if (c.ele - ref >= 10) { gainSoFar += c.ele - ref; ref = c.ele; } else if (c.ele < ref) ref = c.ele; } }
   else gainSoFar = gainBetween(course, 0, curMi);
+  // Current elevation and its change over the last 30 min
+  const eLast = [...pts].reverse().find(p => p.ele != null) ?? null;
+  const eAgo = eLast ? [...pts].reverse().find(p => p.ele != null && p.ts <= eLast.ts - 30*MIN) ?? null : null;
+  const eleNow = eLast ? { ele: eLast.ele, ts: eLast.ts, trend: eAgo && eLast.ts - eAgo.ts <= 45*MIN ? eLast.ele - eAgo.ele : null } : null;
   const maxEle = course.reduce((a,c) => Math.max(a, c.ele ?? -1e9), -1e9);
   const first = pts[0];
   let fromStart = null;
@@ -702,8 +867,10 @@ function derive(d) {
   const hr = hrs.length ? { avg: Math.round(hrs.reduce((a,b) => a+b, 0) / hrs.length), max: Math.max(...hrs), min: Math.min(...hrs) } : null;
   const eles = pts.map(p => p.ele).filter(e => e != null);
   const eleHigh = eles.length ? Math.max(...eles) : null, eleLow = eles.length ? Math.min(...eles) : null;
-  return { ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
-           totalMi, gainSoFar, gainTotal: freeform ? null : gainBetween(course, 0, course.at(-1).mi), maxEle, fromStart };
+  const dark = darkSpans(pts, !ended && d.weather?.forecast?.length ? Date.parse(d.weather.forecast.at(-1).t) : null);
+  return { dark, ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
+           totalMi, gainSoFar, gainTotal: courseEle ? gainBetween(course, 0, course.at(-1).mi) : null, maxEle, fromStart,
+           profile, courseEle, eleNow };
 }
 /* =========================================================================
    RENDER
@@ -748,19 +915,162 @@ function renderTiles(d, s) {
       foot: s.last ? `started ${fmtDay(imp ? Date.parse(d.trip.start) : s.start)} ${fmtTime(imp ? Date.parse(d.trip.start) : s.start)}` : 'not started' },
     third,
     { label:'Vertical gain', value:`${n0(s.gainSoFar)}<small>ft</small>`, alt:`${mOf(s.gainSoFar)} m`,
-      foot: s.freeform ? 'so far' : `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` },
+      foot: s.gainTotal != null ? `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` : s.ended ? 'total' : 'so far' },
     { label:'High · low', value: s.eleHigh != null ? `${n0(s.eleHigh)}<small>ft</small>` : '—', alt: s.eleHigh != null ? `${mOf(s.eleHigh)} m` : '',
       foot: s.eleLow != null ? `low ${n0(s.eleLow)} ft<br>${mOf(s.eleLow)} m` : '' },
     { label: s.ended ? 'Moving pace' : 'Recent pace', value: s.recentPace ? `${fmtPace(s.recentPace)}<small>/mi</small>` : '—',
       alt: s.recentPace ? `${fmtPace(s.recentPace / KM_PER_MI)} /km` : '', foot: s.ended ? 'average, stops excluded' : 'moving, last 2 h' },
+    elevationTile(s),
+    daylightTile(s),
     { label:'Heart rate', value: liveHr ? `${s.lastLT.hr}<small>bpm now</small>` : s.hr ? `${s.hr.avg}<small>bpm avg</small>` : '—',
       alt: s.hr ? (liveHr ? `avg ${s.hr.avg} · max ${s.hr.max}<br>min ${s.hr.min}` : `max ${s.hr.max} · min ${s.hr.min}`) : '',
       foot: !s.hr ? 'no heart-rate data' : liveHr ? 'live' : s.ended ? 'whole activity' : `<span class="stale-tag">⚠ last reading ${fmtAge(hrAge)}</span>` },
   ];
-  $('#tiles').innerHTML = tiles.map(t => `
-    <div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>${t.alt ? alt(t.alt) : ''}
-    <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`).join('');
+  const html = t => `<div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>${t.alt ? alt(t.alt) : ''}
+    <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`;
+  // Row 1: right now (or how it ended). Row 2: the effort so far.
+  const [dist, el, th, gain, hl, pace, eleT, day, hr] = tiles;
+  $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
+    <div class="tile-row">${[eleT, day, hr, pace].map(html).join('')}</div>
+    <div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
+    <div class="tile-row">${[dist, el, th, gain, hl].map(html).join('')}</div>`;
 }
+function elevationTile(s) {
+  const e = s.eleNow;
+  if (!e) return { label:'Elevation', value:'—', foot:'no elevation data' };
+  const tr = e.trend, arrow = tr == null ? '' : Math.abs(tr) < 30 ? '→ steady' : (tr > 0 ? '↑ ' : '↓ ') + n0(Math.abs(tr)) + ' ft';
+  return { label: s.ended ? 'Finish elevation' : 'Elevation', value: `${n0(e.ele)}<small>ft</small>`, alt: `${mOf(e.ele)} m`,
+    foot: s.ended ? `at ${fmtTime(e.ts)}` : tr == null ? `as of ${fmtTime(e.ts)}` : `${arrow} last 30 min` };
+}
+// Typical inReach spacing (median gap between points, minutes), or null if too few points
+function irEvery(s) {
+  const g = []; for (let i = 1; i < s.ir.length; i++) { const d = (s.ir[i].ts - s.ir[i-1].ts) / MIN; if (d > 0.5 && d < 60) g.push(d); }
+  if (g.length < 3) return null; g.sort((a, b) => a - b); return Math.round(g[g.length >> 1]);
+}
+// Live: daylight left (or time to dawn) at your last position. Finished: how much of it was in the dark.
+function daylightTile(s) {
+  if (!s.last) return { label:'Daylight', value:'—', foot:'' };
+  if (s.ended) {
+    const dark = s.dark.reduce((a, z) => a + (z.end - z.start), 0), total = s.last.ts - s.pts[0].ts;
+    const nights = s.dark.filter(z => z.end - z.start > 3*HR).length;
+    return { label:'In the dark', value: fmtClock(dark), alt: total > 0 ? `${Math.round(dark / total * 100)}% of the time` : '',
+      foot: nights ? `${nights} night${nights > 1 ? 's' : ''} out` : 'sun below 6°' };
+  }
+  const L = s.last, t = s.now, today = SKY.day(localMidnight(t), L.lat, L.lon), next = SKY.day(localMidnight(t + 24*HR), L.lat, L.lon);
+  if (!SKY.isDark(t, L.lat, L.lon)) {
+    const until = today.dusk && today.dusk > t ? today.dusk : next.dusk;
+    return { label:'Light left', value: fmtClock(until - t), alt: `sunset ${fmtTime(today.sunset)} · dusk ${fmtTime(today.dusk)}`, foot: 'until civil dusk' };
+  }
+  const dawn = today.dawn && today.dawn > t ? today.dawn : next.dawn;
+  const m = SKY.moonIllum(t), up = SKY.moonAlt(t, L.lat, L.lon) > 0;
+  return { label:'Dark', value: fmtClock(dawn - t), alt: `until dawn ${fmtTime(dawn)}`, foot: `moon ${Math.round(m.fraction * 100)}% · ${up ? 'up' : 'down'}` };
+}
+
+/* ---- NWS alerts (live only) ---- */
+function renderAlerts(d, s) {
+  const list = !s.ended ? (d.alerts || []) : [];
+  $('#alerts').innerHTML = list.map(a => `<div class="alert-box${/severe|extreme/i.test(a.severity) ? ' severe' : ''}" role="alert">
+    <div><div class="ev">⚠ ${esc(a.event)}${a.ends ? ` <span class="muted" style="font-weight:400">· until ${fmtDay(a.ends)} ${fmtTime(a.ends)}</span>` : ''}</div>
+    <div class="hl">${esc(a.headline || '')}${a.url ? ` <a href="${esc(a.url)}" target="_blank" rel="noopener">NWS details</a>` : ''}</div></div></div>`).join('');
+}
+
+/* ---- Conditions: weather now/next (live) or what it was like (finished), temperature along the way, night, sun & moon ---- */
+function renderWx(d, s) {
+  const card = $('#wxCard'), w = d.weather, rows = skyDays(s);
+  if (!s.pts.length) { card.hidden = true; return; }
+  card.hidden = false;
+  const along = (w?.along || []).map(x => ({ ...x, ts: Date.parse(x.t) }));
+  const fc = !s.ended ? (w?.forecast || []).map(x => ({ ...x, ts: Date.parse(x.t) })) : [];
+  $('#wxTitle').textContent = s.ended ? 'What it was like out there' : 'Conditions';
+  $('#wxMeta').textContent = w ? `${w.source || 'Open-Meteo'} · modeled at your position and elevation` : 'sun & moon only';
+  const stat = (k, v, sub) => `<div><div class="k">${k}</div><div class="v">${v}</div>${sub ? alt(sub) : ''}</div>`;
+  let top = '';
+  if (!s.ended && w?.now) {
+    const n = w.now;
+    top = `<div class="wx-now"><div class="k muted" style="font-size:.8rem">Now at last position · ${fmtTime(n.t)}</div>
+      <div class="big">${Math.round(n.temp_f)}<small>°F</small> <small>${fC(n.temp_f)} °C</small></div>
+      <div>${esc(n.desc)} · feels ${Math.round(n.feels_f)}°F</div>
+      <div class="muted" style="font-size:.88rem">wind ${n.wind_mph} mph, gusts ${n.gust_mph} · ${Math.round(n.gust_mph * KM_PER_MI)} km/h</div></div>
+      <div class="wx-hours">${fc.filter((_, i) => i % 2 === 1).slice(0, 7).map(h => `<div><div class="t">${fmtTime(h.ts)}</div>
+        <div class="v">${Math.round(h.temp_f)}°</div><div>${h.pop}% ${h.precip_in > 0 ? (h.temp_f <= 33 ? '❄' : '💧') : ''}</div>
+        <div class="t">${h.wind_mph}–${h.gust_mph} mph</div>${h.storm ? '<div class="storm">⚡ storms</div>' : ''}</div>`).join('')}</div>`;
+  } else if (along.length) {
+    const tf = along.map(x => x.temp_f), lo = Math.min(...tf), hi = Math.max(...tf);
+    const pr = along.reduce((a, x) => a + x.precip_in, 0), snowy = along.some(x => x.precip_in > 0 && x.temp_f <= 33);
+    const g = along.reduce((a, x) => x.gust_mph > a.gust_mph ? x : a), frz = along.filter(x => x.temp_f <= 32).length;
+    top = `<div class="wx-stats" style="grid-column:1/-1">
+      ${stat('Temperature', `${Math.round(lo)}–${Math.round(hi)}<small>°F</small>`, `${fC(lo)} to ${fC(hi)} °C`)}
+      ${stat(snowy ? 'Precipitation (some snow)' : 'Precipitation', `${pr.toFixed(2)}<small>in</small>`, `${Math.round(pr * 25.4)} mm`)}
+      ${stat('Strongest gust', `${g.gust_mph}<small>mph</small>`, `${Math.round(g.gust_mph * KM_PER_MI)} km/h · ${fmtDay(g.ts)} ${fmtTime(g.ts)}`)}
+      ${stat('Below freezing', `${frz}<small>h</small>`, frz ? 'hours at or below 32°F' : 'never')}
+      ${stat('In the dark', fmtClock(s.dark.reduce((a, z) => a + (z.end - z.start), 0)), 'sun below 6°')}</div>`;
+  }
+  $('#wxTop').innerHTML = top;
+  $('#wxTop').style.display = top ? '' : 'none';
+  drawWxChart(s, along, fc);
+  // Sun & moon, one row per day
+  $('#skyTable').innerHTML = rows.length ? `<thead><tr><th>Day</th><th>Dawn</th><th>Sunrise</th><th>Sunset</th><th>Dusk</th><th>Daylight</th><th>Moon</th><th>Moonrise</th><th>Moonset</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${fmtDate(r.day + 12*HR)}</td><td>${r.dawn ? fmtTime(r.dawn) : '—'}</td><td>${r.sunrise ? fmtTime(r.sunrise) : '—'}</td>
+      <td>${r.sunset ? fmtTime(r.sunset) : '—'}</td><td>${r.dusk ? fmtTime(r.dusk) : '—'}</td><td>${r.dayLen ? fmtClock(r.dayLen) : '—'}</td>
+      <td>${r.moon.name} · ${Math.round(r.moon.fraction * 100)}%</td><td>${r.moonrise ? fmtTime(r.moonrise) : '—'}</td><td>${r.moonset ? fmtTime(r.moonset) : '—'}</td></tr>`).join('') +
+    `</tbody>` : '';
+}
+function drawWxChart(s, along, fc) {
+  const host = $('#wxChart'); host.querySelector('svg')?.remove();
+  const series = along.concat(fc.map(x => ({ ...x, fc: true })));
+  $('#wxLegend').innerHTML = series.length ? `<span><i style="width:16px;height:3px;background:var(--temp)"></i>Temperature</span>
+    <span><i style="width:9px;height:9px;background:var(--precip)"></i>Precipitation</span>
+    <span><i style="width:14px;height:10px;background:var(--night);border:1px solid var(--line)"></i>Dark (sun below 6°)</span>
+    ${fc.length ? '<span><i style="width:16px;height:0;border-top:2px dashed var(--temp)"></i>Forecast</span>' : ''}` : '';
+  if (series.length < 2) return;
+  const W = host.clientWidth, H = 200, m = { l: 46, r: 46, t: 24, b: 24 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const t0 = Math.min(series[0].ts, s.pts[0].ts), t1 = Math.max(series.at(-1).ts, s.ended ? s.pts.at(-1).ts : 0);   // whole activity
+  const tf = series.map(x => x.temp_f), lo = Math.floor((Math.min(...tf) - 4) / 10) * 10, hi = Math.ceil((Math.max(...tf) + 4) / 10) * 10;
+  const X = t => m.l + (t - t0) / Math.max(t1 - t0, 1) * iw, Y = f => m.t + (1 - (f - lo) / (hi - lo)) * ih;
+  const pMax = Math.max(0.1, ...series.map(x => x.precip_in)), PH = ih * 0.35, bw = Math.max(2, iw / series.length * 0.7);
+  let g = '';
+  s.dark.filter(z => z.end > t0 && z.start < t1).forEach(z => { const a = X(Math.max(z.start, t0)), b = X(Math.min(z.end, t1));
+    g += `<rect x="${a}" y="${m.t}" width="${Math.max(1, b - a)}" height="${ih}" fill="var(--night)"/>`; });
+  for (let f = lo; f <= hi; f += 10) g += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(f)}" y2="${Y(f)}" stroke="var(--grid)"${f === 30 ? '' : ''}/>
+    <text x="${m.l-6}" y="${Y(f)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${f}</text>
+    <text x="${W-m.r+6}" y="${Y(f)+4}" font-size="11" fill="var(--text-muted)">${fC(f)}</text>`;
+  if (lo < 32 && hi > 32) g += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(32)}" y2="${Y(32)}" stroke="var(--precip)" stroke-dasharray="3 4" opacity=".7"/>
+    <text x="${W-m.r-4}" y="${Y(32)-4}" text-anchor="end" font-size="10.5" fill="var(--precip)">freezing</text>`;
+  g += `<text x="${m.l-6}" y="${m.t-12}" text-anchor="end" font-size="11" fill="var(--text-muted)">°F</text>
+    <text x="${W-m.r+6}" y="${m.t-12}" font-size="11" fill="var(--text-muted)">°C</text>`;
+  const span = t1 - t0, step = span > 48*HR ? 12*HR : span > 12*HR ? 3*HR : span > 4*HR ? HR : 30*MIN;
+  for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step)
+    g += `<text x="${X(t)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${span > 24*HR && fmtTime(t) === '00:00' ? fmtDay(t) : fmtTime(t)}</text>`;
+  const bars = series.filter(x => x.precip_in > 0).map(x => `<rect x="${X(x.ts) - bw/2}" y="${m.t + ih - x.precip_in / pMax * PH}" width="${bw}" height="${x.precip_in / pMax * PH}" fill="var(--precip)" opacity="${x.fc ? .5 : .85}"/>`).join('');
+  const path = arr => arr.map((x, i) => `${i ? 'L' : 'M'}${X(x.ts).toFixed(1)},${Y(x.temp_f).toFixed(1)}`).join('');
+  const obs = series.filter(x => !x.fc), fut = fc.length ? [obs.at(-1), ...series.filter(x => x.fc)].filter(Boolean) : [];
+  const nowX = !s.ended && fc.length ? X(s.now) : null;
+  host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Temperature and precipitation over the activity">
+    ${g}${bars}
+    <path d="${path(obs)}" fill="none" stroke="var(--temp)" stroke-width="2.2" stroke-linejoin="round"/>
+    ${fut.length > 1 ? `<path d="${path(fut)}" fill="none" stroke="var(--temp)" stroke-width="2" stroke-dasharray="5 4"/>` : ''}
+    ${nowX != null ? `<line x1="${nowX}" x2="${nowX}" y1="${m.t}" y2="${m.t+ih}" stroke="var(--series-ir)" stroke-width="1.5"/><text x="${nowX+4}" y="${m.t+11}" font-size="10.5" fill="var(--series-ir)">now</text>` : ''}
+    <g id="wxh" style="display:none"><line id="wxl" y1="${m.t}" y2="${m.t+ih}" stroke="var(--text-muted)"/><circle id="wxc" r="4.5" fill="var(--surface-1)" stroke="var(--temp)" stroke-width="2"/></g>
+    <rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent" id="wxhit"/></svg>`);
+  const tip = $('#wtip'), hit = host.querySelector('#wxhit'), xh = host.querySelector('#wxh');
+  const move = ev => {
+    const r = host.getBoundingClientRect(), px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const t = t0 + clamp((px - m.l) / iw, 0, 1) * (t1 - t0);
+    const x = series.reduce((a, b) => Math.abs(b.ts - t) < Math.abs(a.ts - t) ? b : a);
+    xh.style.display = ''; ['x1', 'x2'].forEach(k => host.querySelector('#wxl').setAttribute(k, X(x.ts)));
+    host.querySelector('#wxc').setAttribute('cx', X(x.ts)); host.querySelector('#wxc').setAttribute('cy', Y(x.temp_f));
+    const dk = s.dark.some(z => x.ts >= z.start && x.ts <= z.end);
+    tip.innerHTML = `<b>${fmtDay(x.ts)} ${fmtTime(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${Math.round(x.temp_f)}°F · ${fC(x.temp_f)} °C · ${esc(x.desc || '')}</div>
+      <div class="row">${x.pop != null ? x.pop + '% chance · ' : ''}${x.precip_in > 0 ? x.precip_in.toFixed(2) + ' in · ' : ''}wind ${x.wind_mph}, gusts ${x.gust_mph} mph</div>
+      <div class="row">${x.ele_ft != null ? fmtFt(x.ele_ft) + ' · ' : ''}${dk ? 'dark' : 'daylight'}</div>`;
+    tip.style.display = 'block';
+    const tx = X(x.ts) + 12, tw = tip.offsetWidth; tip.style.left = (tx + tw > W ? X(x.ts) - tw - 12 : tx) + 'px'; tip.style.top = (m.t + 4) + 'px';
+  };
+  const out = () => { tip.style.display = 'none'; xh.style.display = 'none'; };
+  hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', move, { passive: true });
+  hit.addEventListener('mouseleave', out); hit.addEventListener('touchend', out);
+}
+
 function renderFresh(d, s) {
   if (d.trip?.kind === 'final') {
     $('#nowStamp').textContent = '';
@@ -803,10 +1113,10 @@ function renderFresh(d, s) {
   const ltAge = s.lastLT ? s.now - s.lastLT.ts : Infinity, irAge = s.lastIR ? s.now - s.lastIR.ts : Infinity;
   if (s.ended) note = '';
   else if (s.lastLT && ltAge > 30*MIN && irAge <= 20*MIN) note = `No cell service since ${fmtTime(s.lastLT.ts)} (${miKm(s.lastLT.mi)}). Satellite tracking is working normally — this is expected in the backcountry.`;
-  else if (ltAge > 30*MIN && irAge > 30*MIN) note = `Both sources quiet. inReach sends every 10 min; gaps of 20–40 min are common in deep canyons or under heavy tree cover.`;
+  else if (ltAge > 30*MIN && irAge > 30*MIN) note = `Both sources quiet. inReach sends every ${irEvery(s) || 10} min; gaps of 20–40 min are common in deep canyons or under heavy tree cover.`;
   $('#fresh').innerHTML =
     row('LiveTrack', 'var(--series-lt)', s.lastLT, today(s.lt), 'phone · cell' + (s.lagMed != null ? ` · ~${s.lagMed} s delay` : '')) +
-    row('inReach', 'var(--series-ir)', s.lastIR, today(s.ir), 'satellite · 10 min') +
+    row('inReach', 'var(--series-ir)', s.lastIR, today(s.ir), `satellite${irEvery(s) ? ' · every ' + irEvery(s) + ' min' : ''}`) +
     (note ? `<div class="note-box">${note}</div>` : '');
 }
 
@@ -839,7 +1149,8 @@ function renderNext(d, s) {
     <div class="next-name">${c.name}</div>
     <div class="next-grid">
       <div class="kv"><div class="k">Distance to go</div><div class="v">${distTo.toFixed(1)} <small>mi</small></div>${alt(km(distTo) + ' km')}</div>
-      <div class="kv"><div class="k">Climb to go</div><div class="v">${n0(gainTo)} <small>ft</small></div>${alt(mOf(gainTo) + ' m')}</div>
+      ${s.courseEle ? `<div class="kv"><div class="k">Climb to go</div><div class="v">${n0(gainTo)} <small>ft</small></div>${alt(mOf(gainTo) + ' m')}</div>`
+        : `<div class="kv"><div class="k">Climb to go</div><div class="v">—</div>${alt('route has no elevation')}</div>`}
       <div class="kv"><div class="k">Projected arrival</div><div class="v">${fmtTime(c.proj)} <small>±${Math.round(spread/MIN)}m</small></div></div>
       <div class="kv"><div class="k">Planned</div><div class="v">${fmtTime(c.pa)} <small class="${dCls}">${c.projDelta > 0 ? '+' : ''}${fmtDur(c.projDelta)}</small></div></div>
     </div>
@@ -915,19 +1226,20 @@ function renderMapFallback(d, s) {     // if Leaflet CDN is blocked: plain SVG t
 /* ---- Elevation profile ---- */
 function renderProfile(d, s) {
   const host = $('#profile'), W = host.clientWidth, H = 230;
-  if (s.course.length < 2) { host.querySelector('svg')?.remove(); host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} 60"><text x="10" y="34" font-size="12" fill="var(--text-muted)">Elevation profile appears once there are a few positions.</text></svg>`); return; }
+  const P = s.profile, ahead = s.freeform || s.courseEle;   // ahead = projected elevation exists for the route ahead
+  if (P.length < 2) { host.querySelector('svg')?.remove(); host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} 60"><text x="10" y="34" font-size="12" fill="var(--text-muted)">Elevation profile appears once there are a few positions.</text></svg>`); return; }
   const m = { l: 46, r: 46, t: 44, b: 26 };   // right margin holds the meters axis
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  const eles = s.course.map(c => c.ele);
-  const step = (Math.max(...eles) - Math.min(...eles)) < 1500 ? 200 : 1000;
-  const e0 = Math.floor((Math.min(...eles) - step*0.3)/step)*step, e1 = Math.ceil((Math.max(...eles) + step*0.2)/step)*step;
+  let eMin = Infinity, eMax = -Infinity; for (const c of P) { if (c.ele < eMin) eMin = c.ele; if (c.ele > eMax) eMax = c.ele; }
+  const step = eMax - eMin < 150 ? 50 : eMax - eMin < 1500 ? 200 : 1000;
+  const e0 = Math.floor((eMin - step*0.3)/step)*step, e1 = Math.ceil((eMax + step*0.2)/step)*step;
   const X = mi => m.l + mi / s.totalMi * iw, Y = e => m.t + (1 - (e - e0)/(e1 - e0)) * ih;
   const line = arr => arr.map((c,i) => `${i?'L':'M'}${X(c.mi).toFixed(1)},${Y(c.ele).toFixed(1)}`).join('');
   const area = arr => line(arr) + `L${X(arr.at(-1).mi).toFixed(1)},${Y(e0)}L${X(arr[0].mi).toFixed(1)},${Y(e0)}Z`;
-  const done = s.course.filter(c => c.mi <= s.curMi);
+  const done = P.filter(c => c.mi <= s.curMi + 1e-9);
   let grid = '';
   for (let e = e0; e <= e1; e += step) grid += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(e)}" y2="${Y(e)}" stroke="var(--grid)"/>
-    <text x="${m.l-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${step === 1000 ? (e/1000).toFixed(0) + 'k' : (e/1000).toFixed(1) + 'k'}</text>`;
+    <text x="${m.l-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${step === 1000 ? (e/1000).toFixed(0) + 'k' : step === 50 ? n0(e) : (e/1000).toFixed(1) + 'k'}</text>`;
   const miStep = s.totalMi > 40 ? 10 : s.totalMi > 15 ? 5 : s.totalMi > 4 ? 1 : 0.5;
   for (let mi = 0; mi <= s.totalMi + 1e-9; mi += miStep) grid += `<text x="${X(mi)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${+mi.toFixed(1)}</text>`;
   if (W >= 600) grid += `<text x="${W-4}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--text-muted)">mi</text>`;
@@ -958,14 +1270,17 @@ function renderProfile(d, s) {
     cpSvg0.push(`<text x="${x}" y="${m.t - 10 - row*14}" text-anchor="${anchor}" font-size="10.5" fill="${passed ? 'var(--text-secondary)' : 'var(--text-muted)'}">${short}</text>`);
   });
   const cpSvg = cpSvg0.join('');
-  const cx = X(s.curMi), cy = Y(eleAt(s.course, s.curMi).ele);
+  const cx = X(s.curMi), cy = Y(eleAt(P, s.curMi).ele);
+  const aheadSvg = ahead ? `<path d="${area(P)}" fill="var(--surface-2)"/><path d="${line(P)}" fill="none" stroke="var(--plan)" stroke-width="1.5"/>`
+    : s.totalMi - s.curMi > 0.05 ? `<rect x="${cx}" y="${m.t}" width="${X(s.totalMi) - cx}" height="${ih}" fill="var(--surface-2)" opacity=".55"/>
+      ${X(s.totalMi) - cx > 150 ? `<text x="${(cx + X(s.totalMi)) / 2}" y="${m.t + ih/2}" text-anchor="middle" class="ele-ahead">route ahead · no elevation</text>
+      <text x="${(cx + X(s.totalMi)) / 2}" y="${m.t + ih/2 + 15}" text-anchor="middle" class="ele-ahead">(course from watch)</text>` : ''}` : '';
   host.querySelector('svg')?.remove();
   host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Elevation profile with progress">
+    ${s.dark.map(z => `<rect x="${X(z.mi0)}" y="${m.t}" width="${Math.max(1, X(z.mi1) - X(z.mi0))}" height="${Y(e0) - m.t}" fill="var(--night)"/>`).join('')}
     ${grid}${cpSvg}
-    <path d="${area(s.course)}" fill="var(--surface-2)"/>
-    <path d="${area(done)}" fill="var(--done-fill)" opacity=".85"/>
-    <path d="${line(s.course)}" fill="none" stroke="var(--plan)" stroke-width="1.5"/>
-    <path d="${line(done)}" fill="none" stroke="var(--series-lt)" stroke-width="2"/>
+    ${aheadSvg}
+    ${done.length > 1 ? `<path d="${area(done)}" fill="var(--done-fill)" opacity=".85"/><path d="${line(done)}" fill="none" stroke="var(--series-lt)" stroke-width="2"/>` : ''}
     <line x1="${cx}" x2="${cx}" y1="${m.t}" y2="${Y(e0)}" stroke="var(--series-ir)" stroke-width="1.5"/>
     <circle cx="${cx}" cy="${cy}" r="6" fill="var(--series-ir)" stroke="var(--surface-1)" stroke-width="2"/>
     <g id="xh" style="display:none"><line id="xhl" y1="${m.t}" y2="${Y(e0)}" stroke="var(--text-muted)" stroke-width="1"/>
@@ -975,9 +1290,10 @@ function renderProfile(d, s) {
   const tip = $('#ptip'), hit = host.querySelector('#hit'), xh = host.querySelector('#xh');
   const move = ev => {
     const r = host.getBoundingClientRect(), px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
-    const mi = clamp((px - m.l)/iw * s.totalMi, 0, s.totalMi), p = eleAt(s.course, mi);
+    const mi = clamp((px - m.l)/iw * s.totalMi, 0, s.totalMi), p = ahead || mi <= s.curMi ? eleAt(P, Math.min(mi, ahead ? mi : s.curMi)) : null;
     xh.style.display = ''; xh.querySelector('#xhl').setAttribute('x1', X(mi)); xh.querySelector('#xhl').setAttribute('x2', X(mi));
-    xh.querySelector('#xhc').setAttribute('cx', X(mi)); xh.querySelector('#xhc').setAttribute('cy', Y(p.ele));
+    xh.querySelector('#xhc').style.display = p ? '' : 'none';
+    if (p) { xh.querySelector('#xhc').setAttribute('cx', X(mi)); xh.querySelector('#xhc').setAttribute('cy', Y(p.ele)); }
     let when = '';
     if (mi <= s.curMi) {
       const near = s.pts.reduce((a,q) => Math.abs(q.mi-mi) < Math.abs(a.mi-mi) ? q : a, s.pts[0]);
@@ -987,7 +1303,7 @@ function renderProfile(d, s) {
                 + s.cps.filter(c => c.mi > s.curMi && c.mi < mi).reduce((a,c) => a + c.plannedDwellMin*MIN, 0);
       when = `<div class="row">Projected ≈ ${fmtDay(eta)} ${fmtTime(eta)}</div>`;
     }
-    tip.innerHTML = `<b>${miKm(mi)}</b><div class="row">${fmtFt(p.ele)}</div>${when}`;
+    tip.innerHTML = `<b>${miKm(mi)}</b><div class="row">${p ? fmtFt(p.ele) : 'elevation not known (course from watch)'}</div>${when}`;
     tip.style.display = 'block';
     const tx = X(mi) + 12, tw = tip.offsetWidth;
     tip.style.left = (tx + tw > W ? X(mi) - tw - 12 : tx) + 'px'; tip.style.top = (m.t + 6) + 'px';
@@ -1025,8 +1341,9 @@ function renderEffort(d, s) {
   for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step)
     grid += `<text x="${X(t)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${fmtTime(t)}</text>`;
   const stopsSvg = s.stops.map(x => `<rect x="${X(x.start)}" y="${m.t}" width="${Math.max(2, X(x.end) - X(x.start))}" height="${ih}" fill="var(--panel-2)"/>`).join('');
+  const nightSvg = s.dark.filter(z => z.end > t0 && z.start < t1).map(z => `<rect x="${X(Math.max(z.start, t0))}" y="${m.t}" width="${Math.max(1, X(Math.min(z.end, t1)) - X(Math.max(z.start, t0)))}" height="${ih}" fill="var(--night)"/>`).join('');
   host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Heart rate over time">
-    ${stopsSvg}${grid}
+    ${nightSvg}${stopsSvg}${grid}
     <path d="${path}" fill="none" stroke="var(--series-lt)" stroke-width="2" stroke-linejoin="round"/>
     <g id="exh" style="display:none"><line id="exl" y1="${m.t}" y2="${m.t+ih}" stroke="var(--text-muted)"/><circle id="exc" r="4.5" fill="var(--surface-1)" stroke="var(--text-primary)" stroke-width="2"/></g>
     <rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent" id="ehit"/></svg>`);
@@ -1084,6 +1401,9 @@ function renderCpTable(d, s) {
 function renderTimeline(d, s) {
   const ev = [];
   if (d._cov) d._cov.zones.forEach(z => ev.push({ t: z.start, chip:'gap', tag:'No live signal', html:`${fmtDur(z.end - z.start)} with no LiveTrack (${miKm(z.mi0)} to ${miKm(z.mi1)})` }));
+  if (s.pts.length) { const a = s.pts[0].ts, b = s.ended ? s.pts.at(-1).ts : s.now;
+    skyDays(s).forEach(r => { if (r.sunrise >= a && r.sunrise <= b) ev.push({ t: r.sunrise, chip:'', tag:'Sun', html:'Sunrise' });
+      if (r.sunset >= a && r.sunset <= b) ev.push({ t: r.sunset, chip:'', tag:'Sun', html:'Sunset' }); }); }
   d.messages.forEach(m => ev.push({ t: Date.parse(m.t), chip:'ir', tag:'inReach msg', html:`<span class="msg"><q>${m.text}</q></span>` }));
   s.stops.forEach(x => ev.push({ t: x.start, chip:'gap', tag:'Stop', html:`${x.open ? 'Stopped, ' + fmtDur(x.end - x.start) + ' so far' : 'Stopped ' + fmtDur(x.end - x.start)} · ${miKm(x.p.mi)}` }));
   d.sessions.forEach(x => {
@@ -1270,8 +1590,8 @@ function resetMap() { if (map) { map.remove(); map = null; } mapLayers = null; c
 function renderAll() {
   const D = viewOf(DATA), s = derive(D);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
-  renderHeader(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
-  renderMap(D, s); renderProfile(D, s); renderEffort(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
+  renderHeader(D, s); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
+  renderMap(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
 }
 
 /* =========================================================================
@@ -1299,7 +1619,7 @@ addEventListener('hashchange', route);
 $('#refresh').addEventListener('click', () => { MOCK_CACHE = {}; CURRENT ? refreshDetail() : refreshLanding(); });
 if (new URLSearchParams(location.search).has('debug')) $('#debug').open = true;
 $('#mockBadge').hidden = CONFIG.dataSource !== 'mock';
-let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && CURRENT) { const D = viewOf(DATA), s = derive(D); renderProfile(D, s); renderEffort(D, s); } }, 150); });
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && CURRENT) { const D = viewOf(DATA), s = derive(D); renderProfile(D, s); renderEffort(D, s); renderWx(D, s); } }, 150); });
 setInterval(() => {
   if (document.hidden) return;
   if (!CURRENT) refreshLanding();
