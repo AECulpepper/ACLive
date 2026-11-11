@@ -921,6 +921,18 @@ function derive(d) {
   const start = pts[0]?.ts ?? Date.parse(d.trip.start);
   const curMi = last ? last.mi : 0;
   const totalMi = freeform ? Math.max(curMi, 0.1) : course.at(-1).mi;
+  // Where you are along the planned route. Repo routes: match each position to the route, only moving forward
+  // (handles loops and out-and-backs; detours just hold the last on-route spot). Otherwise distance traveled.
+  let posMi = Math.min(curMi, totalMi);
+  if (!freeform && d.trip?.course_src === 'repo' && course.length > 1) {
+    let k = 0;
+    for (const p of pts) {
+      const lim = course[k].mi + 1.0; let best = -1, bd = 0.1;           // look up to 1 mi ahead; on-route = within 160 m
+      for (let j = k; j < course.length && course[j].mi <= lim; j++) { const dd = hav(course[j], p); if (dd < bd) { bd = dd; best = j; } }
+      if (best >= 0) k = best;
+    }
+    posMi = course[k].mi;
+  }
 
   // moving pace over last 2 h, skipping intervals slower than 0.4 mph (stops)
   const win = d.trip?.status === 'ended' ? pts : pts.filter(p => p.ts >= (last?.ts ?? now) - 2*HR);
@@ -939,11 +951,11 @@ function derive(d) {
     aa: c.actualArrive ? Date.parse(c.actualArrive) : null, ad: c.actualDepart ? Date.parse(c.actualDepart) : null }));
   let prevCp = null, nextCp = null, delta = null;
   if (!freeform && cps.length) {
-    prevCp = [...cps].reverse().find(c => c.mi <= curMi) ?? cps[0];
-    nextCp = cps.find(c => c.mi > curMi + 0.05) ?? null;
-    const plannedAtCur = prevCp.pa + prevCp.plannedDwellMin*MIN + planMovingMin(course, prevCp.mi, curMi)*MIN;
+    prevCp = [...cps].reverse().find(c => c.mi <= posMi) ?? cps[0];
+    nextCp = cps.find(c => c.mi > posMi + 0.05) ?? null;
+    const plannedAtCur = prevCp.pa + prevCp.plannedDwellMin*MIN + planMovingMin(course, prevCp.mi, posMi)*MIN;
     delta = last ? last.ts - plannedAtCur : 0;
-    let tCursor = last ? last.ts : now, miCursor = curMi;
+    let tCursor = last ? last.ts : now, miCursor = posMi;
     for (const c of cps) {
       if (c.aa) continue;
       tCursor += planMovingMin(course, miCursor, c.mi) * ratio * MIN;
@@ -954,7 +966,7 @@ function derive(d) {
   // vertical: planned course -> exact; freeform track -> 10 ft hysteresis to damp GPS/baro noise
   let gainSoFar = 0;
   if (!courseEle) { let ref = trackProf[0]?.ele; for (const c of trackProf) { if (c.ele - ref >= 10) { gainSoFar += c.ele - ref; ref = c.ele; } else if (c.ele < ref) ref = c.ele; } }
-  else gainSoFar = gainBetween(course, 0, curMi);
+  else gainSoFar = gainBetween(course, 0, posMi);
   // Current elevation and its change over the last 30 min
   const eLast = [...pts].reverse().find(p => p.ele != null) ?? null;
   const eAgo = eLast ? [...pts].reverse().find(p => p.ele != null && p.ts <= eLast.ts - 30*MIN) ?? null : null;
@@ -999,7 +1011,7 @@ function derive(d) {
   const eles = pts.map(p => p.ele).filter(e => e != null);
   const eleHigh = eles.length ? Math.max(...eles) : null, eleLow = eles.length ? Math.min(...eles) : null;
   const dark = darkSpans(pts, !ended && d.weather?.forecast?.length ? Date.parse(d.weather.forecast.at(-1).t) : null);
-  return { dark, ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
+  return { dark, ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, posMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
            totalMi, gainSoFar, gainTotal: courseEle ? gainBetween(course, 0, course.at(-1).mi) : null, maxEle, fromStart,
            profile, courseEle, eleNow };
 }
@@ -1041,7 +1053,7 @@ function renderTiles(d, s) {
   const liveHr = !s.ended && s.lastLT?.hr && hrAge <= 20*MIN;
   const tiles = [
     { label:'Distance', value:`${s.curMi.toFixed(1)}<small>mi</small>`, alt:`${km(s.curMi)} km`,
-      foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.curMi/s.totalMi*100)}%` },
+      foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.posMi/s.totalMi*100)}%` },
     { label: s.ended ? 'Total time' : 'Elapsed', value: s.last ? fmtClock(elapsed) : '—',
       alt: s.movingMs != null ? `moving ${fmtClock(s.movingMs)} · stopped ${fmtClock(Math.max(0, elapsed - s.movingMs))}` : '',
       foot: s.last ? `started ${fmtDT(imp ? Date.parse(d.trip.start) : s.start)}` : 'not started' },
@@ -1388,8 +1400,8 @@ function renderNext(d, s) {
   h2.textContent = 'Next checkpoint';
   const c = s.nextCp;
   if (!c) { $('#next').innerHTML = '<div class="next-name">Finished 🎉</div>'; $('#nextMeta').textContent=''; return; }
-  const distTo = c.mi - s.curMi, gainTo = gainBetween(s.course, s.curMi, c.mi);
-  const prev = s.prevCp, pct = clamp((s.curMi - prev.mi)/(c.mi - prev.mi), 0, 1);
+  const distTo = c.mi - s.posMi, gainTo = gainBetween(s.course, s.posMi, c.mi);
+  const prev = s.prevCp, pct = clamp((s.posMi - prev.mi)/(c.mi - prev.mi), 0, 1);
   const spread = Math.max(10*MIN, (c.proj - s.last.ts)*0.15);
   const dCls = c.projDelta > 5*MIN ? 'delta-pos' : c.projDelta < -5*MIN ? 'delta-neg' : '';
   $('#nextMeta').textContent = miKm(c.mi);
@@ -1487,7 +1499,7 @@ function renderProfile(d, s) {
   const X = mi => m.l + mi / s.totalMi * iw, Y = e => m.t + (1 - (e - e0)/(e1 - e0)) * ih;
   const line = arr => arr.map((c,i) => `${i?'L':'M'}${X(c.mi).toFixed(1)},${Y(c.ele).toFixed(1)}`).join('');
   const area = arr => line(arr) + `L${X(arr.at(-1).mi).toFixed(1)},${Y(e0)}L${X(arr[0].mi).toFixed(1)},${Y(e0)}Z`;
-  const done = P.filter(c => c.mi <= s.curMi + 1e-9);
+  const done = P.filter(c => c.mi <= s.posMi + 1e-9);
   let grid = '';
   for (let e = e0; e <= e1; e += step) grid += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(e)}" y2="${Y(e)}" stroke="var(--grid)"/>
     <text x="${m.l-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${step === 1000 ? (e/1000).toFixed(0) + 'k' : step === 50 ? n0(e) : (e/1000).toFixed(1) + 'k'}</text>`;
@@ -1509,7 +1521,7 @@ function renderProfile(d, s) {
   // labels on two rows; a label that fits neither row is skipped (still in tooltip/table)
   const rowEnd = [-1e9, -1e9], cpSvg0 = [];
   s.cps.forEach((c, i) => {
-    const x = X(c.mi), passed = c.mi <= s.curMi;
+    const x = X(c.mi), passed = c.mi <= s.posMi;
     cpSvg0.push(`<line x1="${x}" x2="${x}" y1="${m.t-4}" y2="${Y(e0)}" stroke="var(--grid)" stroke-dasharray="2 3"/>`);
     const short = c.name.replace(/\s*\(.*\)/,'').replace(' TH','').replace(' Pass',' P.');
     const w = short.length * 5.9 + 8;
@@ -1521,7 +1533,7 @@ function renderProfile(d, s) {
     cpSvg0.push(`<text x="${x}" y="${m.t - 10 - row*14}" text-anchor="${anchor}" font-size="10.5" fill="${passed ? 'var(--text-secondary)' : 'var(--text-muted)'}">${short}</text>`);
   });
   const cpSvg = cpSvg0.join('');
-  const cx = X(s.curMi), cy = Y(eleAt(P, s.curMi).ele);
+  const cx = X(s.posMi), cy = Y(eleAt(P, s.posMi).ele);
   // Freezing level (hourly, modeled) drawn at the mile you were at that hour; skipped where it's off the chart
   let flSvg = '';
   const fl = (d.weather?.along || []).filter(x => x.fl_ft != null);
@@ -1536,7 +1548,7 @@ function renderProfile(d, s) {
     const f0 = segs[0]?.[0]; if (f0) flSvg += `<text x="${f0[0] + 4}" y="${f0[1] - 5}" font-size="10.5" fill="#A9D6E5">freezing level</text>`;
   }
   const aheadSvg = ahead ? `<path d="${area(P)}" fill="var(--surface-2)"/><path d="${line(P)}" fill="none" stroke="var(--plan)" stroke-width="1.5"/>`
-    : s.totalMi - s.curMi > 0.05 ? `<rect x="${cx}" y="${m.t}" width="${X(s.totalMi) - cx}" height="${ih}" fill="var(--surface-2)" opacity=".55"/>
+    : s.totalMi - s.posMi > 0.05 ? `<rect x="${cx}" y="${m.t}" width="${X(s.totalMi) - cx}" height="${ih}" fill="var(--surface-2)" opacity=".55"/>
       ${X(s.totalMi) - cx > 150 ? `<text x="${(cx + X(s.totalMi)) / 2}" y="${m.t + ih/2}" text-anchor="middle" class="ele-ahead">route ahead · no elevation</text>
       <text x="${(cx + X(s.totalMi)) / 2}" y="${m.t + ih/2 + 15}" text-anchor="middle" class="ele-ahead">(course from watch)</text>` : ''}` : '';
   host.querySelector('svg')?.remove();
@@ -1555,17 +1567,17 @@ function renderProfile(d, s) {
   const tip = $('#ptip'), hit = host.querySelector('#hit'), xh = host.querySelector('#xh');
   const move = ev => {
     const r = host.getBoundingClientRect(), px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
-    const mi = clamp((px - m.l)/iw * s.totalMi, 0, s.totalMi), p = ahead || mi <= s.curMi ? eleAt(P, Math.min(mi, ahead ? mi : s.curMi)) : null;
+    const mi = clamp((px - m.l)/iw * s.totalMi, 0, s.totalMi), p = ahead || mi <= s.posMi ? eleAt(P, Math.min(mi, ahead ? mi : s.posMi)) : null;
     xh.style.display = ''; xh.querySelector('#xhl').setAttribute('x1', X(mi)); xh.querySelector('#xhl').setAttribute('x2', X(mi));
     xh.querySelector('#xhc').style.display = p ? '' : 'none';
     if (p) { xh.querySelector('#xhc').setAttribute('cx', X(mi)); xh.querySelector('#xhc').setAttribute('cy', Y(p.ele)); }
     let when = '';
-    if (mi <= s.curMi) {
+    if (mi <= s.posMi) {
       const near = s.pts.reduce((a,q) => Math.abs(q.mi-mi) < Math.abs(a.mi-mi) ? q : a, s.pts[0]);
       when = `<div class="row">Passed ≈ ${fmtDT(near.ts)}</div>`;
     } else {
-      const eta = s.last.ts + planMovingMin(s.course, s.curMi, mi) * s.ratio * MIN
-                + s.cps.filter(c => c.mi > s.curMi && c.mi < mi).reduce((a,c) => a + c.plannedDwellMin*MIN, 0);
+      const eta = s.last.ts + planMovingMin(s.course, s.posMi, mi) * s.ratio * MIN
+                + s.cps.filter(c => c.mi > s.posMi && c.mi < mi).reduce((a,c) => a + c.plannedDwellMin*MIN, 0);
       when = `<div class="row">Projected ≈ ${fmtDT(eta)}</div>`;
     }
     tip.innerHTML = `<b>${miKm(mi)}</b><div class="row">${p ? fmtFt(p.ele) : 'elevation not known (course from watch)'}</div>${when}`;
@@ -1808,7 +1820,49 @@ async function loadTrack(id, fresh = false) {
       cad: r[5] ?? undefined, pw: r[6] ?? undefined, st: r[7] ? 'MOVING' : 'STATIONARY', mi: r[8], src: 'import', session: 'final' }));
     delete d.finalCompact;
   }
+  try { await attachRepoRoute(d); } catch (e) { console.warn('repo route unavailable', e); }
   return d;
+}
+
+/* ---- Planned route from the repo: routes/routes.json lists GPX files in routes/ and which activity each belongs to.
+   An entry matches by activity id, or by date (MT) when the activity starts within 2 km of the route.
+   Only used when the watch sent no course. A repo route carries real elevation, so the profile shows what's ahead. ---- */
+const REPO = { list: null, at: 0, gpx: {} };
+async function attachRepoRoute(d) {
+  if (d.course?.length >= 2 || !d.trip) return;
+  if (!REPO.list || Date.now() - REPO.at > 5 * 60e3) {
+    const r = await fetch('routes/routes.json', { cache: 'no-store' });
+    REPO.list = r.ok ? ((await r.json()).routes || []) : []; REPO.at = Date.now();
+  }
+  if (!REPO.list.length) return;
+  const startTs = Date.parse(d.trip.start || d.points?.[0]?.t || ''); if (!startTs) return;
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(startTs);   // YYYY-MM-DD
+  const p0 = (d.points || []).find(p => p.lat != null);
+  for (const e of REPO.list) {
+    if (!e.file || (e.activity ? e.activity !== d.trip.id : e.date !== day)) continue;
+    const course = REPO.gpx[e.file] ?? (REPO.gpx[e.file] = await loadGpx('routes/' + e.file));
+    if (!course || course.length < 2) continue;
+    if (!e.activity && p0 && Math.min(...course.map(c => hav(c, p0))) > 2 * 0.621) continue;   // 2 km
+    d.course = course; d.checkpoints = d.checkpoints || [];
+    d.trip.course_src = 'repo';
+    d.trip.subtitle = `Route: ${e.name || e.file.replace(/\.gpx$/i, '').replace(/_/g, ' ')} · ${course.at(-1).mi.toFixed(1)} mi`;
+    return;
+  }
+}
+function hav(a, b) { const R = 3958.8, r = Math.PI/180, dLa = (b.lat-a.lat)*r, dLo = (b.lon-a.lon)*r;
+  return 2*R*Math.asin(Math.sqrt(Math.sin(dLa/2)**2 + Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2)); }
+async function loadGpx(url) {
+  const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) return null;
+  const x = new DOMParser().parseFromString(await r.text(), 'application/xml');
+  let pts = [...x.getElementsByTagName('trkpt')]; if (!pts.length) pts = [...x.getElementsByTagName('rtept')];
+  let mi = 0, prev = null, lastE = null; const out = [];
+  for (const el of pts) {
+    const p = { lat: +el.getAttribute('lat'), lon: +el.getAttribute('lon') };
+    const ee = el.getElementsByTagName('ele')[0]; if (ee) lastE = Math.round(+ee.textContent * 3.28084);
+    if (prev) { const dd = hav(prev, p); if (dd < 1e-5) continue; mi += dd; }
+    prev = p; out.push({ mi: +mi.toFixed(4), lat: p.lat, lon: p.lon, ele: lastE });
+  }
+  return out.filter(c => c.ele != null);
 }
 
 /* ---- Final (watch file) vs Live (what crew saw) ---- */
