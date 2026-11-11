@@ -922,6 +922,7 @@ function renderTiles(d, s) {
       alt: s.recentPace ? `${fmtPace(s.recentPace / KM_PER_MI)} /km` : '', foot: s.ended ? 'average, stops excluded' : 'moving, last 2 h' },
     elevationTile(s),
     daylightTile(s),
+    sunTile(s),
     { label:'Heart rate', value: liveHr ? `${s.lastLT.hr}<small>bpm now</small>` : s.hr ? `${s.hr.avg}<small>bpm avg</small>` : '—',
       alt: s.hr ? (liveHr ? `avg ${s.hr.avg} · max ${s.hr.max}<br>min ${s.hr.min}` : `max ${s.hr.max} · min ${s.hr.min}`) : '',
       foot: !s.hr ? 'no heart-rate data' : liveHr ? 'live' : s.ended ? 'whole activity' : `<span class="stale-tag">⚠ last reading ${fmtAge(hrAge)}</span>` },
@@ -929,11 +930,21 @@ function renderTiles(d, s) {
   const html = t => `<div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>${t.alt ? alt(t.alt) : ''}
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`;
   // Row 1: right now (or how it ended). Row 2: the effort so far.
-  const [dist, el, th, gain, hl, pace, eleT, day, hr] = tiles;
+  const [dist, el, th, gain, hl, pace, eleT, day, sun, hr] = tiles;
   $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
-    <div class="tile-row">${[eleT, day, hr, pace].map(html).join('')}</div>
+    <div class="tile-row">${[eleT, day, sun, hr, pace].map(html).join('')}</div>
     <div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
     <div class="tile-row">${[dist, el, th, gain, hl].map(html).join('')}</div>`;
+}
+// Sun & moon for today at your position (finished: the day you finished)
+function sunTile(s) {
+  if (!s.last) return { label:'Sun · moon', value:'—', foot:'' };
+  const t = s.ended ? s.last.ts : s.now, r = SKY.day(localMidnight(t), s.last.lat, s.last.lon);
+  const moon = `${r.moon.name.toLowerCase()} · ${Math.round(r.moon.fraction * 100)}%`;
+  return { label: s.ended ? `Sun · ${fmtDay(t)}` : 'Sun today',
+    value: `${r.sunrise ? fmtTime(r.sunrise) : '—'}<small>↑</small> ${r.sunset ? fmtTime(r.sunset) : '—'}<small>↓</small>`,
+    alt: `dawn ${r.dawn ? fmtTime(r.dawn) : '—'} · dusk ${r.dusk ? fmtTime(r.dusk) : '—'}`,
+    foot: `moon ${moon}${r.moonrise ? `<br>rises ${fmtTime(r.moonrise)}` : ''}${r.moonset ? ` · sets ${fmtTime(r.moonset)}` : ''}` };
 }
 function elevationTile(s) {
   const e = s.eleNow;
