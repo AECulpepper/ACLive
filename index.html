@@ -20,6 +20,7 @@
   --bg: #302F2F; --panel: #444343; --panel-2: #504E4D; --ink: #F0EEEC; --muted: #BAB6B2; --line: #5A5857;
   --spruce: #9CCBB9; --bad: #F09A88;
   --series-lt: #4299CC; --series-ir: #CF7D40; --plan: #8A8682; --done-fill: #2F4B5E;   /* validated on #444343 */
+  --map-track: #D62828; --map-plan: #111111;   /* map lines only (on the light basemap) */
   --temp: #B79CE0; --precip: #6FA8DC; --night: rgba(0,0,0,.24);
   --good: #5DBB7E; --warning: #E0B54A; --critical: #E07A66;
   --good-text: #8FD3A6; --warn-text: #EBC66A; --crit-text: #F09A88;
@@ -75,6 +76,9 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .sw { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
 .sw.lt { background: var(--series-lt); } .sw.ir { background: var(--series-ir); }
 .now-thumb { flex: 0 0 auto; align-self: center; display: block; background: var(--bg); border-radius: var(--r-md); padding: 6px; }
+.now-map { flex: 0 0 340px; align-self: stretch; min-height: 220px; border-radius: var(--r-md); overflow: hidden; position: relative; background: var(--bg); }
+.now-map .leaflet-container { width: 100%; height: 100%; min-height: 220px; background: var(--bg); cursor: pointer; }
+.now-map .open { position: absolute; right: 8px; bottom: 22px; z-index: 500; background: rgba(48,47,47,.85); color: #fff; font-size: .78rem; padding: 2px 8px; border-radius: 6px; pointer-events: none; }
 
 /* ---------- Landing: activities table ---------- */
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
@@ -114,7 +118,7 @@ td.srcs .sw { margin-right: 4px; }
 .card-b { padding: 10px 16px 16px; }
 
 .tiles { margin-bottom: 14px; }
-.tile-row { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; }
+.tile-row { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0,1fr)); gap: 12px; }
 .tile-row + .tile-row { margin-top: 12px; }
 .tile-row-h { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 0 0 6px 2px; }
 .tile-row + .tile-row-h { margin-top: 14px; }
@@ -156,15 +160,25 @@ td .alt { font-size: 0.78rem; }
 .map-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
 .lg { display: inline-flex; align-items: center; gap: 6px; }
 .lg i { display: inline-block; }
-.lg .ln { width: 18px; height: 4px; border-radius: 2px; background: var(--series-lt); }
+.lg .ln { width: 18px; height: 5px; border-radius: 2px; background: var(--map-track); }
 .lg .dt { width: 9px; height: 9px; border-radius: 50%; background: var(--series-ir); }
-.lg .pl { width: 18px; height: 0; border-top: 2px dashed var(--plan); }
+.lg .pl { width: 26px; height: 11px; border-radius: 3px; background: #E4E2DC; position: relative; }
+.lg .pl::after { content: ''; position: absolute; left: 3px; right: 3px; top: 4px; border-top: 3px dashed var(--map-plan); }
 .lg .dz { width: 18px; height: 9px; border-radius: 4px; background: var(--plan); opacity: .75; }
 .view-tg { display: inline-flex; margin-top: 8px; border: 1px solid var(--border, #5a5959); border-radius: 8px; overflow: hidden; }
 .view-tg button { background: transparent; color: inherit; border: 0; padding: 5px 12px; font: inherit; font-size: .85rem; cursor: pointer; opacity: .75; }
 .view-tg button + button { border-left: 1px solid var(--border, #5a5959); }
 .view-tg button[aria-pressed="true"] { background: var(--series-lt); color: #fff; opacity: 1; font-weight: 600; }
 .cov { margin-top: 10px; }
+.splits-box { max-height: 440px; overflow: auto; }
+table.splits { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.splits th, .splits td { padding: 6px 10px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.splits th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: .8rem; z-index: 1; }
+.splits td:first-child, .splits th:first-child { text-align: left; }
+.splits td.pace { width: 150px; background: linear-gradient(270deg, rgba(66,153,204,.30) var(--w), transparent var(--w)) no-repeat; background-size: 100% 70%; background-position: right center; }
+.splits .sub { display: block; font-size: .78rem; color: var(--muted); }
+.splits tr.day td { background: var(--panel-2); font-weight: 600; }
+.splits tr.cur td { color: var(--muted); }
 .cov .big { font-size: 1.6rem; font-weight: 600; } .cov .muted { font-size: .85rem; }
 
 .src-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
@@ -255,6 +269,7 @@ footer p { margin: 0 0 6px; }
   td { white-space: normal; }
   .now-thumb svg { width: 100%; height: auto; }
   .now-thumb { flex: 1 1 100%; }
+  .now-map { flex: 1 1 100%; min-height: 200px; }
 }
 </style>
 </head>
@@ -351,6 +366,14 @@ footer p { margin: 0 0 6px; }
       </div>
     </section>
 
+    <section class="card" id="splitsCard" style="margin-top:14px">
+      <div class="card-h"><h2>Splits</h2>
+        <div class="view-tg" id="splitTg" role="group" aria-label="Split distance" style="margin-top:0">
+          <button type="button" data-u="mi" aria-pressed="true">mi</button><button type="button" data-u="km" aria-pressed="false">km</button></div></div>
+      <div class="card-b"><div class="splits-box"><table class="splits" id="splits"></table></div>
+        <div class="muted" id="splitsNote" style="font-size:.8rem;margin-top:6px"></div></div>
+    </section>
+
     <section class="grid-2">
       <div class="card">
         <div class="card-h"><h2 id="cpTitle">Checkpoints</h2><span class="meta" id="cpMeta">plan vs actual · times MT</span></div>
@@ -375,7 +398,7 @@ footer p { margin: 0 0 6px; }
 
   <footer>
     <p>Positions from Garmin LiveTrack (watch → phone → cell) and inReach MapShare (satellite). Not an emergency channel: SOS events do not appear here, and a quiet page means only that no new positions have arrived.</p>
-    <p>Updates every minute while open. <a href="#live">#live</a> always opens the current activity.</p>
+    <p>Updates every 30 seconds while open. <a href="#live">#live</a> always opens the current activity.</p>
   </footer>
 </div>
 <script>
@@ -385,7 +408,7 @@ footer p { margin: 0 0 6px; }
 const CONFIG = {
   api: 'https://aclive.trippinant.workers.dev',
   dataSource: null,                   // auto: 'api' once `api` is set; add ?mock to the page URL to force demo data
-  refreshSec: 60,
+  refreshSec: 30,
   tz: 'America/Denver',
   plan: { flatMinPerMi: 18, minPer100ftUp: 2.8, minPer100ftDown: 0.4 }  // pace model for ETAs on planned routes
 };
@@ -399,7 +422,8 @@ const fmtDay = t => new Date(t).toLocaleDateString('en-US', { weekday:'short', t
 const fmtDur = ms => { const neg = ms < 0; ms = Math.abs(ms); const h = Math.floor(ms/HR), m = Math.round((ms%HR)/MIN);
   const mm = m === 60 ? 0 : m, hh = m === 60 ? h+1 : h; return (neg?'−':'') + (hh ? `${hh}h ${String(mm).padStart(2,'0')}m` : `${mm}m`); };
 const fmtAge = ms => ms < MIN ? 'just now' : ms < HR ? `${Math.round(ms/MIN)} min ago` : `${fmtDur(ms)} ago`;
-const fmtClock = ms => { const h = Math.floor(ms/HR), m = Math.floor((ms%HR)/MIN); return `${h}:${String(m).padStart(2,'0')}`; };
+const fmtClock = ms => { ms = Math.max(0, ms); const h = Math.floor(ms/HR), m = Math.floor((ms%HR)/MIN), sec = Math.floor((ms%MIN)/1000);
+  return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; };   // h:mm:ss
 const fmtPace = minPerMi => { const m = Math.floor(minPerMi), s = Math.round((minPerMi-m)*60); return `${m}:${String(s===60?0:s).padStart(2,'0')}`; };
 const n0 = x => Math.round(x).toLocaleString('en-US');
 const KM_PER_MI = 1.609344, M_PER_FT = 0.3048;
@@ -446,7 +470,13 @@ function gainBetween(course, mi1, mi2) {
   return g;
 }
 
-const fmtDate = t => new Date(t).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', timeZone: CONFIG.tz });
+// Headers: "Wed, 11 Nov 2026". Cards: "Wed, 17:42" (fmtDT). File names: "20261111" (fmtYmd).
+const dParts = t => Object.fromEntries(new Intl.DateTimeFormat('en-US', { weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone: CONFIG.tz })
+  .formatToParts(new Date(t)).map(p => [p.type, p.value]));
+const fmtDate = t => { const p = dParts(t); return `${p.weekday}, ${p.day} ${p.month} ${p.year}`; };
+const fmtDateShort = t => { const p = dParts(t); return `${p.day} ${p.month}`; };
+const fmtDT = t => `${fmtDay(t)}, ${fmtTime(t)}`;
+const fmtYmd = t => new Date(t).toLocaleDateString('en-CA', { timeZone: CONFIG.tz }).replace(/-/g, '');
 const fmtMonth = t => new Date(t).toLocaleDateString('en-US', { month:'long', year:'numeric', timeZone: CONFIG.tz });
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 function relDay(t, now = Date.now()) {
@@ -455,6 +485,37 @@ function relDay(t, now = Date.now()) {
   return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? `${diff} days ago` : fmtDate(t);
 }
 // Small route thumbnail from [[lat,lon], ...]
+/* ---- Small basemap for the front-page "Out now" card. Built once and moved back in after each refresh, so it doesn't flicker. ---- */
+let NOWMAP = null;
+function placeNowMap(live) {
+  const slot = $('#nowMapSlot'); if (!slot) return;
+  if (!NOWMAP) {
+    const el = document.createElement('div'); el.style.cssText = 'width:100%;height:100%;min-height:inherit';
+    const map = L.map(el, { zoomControl: false, attributionControl: true, dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+      boxZoom: false, keyboard: false, touchZoom: false, tap: false });
+    L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxZoom: 18,
+      attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases">CyclOSM</a> | © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+    map.attributionControl.setPrefix(false);
+    NOWMAP = { el, map, layer: L.layerGroup().addTo(map), id: null, label: document.createElement('span') };
+    NOWMAP.label.className = 'open'; NOWMAP.label.textContent = 'Open live view →';
+    map.on('click', () => { if (NOWMAP.id) location.hash = '#a/' + encodeURIComponent(NOWMAP.id); });
+  }
+  slot.appendChild(NOWMAP.el); slot.appendChild(NOWMAP.label);
+  const pts = (live.thumb || []).filter(p => p && p[0] != null);
+  NOWMAP.layer.clearLayers();
+  const color = cssv(live.n_lt ? '--map-track' : '--series-ir');
+  if (pts.length) {
+    if (pts.length > 1) { L.polyline(pts, { color: '#fff', weight: 7.5, opacity: .85 }).addTo(NOWMAP.layer); L.polyline(pts, { color, weight: 4.5, opacity: .95 }).addTo(NOWMAP.layer); }
+    const here = live.last?.lat != null ? [live.last.lat, live.last.lon] : pts.at(-1);   // newest of LiveTrack or inReach
+    L.marker(here, { icon: L.divIcon({ className:'here-ic', html:'<span></span>', iconSize:[0,0] }) }).addTo(NOWMAP.layer);
+  }
+  requestAnimationFrame(() => {
+    NOWMAP.map.invalidateSize();
+    if (NOWMAP.id !== live.id && pts.length) NOWMAP.map.fitBounds(L.latLngBounds(pts).pad(0.15), { maxZoom: 15 });
+    else if (pts.length) NOWMAP.map.panInside(pts.at(-1), { padding: [30, 30] });
+    NOWMAP.id = live.id;
+  });
+}
 function thumbSvg(pts, w, h, opts = {}) {
   if (!pts || pts.length < 2) return `<svg class="thumb" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><rect x=".5" y=".5" width="${w-1}" height="${h-1}" rx="4" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/></svg>`;
   const lat0 = pts.reduce((a,p) => a + p[0], 0) / pts.length, kx = Math.cos(lat0 * Math.PI / 180);
@@ -860,7 +921,13 @@ function derive(d) {
   const movingLt = lt.filter(p => p.st === 'MOVING');
   const avg = a => a.length ? Math.round(a.reduce((x,y) => x+y, 0) / a.length) : null;
   const cadVals = movingLt.map(p => p.cad).filter(v => v > 0), pwVals = movingLt.map(p => p.pw).filter(v => v > 0);
-  const effort = { cadAvg: avg(cadVals), pwAvg: avg(pwVals), pwMax: pwVals.length ? Math.max(...pwVals) : null };
+  // Steps: the watch's own total when the watch file provides it; otherwise cadence (steps/min) × time, added up.
+  // Gaps over 2 min (no signal) add nothing until the backfill arrives, so live totals can run a little low.
+  let stepsEst = 0;
+  for (let i = 1; i < lt.length; i++) { const a = lt[i-1], b = lt[i], dm = (b.ts - a.ts) / MIN;
+    if (dm > 0 && dm <= 2 && a.cad > 0 && a.st !== 'STATIONARY') stepsEst += a.cad * dm; }
+  const steps = d.trip?.total_steps != null ? { n: d.trip.total_steps, exact: true } : stepsEst > 0 ? { n: Math.round(stepsEst), exact: false } : null;
+  const effort = { steps, cadAvg: avg(cadVals), pwAvg: avg(pwVals), pwMax: pwVals.length ? Math.max(...pwVals) : null };
   const lags = lt.slice(-30).map(p => p.lagS).filter(v => v != null).sort((a,b) => a-b);
   const lagMed = lags.length ? lags[Math.floor(lags.length/2)] : null;
   const hrs = lt.map(p => p.hr).filter(h => h > 0);
@@ -912,7 +979,7 @@ function renderTiles(d, s) {
       foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.curMi/s.totalMi*100)}%` },
     { label: s.ended ? 'Total time' : 'Elapsed', value: s.last ? fmtClock(elapsed) : '—',
       alt: s.movingMs != null ? `moving ${fmtClock(s.movingMs)} · stopped ${fmtClock(Math.max(0, elapsed - s.movingMs))}` : '',
-      foot: s.last ? `started ${fmtDay(imp ? Date.parse(d.trip.start) : s.start)} ${fmtTime(imp ? Date.parse(d.trip.start) : s.start)}` : 'not started' },
+      foot: s.last ? `started ${fmtDT(imp ? Date.parse(d.trip.start) : s.start)}` : 'not started' },
     third,
     { label:'Vertical gain', value:`${n0(s.gainSoFar)}<small>ft</small>`, alt:`${mOf(s.gainSoFar)} m`,
       foot: s.gainTotal != null ? `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` : s.ended ? 'total' : 'so far' },
@@ -920,6 +987,8 @@ function renderTiles(d, s) {
       foot: s.eleLow != null ? `low ${n0(s.eleLow)} ft<br>${mOf(s.eleLow)} m` : '' },
     { label: s.ended ? 'Moving pace' : 'Recent pace', value: s.recentPace ? `${fmtPace(s.recentPace)}<small>/mi</small>` : '—',
       alt: s.recentPace ? `${fmtPace(s.recentPace / KM_PER_MI)} /km` : '', foot: s.ended ? 'average, stops excluded' : 'moving, last 2 h' },
+    stepsTile(s),
+    weatherTile(d, s),
     elevationTile(s),
     daylightTile(s),
     sunTile(s),
@@ -930,21 +999,41 @@ function renderTiles(d, s) {
   const html = t => `<div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>${t.alt ? alt(t.alt) : ''}
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`;
   // Row 1: right now (or how it ended). Row 2: the effort so far.
-  const [dist, el, th, gain, hl, pace, eleT, day, sun, hr] = tiles;
+  const [dist, el, th, gain, hl, pace, stepsT, wxT, eleT, day, sun, hr] = tiles;
   $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
-    <div class="tile-row">${[eleT, day, sun, hr, pace].map(html).join('')}</div>
+    <div class="tile-row" style="--n:6">${[wxT, eleT, day, sun, hr, pace].map(html).join('')}</div>
     <div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
-    <div class="tile-row">${[dist, el, th, gain, hl].map(html).join('')}</div>`;
+    <div class="tile-row" style="--n:6">${[dist, el, th, gain, hl, stepsT].map(html).join('')}</div>`;
 }
 // Sun & moon for today at your position (finished: the day you finished)
 function sunTile(s) {
   if (!s.last) return { label:'Sun · moon', value:'—', foot:'' };
   const t = s.ended ? s.last.ts : s.now, r = SKY.day(localMidnight(t), s.last.lat, s.last.lon);
-  const moon = `${r.moon.name.toLowerCase()} · ${Math.round(r.moon.fraction * 100)}%`;
+  const moon = `${r.moon.name} · ${Math.round(r.moon.fraction * 100)}%`;
   return { label: s.ended ? `Sun · ${fmtDay(t)}` : 'Sun today',
-    value: `${r.sunrise ? fmtTime(r.sunrise) : '—'}<small>↑</small> ${r.sunset ? fmtTime(r.sunset) : '—'}<small>↓</small>`,
+    value: `<span style="font-size:.8em;white-space:nowrap">${r.sunrise ? fmtTime(r.sunrise) : '—'}<small>↑</small> ${r.sunset ? fmtTime(r.sunset) : '—'}<small>↓</small></span>`,
     alt: `dawn ${r.dawn ? fmtTime(r.dawn) : '—'} · dusk ${r.dusk ? fmtTime(r.dusk) : '—'}`,
-    foot: `moon ${moon}${r.moonrise ? `<br>rises ${fmtTime(r.moonrise)}` : ''}${r.moonset ? ` · sets ${fmtTime(r.moonset)}` : ''}` };
+    foot: `${moon}${r.moonrise ? `<br>rises ${fmtTime(r.moonrise)}` : ''}${r.moonset ? ` · sets ${fmtTime(r.moonset)}` : ''}` };
+}
+// Weather now at your last position (Worker refreshes ~15 min); finished: the range you had
+function weatherTile(d, s) {
+  const w = d.weather;
+  if (!s.ended && w?.now) { const n = w.now;
+    return { label:'Weather now', value: `${Math.round(n.temp_f)}<small>°F</small>`, alt: `${fC(n.temp_f)} °C · feels ${Math.round(n.feels_f)}°F`,
+      foot: `${esc(n.desc)} · wind ${n.wind_mph}, gusts ${n.gust_mph} mph<br>as of ${fmtTime(n.t)}` }; }
+  const a = w?.along || [];
+  if (a.length) { let lo = Infinity, hi = -Infinity, sum = 0; for (const x of a) { lo = Math.min(lo, x.temp_f); hi = Math.max(hi, x.temp_f); sum += x.temp_f; }
+    const same = Math.round(lo) === Math.round(hi);
+    return { label:'Weather', value: same ? `${Math.round(lo)}<small>°F</small>` : `${Math.round(lo)}–${Math.round(hi)}<small>°F</small>`, alt: same ? `${fC(lo)} °C` : `${fC(lo)} to ${fC(hi)} °C`,
+      foot: `avg ${Math.round(sum / a.length)}°F · hourly, modeled` }; }
+  return { label: s.ended ? 'Weather' : 'Weather now', value:'—', foot:'not available yet' };
+}
+function stepsTile(s) {
+  const st = s.effort.steps;
+  if (!st) return { label:'Steps', value:'—', foot:'no cadence data' };
+  return { label:'Steps', value: `${st.exact ? '' : '<small>≈</small>'}${n0(st.n)}`,
+    alt: s.effort.cadAvg ? `${s.effort.cadAvg} spm avg` : '',
+    foot: st.exact ? 'from watch file' : s.ended ? 'from cadence · estimate' : 'running total · from cadence' };
 }
 function elevationTile(s) {
   const e = s.eleNow;
@@ -981,7 +1070,7 @@ function daylightTile(s) {
 function renderAlerts(d, s) {
   const list = !s.ended ? (d.alerts || []) : [];
   $('#alerts').innerHTML = list.map(a => `<div class="alert-box${/severe|extreme/i.test(a.severity) ? ' severe' : ''}" role="alert">
-    <div><div class="ev">⚠ ${esc(a.event)}${a.ends ? ` <span class="muted" style="font-weight:400">· until ${fmtDay(a.ends)} ${fmtTime(a.ends)}</span>` : ''}</div>
+    <div><div class="ev">⚠ ${esc(a.event)}${a.ends ? ` <span class="muted" style="font-weight:400">· until ${fmtDT(a.ends)}</span>` : ''}</div>
     <div class="hl">${esc(a.headline || '')}${a.url ? ` <a href="${esc(a.url)}" target="_blank" rel="noopener">NWS details</a>` : ''}</div></div></div>`).join('');
 }
 
@@ -1010,9 +1099,9 @@ function renderWx(d, s) {
     const pr = along.reduce((a, x) => a + x.precip_in, 0), snowy = along.some(x => x.precip_in > 0 && x.temp_f <= 33);
     const g = along.reduce((a, x) => x.gust_mph > a.gust_mph ? x : a), frz = along.filter(x => x.temp_f <= 32).length;
     top = `<div class="wx-stats" style="grid-column:1/-1">
-      ${stat('Temperature', `${Math.round(lo)}–${Math.round(hi)}<small>°F</small>`, `${fC(lo)} to ${fC(hi)} °C`)}
+      ${stat('Temperature', Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}<small>°F</small>` : `${Math.round(lo)}–${Math.round(hi)}<small>°F</small>`, Math.round(lo) === Math.round(hi) ? `${fC(lo)} °C` : `${fC(lo)} to ${fC(hi)} °C`)}
       ${stat(snowy ? 'Precipitation (some snow)' : 'Precipitation', `${pr.toFixed(2)}<small>in</small>`, `${Math.round(pr * 25.4)} mm`)}
-      ${stat('Strongest gust', `${g.gust_mph}<small>mph</small>`, `${Math.round(g.gust_mph * KM_PER_MI)} km/h · ${fmtDay(g.ts)} ${fmtTime(g.ts)}`)}
+      ${stat('Strongest gust', `${g.gust_mph}<small>mph</small>`, `${Math.round(g.gust_mph * KM_PER_MI)} km/h · ${fmtDT(g.ts)}`)}
       ${stat('Below freezing', `${frz}<small>h</small>`, frz ? 'hours at or below 32°F' : 'never')}
       ${stat('In the dark', fmtClock(s.dark.reduce((a, z) => a + (z.end - z.start), 0)), 'sun below 6°')}</div>`;
   }
@@ -1071,7 +1160,7 @@ function drawWxChart(s, along, fc) {
     xh.style.display = ''; ['x1', 'x2'].forEach(k => host.querySelector('#wxl').setAttribute(k, X(x.ts)));
     host.querySelector('#wxc').setAttribute('cx', X(x.ts)); host.querySelector('#wxc').setAttribute('cy', Y(x.temp_f));
     const dk = s.dark.some(z => x.ts >= z.start && x.ts <= z.end);
-    tip.innerHTML = `<b>${fmtDay(x.ts)} ${fmtTime(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${Math.round(x.temp_f)}°F · ${fC(x.temp_f)} °C · ${esc(x.desc || '')}</div>
+    tip.innerHTML = `<b>${fmtDT(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${Math.round(x.temp_f)}°F · ${fC(x.temp_f)} °C · ${esc(x.desc || '')}</div>
       <div class="row">${x.pop != null ? x.pop + '% chance · ' : ''}${x.precip_in > 0 ? x.precip_in.toFixed(2) + ' in · ' : ''}wind ${x.wind_mph}, gusts ${x.gust_mph} mph</div>
       <div class="row">${x.ele_ft != null ? fmtFt(x.ele_ft) + ' · ' : ''}${dk ? 'dark' : 'daylight'}</div>`;
     tip.style.display = 'block';
@@ -1192,29 +1281,30 @@ function renderMap(d, s) {
   if (mapLayers) mapLayers.remove();
   mapLayers = L.layerGroup().addTo(map);
 
-  if (!s.freeform) L.polyline(s.course.map(c => [c.lat, c.lon]), { color: plan, weight: 3, dashArray: '6 6', opacity: .9 }).addTo(mapLayers);
+  if (!s.freeform) L.polyline(s.course.map(c => [c.lat, c.lon]), { color: cssv('--map-plan'), weight: 4, dashArray: '8 7', opacity: .9 }).addTo(mapLayers);
 
   // Final view: grey band under the stretches the crew could not see live
   if (d._cov) d._cov.zones.forEach(z => L.polyline(s.lt.slice(z.i0, z.i1 + 1).map(p => [p.lat, p.lon]), { color: plan, weight: 13, opacity: .75 })
     .bindTooltip(`<b>No live signal</b> · ${fmtDur(z.end - z.start)}<br>${fmtTime(z.start)}–${fmtTime(z.end)}`).addTo(mapLayers));
   // LiveTrack polylines, split at gaps > 5 min
   let seg = [];
-  const flush = () => { if (seg.length > 1) L.polyline(seg, { color:'#fff', weight: 7, opacity: .85 }).addTo(mapLayers),
-                                            L.polyline(seg, { color: lt, weight: 4 }).addTo(mapLayers); seg = []; };
+  const trk = cssv('--map-track');
+  const flush = () => { if (seg.length > 1) L.polyline(seg, { color:'#fff', weight: 8, opacity: .85 }).addTo(mapLayers),
+                                            L.polyline(seg, { color: trk, weight: 5 }).addTo(mapLayers); seg = []; };
   s.lt.forEach((p, i) => { if (i && p.ts - s.lt[i-1].ts > 5*MIN) flush(); seg.push([p.lat, p.lon]); }); flush();
 
   // inReach dots joined by thin dashed line
   L.polyline(s.ir.map(p => [p.lat, p.lon]), { color: ir, weight: 2, opacity: .7, dashArray: '2 5' }).addTo(mapLayers);
   s.ir.forEach(p => L.circleMarker([p.lat, p.lon], { radius: 5, color: '#fff', weight: 2, fillColor: ir, fillOpacity: 1 })
-    .bindTooltip(`<b>inReach</b> · ${fmtDay(p.ts)} ${fmtTime(p.ts)}<br>${miKm(p.mi)}${p.ele != null ? '<br>' + fmtFt(p.ele) : ''}`).addTo(mapLayers));
+    .bindTooltip(`<b>inReach</b> · ${fmtDT(p.ts)}<br>${miKm(p.mi)}${p.ele != null ? '<br>' + fmtFt(p.ele) : ''}`).addTo(mapLayers));
 
   s.cps.forEach(c => {
     const ll = eleAt(s.course, c.mi);
     L.marker([ll.lat, ll.lon], { icon: L.divIcon({ className: 'cp-ic' + (c.type === 'camp' ? ' camp' : ''), iconSize: [12,12] }) })
-      .bindTooltip(`<b>${c.name}</b><br>${miKm(c.mi)} · plan ${fmtDay(c.pa)} ${fmtTime(c.pa)}`).addTo(mapLayers);
+      .bindTooltip(`<b>${c.name}</b><br>${miKm(c.mi)} · plan ${fmtDT(c.pa)}`).addTo(mapLayers);
   });
   d.messages.forEach(m => L.circleMarker([m.lat, m.lon], { radius: 8, color: ir, weight: 2, fillColor: '#fff', fillOpacity: 1 })
-    .bindPopup(`<b>Message · ${fmtDay(m.t)} ${fmtTime(m.t)}</b><br>“${m.text}”`).addTo(mapLayers));
+    .bindPopup(`<b>Message · ${fmtDT(m.t)}</b><br>“${m.text}”`).addTo(mapLayers));
   if (s.last) L.marker([s.last.lat, s.last.lon], { icon: L.divIcon({ className:'here-ic', html:'<span></span>', iconSize:[0,0] }), zIndexOffset: 1000 })
     .bindTooltip(`<b>Last seen</b> ${fmtTime(s.last.ts)} via ${s.last.src === 'inreach' ? 'inReach' : 'LiveTrack'}`, { permanent: false }).addTo(mapLayers);
 }
@@ -1228,8 +1318,8 @@ function renderMapFallback(d, s) {     // if Leaflet CDN is blocked: plain SVG t
   const X = lo => pad + (lo-lo0)*k, Y = la => H - pad - (la-la0)*k;
   const path = arr => arr.map((p,i) => `${i?'L':'M'}${X(p.lon).toFixed(1)},${Y(p.lat).toFixed(1)}`).join('');
   el.innerHTML = `<svg class="fallback-map" viewBox="0 0 ${W} ${H}">
-    ${s.freeform ? '' : `<path d="${path(s.course)}" fill="none" stroke="var(--plan)" stroke-width="2.5" stroke-dasharray="6 6"/>`}
-    <path d="${path(s.lt)}" fill="none" stroke="var(--series-lt)" stroke-width="3"/>
+    ${s.freeform ? '' : `<path d="${path(s.course)}" fill="none" stroke="var(--map-plan)" stroke-width="3.5" stroke-dasharray="8 7"/>`}
+    <path d="${path(s.lt)}" fill="none" stroke="var(--map-track)" stroke-width="4"/>
     ${s.ir.map(p => `<circle cx="${X(p.lon)}" cy="${Y(p.lat)}" r="4" fill="var(--series-ir)" stroke="var(--surface-1)" stroke-width="2"/>`).join('')}
     <text x="${pad}" y="${H-6}" font-size="11" fill="var(--text-muted)">Map tiles unavailable — showing track only</text></svg>`;
 }
@@ -1308,11 +1398,11 @@ function renderProfile(d, s) {
     let when = '';
     if (mi <= s.curMi) {
       const near = s.pts.reduce((a,q) => Math.abs(q.mi-mi) < Math.abs(a.mi-mi) ? q : a, s.pts[0]);
-      when = `<div class="row">Passed ≈ ${fmtDay(near.ts)} ${fmtTime(near.ts)}</div>`;
+      when = `<div class="row">Passed ≈ ${fmtDT(near.ts)}</div>`;
     } else {
       const eta = s.last.ts + planMovingMin(s.course, s.curMi, mi) * s.ratio * MIN
                 + s.cps.filter(c => c.mi > s.curMi && c.mi < mi).reduce((a,c) => a + c.plannedDwellMin*MIN, 0);
-      when = `<div class="row">Projected ≈ ${fmtDay(eta)} ${fmtTime(eta)}</div>`;
+      when = `<div class="row">Projected ≈ ${fmtDT(eta)}</div>`;
     }
     tip.innerHTML = `<b>${miKm(mi)}</b><div class="row">${p ? fmtFt(p.ele) : 'elevation not known (course from watch)'}</div>${when}`;
     tip.style.display = 'block';
@@ -1325,6 +1415,65 @@ function renderProfile(d, s) {
 }
 
 /* ---- Heart rate · effort ---- */
+/* ---- Splits: one row per mile (or km); pace from moving time; gain/loss with the same 10 ft filter as Vertical gain ---- */
+let SPLIT_U = (() => { try { return localStorage.getItem('aclive.splitU') || 'mi'; } catch { return 'mi'; } })();
+$('#splitTg').addEventListener('click', e => { const b = e.target.closest('button[data-u]'); if (!b || b.dataset.u === SPLIT_U) return;
+  SPLIT_U = b.dataset.u; try { localStorage.setItem('aclive.splitU', SPLIT_U); } catch {} if (DATA) { const D = viewOf(DATA); renderSplits(D, derive(D)); } });
+function renderSplits(d, s) {
+  const card = $('#splitsCard'), P = s.lt.filter(p => p.mi != null);
+  $('#splitTg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.u === SPLIT_U)));
+  if (P.length < 2) { card.hidden = true; return; }
+  card.hidden = false;
+  const km = SPLIT_U === 'km', unit = km ? 1 / KM_PER_MI : 1;          // split length in miles
+  const rows = []; let cur = null, ref = null, refL = null;
+  const open = (i, d0) => ({ n: rows.length + 1, d0, t0: P[i].ts, mov: 0, gain: 0, loss: 0, hr: [], cad: [] });
+  cur = open(0, P[0].mi); ref = refL = P[0].ele;
+  for (let i = 1; i < P.length; i++) {
+    const a = P[i-1], b = P[i], dt = b.ts - a.ts;
+    if (dt > 0 && dt <= 5*MIN && a.st !== 'STATIONARY' && b.st !== 'STATIONARY') cur.mov += dt;
+    if (b.ele != null) {                                      // same filter as the Vertical gain tile, mirrored for loss
+      if (ref == null) ref = refL = b.ele;
+      if (b.ele - ref >= 10) { cur.gain += b.ele - ref; ref = b.ele; } else if (b.ele < ref) ref = b.ele;
+      if (refL - b.ele >= 10) { cur.loss += refL - b.ele; refL = b.ele; } else if (b.ele > refL) refL = b.ele; }
+    if (b.hr) cur.hr.push(b.hr);
+    const boundary = cur.d0 + unit;
+    if (b.mi >= boundary) {                                   // close this split (time at the boundary, linearly)
+      const f = (boundary - a.mi) / Math.max(b.mi - a.mi, 1e-9), tB = a.ts + f * dt;
+      cur.t1 = tB; cur.dist = unit; rows.push(cur);
+      cur = open(i, boundary); cur.t0 = tB;
+    }
+  }
+  const L = P.at(-1); cur.t1 = L.ts; cur.dist = L.mi - cur.d0; cur.partial = true;
+  if (cur.dist > 0.01) rows.push(cur);
+  const pace = r => r.mov > 0 ? r.mov / MIN / r.dist : null;            // min per mile
+  const paces = rows.filter(r => !r.partial || r.dist > 0.2).map(pace).filter(Boolean);
+  const fast = Math.min(...paces), slow = Math.max(...paces);
+  const multiDay = rows.length && localMidnight(rows[0].t0) !== localMidnight(rows.at(-1).t1);
+  const fmtP = mpm => mpm == null ? '—' : km ? `${fmtPace(mpm / KM_PER_MI)} /km<span class="sub">${fmtPace(mpm)} /mi</span>` : `${fmtPace(mpm)} /mi<span class="sub">${fmtPace(mpm / KM_PER_MI)} /km</span>`;
+  const fmtE = (ft, sign) => km ? `${sign}${mOf(ft)} m<span class="sub">${sign}${n0(ft)} ft</span>` : `${sign}${n0(ft)} ft<span class="sub">${sign}${mOf(ft)} m</span>`;
+  const label = r => r.partial ? (km ? (r.dist * KM_PER_MI).toFixed(2) : r.dist.toFixed(2)) : r.n;
+  let html = `<thead><tr><th>${km ? 'KM/Lap' : 'Mile/Lap'}</th><th>Time</th><th>Pace</th><th>Gain</th><th>Loss</th><th>Avg HR</th></tr></thead><tbody>`;
+  let day = null, dayAcc = null;
+  const dayRow = a => `<tr class="day"><td>${fmtDate(a.t)}</td><td>${fmtClock(a.time)}</td><td>${fmtP(a.mov > 0 ? a.mov / MIN / a.dist : null)}</td>
+    <td>${fmtE(a.gain, '+')}</td><td>${fmtE(a.loss, '−')}</td><td>${a.hr.length ? Math.round(a.hr.reduce((x, y) => x + y, 0) / a.hr.length) : '—'}</td></tr>`;
+  const body = [];
+  for (const r of rows) {
+    const dk = localMidnight(r.t0);
+    if (multiDay && dk !== day) { if (dayAcc) body.push(dayRow(dayAcc)); day = dk; dayAcc = { t: r.t0, time: 0, mov: 0, dist: 0, gain: 0, loss: 0, hr: [] }; }
+    if (dayAcc) { dayAcc.time += r.t1 - r.t0; dayAcc.mov += r.mov; dayAcc.dist += r.dist; dayAcc.gain += r.gain; dayAcc.loss += r.loss; dayAcc.hr.push(...r.hr); }
+    const p = pace(r), w = p && slow > fast ? 25 + 75 * (slow - p) / (slow - fast) : 60, stop = (r.t1 - r.t0) - r.mov;
+    body.push(`<tr class="${r.partial && !s.ended ? 'cur' : ''}"><td>${label(r)}${r.partial && !s.ended ? ' <span class="sub" style="display:inline">in progress</span>' : ''}</td>
+      <td>${fmtClock(r.t1 - r.t0)}${stop >= MIN ? `<span class="sub">stopped ${fmtClock(stop)}</span>` : ''}</td>
+      <td class="pace" style="--w:${Math.round(w)}%">${fmtP(p)}</td><td>${fmtE(r.gain, '+')}</td><td>${fmtE(r.loss, '−')}</td>
+      <td>${r.hr.length ? Math.round(r.hr.reduce((x, y) => x + y, 0) / r.hr.length) : '—'}</td></tr>`);
+  }
+  if (multiDay && dayAcc) body.push(dayRow(dayAcc));
+  // Day total rows sit after each day's splits; reorder so each total heads its day
+  if (multiDay) { const out = [], buf = []; for (const h of body) { if (h.startsWith('<tr class="day"')) { out.push(h, ...buf); buf.length = 0; } else buf.push(h); } body.length = 0; body.push(...out); }
+  $('#splits').innerHTML = html + body.join('') + '</tbody>';
+  $('#splitsNote').textContent = `Pace from moving time. Gain and loss ignore changes under 10 ft (GPS noise), like Vertical gain.${multiDay ? ' Shaded rows are day totals.' : ''}`;
+}
+
 function renderEffort(d, s) {
   const card = $('#effortCard');
   const pts = s.lt.filter(p => p.hr > 0);
@@ -1381,7 +1530,7 @@ function renderStops(s) {
   if (!s.stops.length) { $('#cpTable').innerHTML = `<tbody><tr><td style="color:var(--text-muted);border:0">${s.movingMs == null ? 'Stops need LiveTrack data.' : 'No stops of 2 minutes or longer.'}</td></tr></tbody>`; return; }
   const total = s.stops.reduce((a, x) => a + (x.end - x.start), 0);
   $('#cpTable').innerHTML = `<thead><tr><th>Start</th><th class="num">Length</th><th class="num">Where</th><th class="num hide-sm">Elevation</th></tr></thead><tbody>` +
-    s.stops.map(x => `<tr><td>${fmtDay(x.start)} ${fmtTime(x.start)}${x.open ? ' <span class="muted">(now)</span>' : ''}</td>
+    s.stops.map(x => `<tr><td>${fmtDT(x.start)}${x.open ? ' <span class="muted">(now)</span>' : ''}</td>
       <td class="num">${fmtDur(x.end - x.start)}</td>
       <td class="num">mi ${x.p.mi.toFixed(1)}${alt('km ' + km(x.p.mi))}</td>
       <td class="num hide-sm">${x.p.ele != null ? `${n0(x.p.ele)} <small>ft</small>${alt(mOf(x.p.ele) + ' m')}` : '—'}</td></tr>`).join('') +
@@ -1394,13 +1543,13 @@ function renderCpTable(d, s) {
   const dcell = ms => ms == null ? '' : `<span class="${ms > 5*MIN ? 'delta-pos' : ms < -5*MIN ? 'delta-neg' : ''}">${ms > 0 ? '+' : ''}${fmtDur(ms)}</span>`;
   const rows = s.cps.map(c => {
     const isNext = c === s.nextCp, future = !c.aa;
-    const actual = c.aa ? `${fmtDay(c.aa)} ${fmtTime(c.aa)}` : `<span class="proj">~${fmtDay(c.proj)} ${fmtTime(c.proj)}</span>`;
+    const actual = c.aa ? `${fmtDT(c.aa)}` : `<span class="proj">~${fmtDT(c.proj)}</span>`;
     const dwell = c.ad ? `${fmtDur(c.ad - c.aa)} <span style="color:var(--text-muted)">/ ${fmtDur(c.plannedDwellMin*MIN)}</span>` : c.aa ? 'here' : (c.plannedDwellMin ? fmtDur(c.plannedDwellMin*MIN) : '');
     const dl = c.aa ? c.aa - c.pa : c.projDelta;
     return `<tr class="${future ? 'future' : ''} ${isNext ? 'current' : ''}">
       <td><span class="type-ic">${icon[c.type] ?? '·'}</span>${c.name}</td>
       <td class="num">${c.mi.toFixed(1)}${alt(km(c.mi) + ' km')}</td>
-      <td class="hide-sm">${fmtDay(c.pa)} ${fmtTime(c.pa)}</td>
+      <td class="hide-sm">${fmtDT(c.pa)}</td>
       <td>${actual}</td>
       <td class="num">${dcell(dl)}</td>
       <td class="num hide-sm">${dwell}</td></tr>`;
@@ -1428,7 +1577,7 @@ function renderTimeline(d, s) {
   }
   if (!s.ended && s.lastLT && s.now - s.lastLT.ts > 30*MIN) ev.push({ t: s.lastLT.ts, chip:'gap', tag:'No cell', html:`Out of service since ${miKm(s.lastLT.mi)}: satellite only` });
   ev.sort((a,b) => b.t - a.t);
-  $('#timeline').innerHTML = ev.map(e => `<li><div class="t"><b>${fmtTime(e.t)}</b>${fmtDay(e.t)}</div>
+  $('#timeline').innerHTML = ev.map(e => `<li><div class="t"><b>${fmtTime(e.t)}</b>${fmtDay(e.t)}, ${fmtDateShort(e.t)}</div>
     <div><span class="chip ${e.chip}">${e.tag}</span>${e.html}</div></li>`).join('');
 }
 
@@ -1522,7 +1671,7 @@ function viewOf(d) {
     // inReach points get their distance from the watch track (nearest time)
     const ir = d.points.filter(p => p.src === 'inreach').map(p => { const i = nearestIdx(fts, Date.parse(p.t)); return { ...p, mi: d.final[i]?.mi ?? p.mi }; });
     d._finalView = { ...d, points: d.final.concat(ir), _hasFinal: true, _cov: liveCoverage(d.final, d.points),
-      trip: { ...d.trip, kind: 'final', start: d.trip.final_start || d.trip.start, end: d.trip.final_end || d.trip.end } };
+      trip: { ...d.trip, kind: 'final', start: d.trip.final_start || d.trip.start, end: d.trip.final_end || d.trip.end, total_steps: d.trip.final_total_steps ?? null } };
   }
   return d._finalView;
 }
@@ -1559,7 +1708,9 @@ function renderLanding() {
         </div>
         <a class="btn" href="#a/${encodeURIComponent(live.id)}">Open live view →</a>
       </div>
-      <a class="now-thumb" href="#a/${encodeURIComponent(live.id)}" aria-label="Open live view">${thumbSvg(live.thumb, 260, 190, { live:true, sw:2.5, color: live.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</a>`;
+      ${window.L ? '<div class="now-map" id="nowMapSlot"></div>'
+        : `<a class="now-thumb" href="#a/${encodeURIComponent(live.id)}" aria-label="Open live view">${thumbSvg(live.thumb, 260, 190, { live:true, sw:2.5, color: live.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</a>`}`;
+    if (window.L) placeNowMap(live);
   } else {
     const last = ACTS[0];
     hero.className = 'now';
@@ -1579,7 +1730,7 @@ function renderLanding() {
          a.final ? `<span class="chip" title="Watch file merged">${esc((a.final.fmt || 'file').toUpperCase())}</span>` : ''].join('');
     rows += `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
       <td class="t-thumb">${thumbSvg(a.thumb, 56, 40, { sw:1.6, color: a.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</td>
-      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a><div class="act-sub">${fmtDate(a.start)} · ${fmtTime(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
+      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a><div class="act-sub">${a.name ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
       <td class="num hide-narrow">${a.dist_mi.toFixed(1)} <small>mi</small>${alt(km(a.dist_mi) + ' km')}</td>
       <td class="num hide-narrow">${n0(a.gain_ft)} <small>ft</small>${alt(mOf(a.gain_ft) + ' m')}</td>
       <td class="num hide-narrow">${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${alt(mOf(a.ele_max_ft) + ' m')}` : '—'}</td>
@@ -1602,7 +1753,7 @@ function renderAll() {
   const D = viewOf(DATA), s = derive(D);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
-  renderMap(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
+  renderMap(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
 }
 
 /* =========================================================================
@@ -1622,8 +1773,33 @@ async function refreshLanding() {
   try { ACTS = await loadActivities(); renderLanding(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
+/* ---- Weather from the Worker (Open-Meteo + NWS). Sent: one position per hour of the track, plus the latest position. ---- */
+let WX = { id: null, at: 0, data: null, busy: false };
+function wxRequest(d) {
+  const src = (d.final?.length ? d.final : d.points || []).filter(p => p.lat != null).map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a, b) => a.ts - b.ts);
+  if (!src.length) return null;
+  const hours = [], seen = new Set();
+  for (const p of src) { const h = Math.floor(p.ts / HR); if (!seen.has(h)) { seen.add(h); hours.push([Math.round(p.ts / 1000), +p.lat.toFixed(4), +p.lon.toFixed(4), p.ele != null ? Math.round(p.ele / 3.28084) : null]); } }
+  const L = (d.points || []).filter(p => p.lat != null).map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a, b) => a.ts - b.ts).at(-1) || src.at(-1);
+  return { id: d.trip.id, live: d.trip.status !== 'ended', hours, last: { lat: L.lat, lon: L.lon, ele_m: L.ele != null ? L.ele / 3.28084 : null } };
+}
+async function loadWeather(d) {
+  if (CONFIG.dataSource === 'mock' || !d?.trip?.id) return;
+  const live = d.trip.status !== 'ended', fresh = WX.id === d.trip.id && WX.data && (!live || Date.now() - WX.at < 60e3);
+  if (WX.id === d.trip.id && WX.data) { d.weather = WX.data; d.alerts = WX.data.alerts || []; }
+  if (fresh || WX.busy) return;
+  const body = wxRequest(d); if (!body) return;
+  WX.busy = true;
+  try {
+    const r = await fetch(`${CONFIG.api}/api/weather`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (j.errors) console.warn('weather', j.errors);
+    WX = { id: body.id, at: Date.now(), data: { ...j, source: 'Open-Meteo' }, busy: false };
+    if (DATA && DATA.trip?.id === body.id) { DATA.weather = WX.data; DATA.alerts = WX.data.alerts || []; DATA._finalView = null; renderAll(); }
+  } catch (e) { console.warn('weather unavailable', e); WX.busy = false; }
+}
 async function refreshDetail() {
-  try { DATA = await loadTrack(CURRENT); renderAll(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
+  try { DATA = await loadTrack(CURRENT); loadWeather(DATA); renderAll(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
 addEventListener('hashchange', route);
