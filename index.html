@@ -144,6 +144,14 @@ td.srcs .sw { margin-right: 4px; }
 .wx-chips button i { width: 9px; height: 9px; border-radius: 50%; opacity: .45; }
 .wx-chips button[aria-pressed="true"] { color: var(--ink); border-color: var(--muted); background: var(--panel-2); }
 .wx-chips button[aria-pressed="true"] i { opacity: 1; }
+.edit-btn { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 6px; padding: 2px 8px; font: inherit; font-size: .8rem; cursor: pointer; vertical-align: middle; margin-left: 8px; }
+.edit-btn:hover { color: var(--ink); border-color: var(--muted); }
+.owner-form input, .notes-edit textarea, .title-edit input { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+.notes-edit textarea { width: 100%; min-height: 160px; resize: vertical; box-sizing: border-box; }
+.notes-text { white-space: pre-wrap; line-height: 1.5; max-width: 80ch; }
+.btn-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+.btn-row button { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; font: inherit; cursor: pointer; }
+.btn-row button.primary { background: var(--series-lt); border-color: var(--series-lt); color: #fff; font-weight: 600; }
 .credit { font-size: .75rem; color: var(--muted); margin-top: 10px; }
 .credit a { color: inherit; }
 .wx-legend { display: flex; gap: 16px; font-size: .8rem; color: var(--muted); margin-top: 4px; flex-wrap: wrap; }
@@ -325,6 +333,10 @@ footer p { margin: 0 0 6px; }
 
     <div id="alerts"></div>
     <section class="tiles" id="tiles"></section>
+    <section class="card" id="notesCard" style="margin-bottom:14px" hidden>
+      <div class="card-h"><h2>Notes</h2><span class="meta" id="notesMeta"></span></div>
+      <div class="card-b" id="notesBody"></div>
+    </section>
 
     <section class="grid-main">
       <div class="card">
@@ -409,6 +421,7 @@ footer p { margin: 0 0 6px; }
   <footer>
     <p>Positions from Garmin LiveTrack (watch → phone → cell) and inReach MapShare (satellite). Not an emergency channel: SOS events do not appear here, and a quiet page means only that no new positions have arrived.</p>
     <p>Updates every 30 seconds while open. <a href="#live">#live</a> always opens the current activity.</p>
+    <p id="ownerBox"></p>
     <p class="sources"><b>Data sources.</b>
       Positions, heart rate and effort: Garmin LiveTrack and Garmin inReach MapShare, plus the watch's own activity files (FIT, GPX, TCX).
       Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a>, licensed
@@ -1065,14 +1078,15 @@ function sunTile(s) {
 function weatherTile(d, s) {
   const w = d.weather;
   if (!s.ended && w?.now) { const n = w.now;
-    return { label:'Weather now', value: `${Math.round(n.temp_f)}<small>°F</small>`, alt: `${fC(n.temp_f)} °C · feels ${Math.round(n.feels_f)}°F`,
+    return { label:'Weather now', value: `${fC(n.temp_f)}<small>°C</small>`, alt: `${Math.round(n.temp_f)} °F · feels ${fC(n.feels_f)} °C`,
       foot: `${esc(n.desc)} · wind ${n.wind_mph} mph ${windDir(n.wind_dir)}, gusts ${n.gust_mph}<br>` +
         `${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}% · ` : ''}${n.msl_mb != null ? `${Math.round(n.msl_mb)} mbar${trendTxt(n.msl_trend_3h)}` : ''}<br>as of ${fmtTime(n.t)}` }; }
   const a = w?.along || [];
   if (a.length) { let lo = Infinity, hi = -Infinity, sum = 0; for (const x of a) { lo = Math.min(lo, x.temp_f); hi = Math.max(hi, x.temp_f); sum += x.temp_f; }
     const same = Math.round(lo) === Math.round(hi);
-    return { label:'Weather', value: same ? `${Math.round(lo)}<small>°F</small>` : `${Math.round(lo)}–${Math.round(hi)}<small>°F</small>`, alt: same ? `${fC(lo)} °C` : `${fC(lo)} to ${fC(hi)} °C`,
-      foot: `avg ${Math.round(sum / a.length)}°F${prevailing(a) ? ` · wind mostly ${prevailing(a)}` : ''}<br>hourly, modeled` }; }
+    const sameC = fC(lo) === fC(hi);
+    return { label:'Weather', value: sameC ? `${fC(lo)}<small>°C</small>` : `${fC(lo)} to ${fC(hi)}<small>°C</small>`, alt: same ? `${Math.round(lo)} °F` : `${Math.round(lo)}–${Math.round(hi)} °F`,
+      foot: `avg ${fC(sum / a.length)} °C${prevailing(a) ? ` · wind mostly ${prevailing(a)}` : ''}<br>hourly, modeled` }; }
   return { label: s.ended ? 'Weather' : 'Weather now', value:'—', foot:'not available yet' };
 }
 function stepsTile(s) {
@@ -1143,14 +1157,14 @@ function renderWx(d, s) {
   if (!s.ended && w?.now) {
     const n = w.now;
     top = `<div class="wx-now"><div class="k muted" style="font-size:.8rem">Now at last position · ${fmtTime(n.t)}</div>
-      <div class="big">${Math.round(n.temp_f)}<small>°F</small> <small>${fC(n.temp_f)} °C</small></div>
-      <div>${esc(n.desc)} · feels ${Math.round(n.feels_f)}°F</div>
+      <div class="big">${fC(n.temp_f)}<small>°C</small> <small>${Math.round(n.temp_f)} °F</small></div>
+      <div>${esc(n.desc)} · feels ${fC(n.feels_f)} °C</div>
       <div class="muted" style="font-size:.88rem">wind ${n.wind_mph} mph ${windDir(n.wind_dir)}, gusts ${n.gust_mph} · ${Math.round(n.gust_mph * KM_PER_MI)} km/h</div>
       <div class="muted" style="font-size:.88rem">${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}%` : ''}</div>
       <div class="muted" style="font-size:.88rem">${n.msl_mb != null ? `${Math.round(n.msl_mb)} mbar sea level${trendTxt(n.msl_trend_3h)} in 3 h` : ''}${n.sfc_mb != null ? ` · ${Math.round(n.sfc_mb)} local` : ''}</div>
       ${flNote(n, s)}</div>
       <div class="wx-hours">${fc.filter((_, i) => i % 2 === 1).slice(0, 7).map(h => `<div><div class="t">${fmtTime(h.ts)}</div>
-        <div class="v">${Math.round(h.temp_f)}°</div><div>${h.pop}% ${h.precip_in > 0 || h.type ? (PRECIP_ICON[h.type] || '💧') : ''}</div>
+        <div class="v">${fC(h.temp_f)}°C</div><div class="t">${Math.round(h.temp_f)}°F</div><div>${h.pop}% ${h.precip_in > 0 || h.type ? (PRECIP_ICON[h.type] || '💧') : ''}</div>
         <div class="t">${windDir(h.wind_dir)} ${h.wind_mph}–${h.gust_mph} mph</div>
         <div class="t">${h.cloud != null ? `cloud ${h.cloud}%` : ''}</div>
         ${h.fl_ft != null ? `<div class="t">FL ${n0(h.fl_ft)} ft</div>` : ''}${h.storm ? '<div class="storm">⚡ storms</div>' : ''}</div>`).join('')}</div>`;
@@ -1163,7 +1177,7 @@ function renderWx(d, s) {
     const rh = rng('rh'), cl = rng('cloud'), msl = rng('msl_mb'), sfc = rng('sfc_mb'), fl = rng('fl_ft'), pw = prevailing(along);
     const span = (r, f = Math.round) => f(r[0]) === f(r[1]) ? `${f(r[0])}` : `${f(r[0])}–${f(r[1])}`;
     top = `<div class="wx-stats" style="grid-column:1/-1">
-      ${stat('Temperature', Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}<small>°F</small>` : `${Math.round(lo)}–${Math.round(hi)}<small>°F</small>`, Math.round(lo) === Math.round(hi) ? `${fC(lo)} °C` : `${fC(lo)} to ${fC(hi)} °C`)}
+      ${stat('Temperature', fC(lo) === fC(hi) ? `${fC(lo)}<small>°C</small>` : `${fC(lo)} to ${fC(hi)}<small>°C</small>`, Math.round(lo) === Math.round(hi) ? `${Math.round(lo)} °F` : `${Math.round(lo)}–${Math.round(hi)} °F`)}
       ${stat('Precipitation', `${pr.toFixed(2)}<small>in</small>`, `${Math.round(pr * 25.4)} mm${snowT > 0 ? ` · rain ${rainT.toFixed(2)} in · snow ${snowT.toFixed(1)} in` : ''}`)}
       ${stat('Strongest gust', `${g.gust_mph}<small>mph</small>`, `${Math.round(g.gust_mph * KM_PER_MI)} km/h from ${windDir(g.wind_dir) || '—'} · ${fmtDT(g.ts)}`)}
       ${pw ? stat('Wind', `mostly ${pw}`, 'prevailing direction') : ''}
@@ -1171,7 +1185,7 @@ function renderWx(d, s) {
       ${cl ? stat('Cloud cover', `${Math.round(cl[2])}<small>% avg</small>`, `${Math.round(cl[0])}–${Math.round(cl[1])}%`) : ''}
       ${msl ? stat('Pressure', `${span(msl)}<small>mbar</small>`, `sea level${sfc ? ` · local ${span(sfc)}` : ''}`) : ''}
       ${fl ? stat('Freezing level', `${span(fl, n0)}<small>ft</small>`, `${span(fl, v => n0(v / 3.28084))} m · dashed on the elevation chart`) : ''}
-      ${stat('Below freezing', `${frz}<small>h</small>`, frz ? 'hours at or below 32°F' : 'never')}
+      ${stat('Below freezing', `${frz}<small>h</small>`, frz ? 'hours at or below 0 °C' : 'never')}
       ${stat('In the dark', fmtClock(s.dark.reduce((a, z) => a + (z.end - z.start), 0)), 'sun below 6°')}</div>`;
   }
   $('#wxTop').innerHTML = top;
@@ -1229,7 +1243,7 @@ function drawWxChart(s, along, fc) {
   for (const P of panels) {
     const top = y, bot = y + P.h; yMap[P.k] = [top, bot];
     out += nightAll.map(z => `<rect x="${X(Math.max(z.start, t0))}" y="${top}" width="${Math.max(1, X(Math.min(z.end, t1)) - X(Math.max(z.start, t0)))}" height="${P.h}" fill="var(--night)"/>`).join('');
-    const unitTxt = { temp: '°F · °C right', precip: 'in · mm right', wind: 'mph · km/h right; dots = gusts', rh: '%', cloud: '%', press: 'mbar, sea level', fl: 'ft · m right; blue = your elevation' }[P.k];
+    const unitTxt = { temp: '°C · °F right', precip: 'in · mm right', wind: 'mph · km/h right; dots = gusts', rh: '%', cloud: '%', press: 'mbar, sea level', fl: 'ft · m right; blue = your elevation' }[P.k];
     out += `<text x="${m.l}" y="${top + 11}" font-size="10.5" fill="var(--text-muted)" dx="4">${P.label}${P.k === 'temp' && WX_ON.includes('feels') ? ' & feels like (dotted)' : ''}${unitTxt ? ` · ${unitTxt}` : ''}</text>`;
     if (P.arrows) {
       series.filter((x, i) => x.wind_dir != null && i % Math.max(1, Math.round(series.length / 40)) === 0).forEach(x =>
@@ -1253,8 +1267,8 @@ function drawWxChart(s, along, fc) {
     if (!P.fixed) { const pad = Math.max((hi - lo) * 0.12, P.k === 'press' ? 2 : P.k === 'fl' ? 300 : 2); lo -= pad; hi += pad; if (P.k === 'wind') lo = 0; }
     const Yv = v => bot - (v - lo) / Math.max(hi - lo, 1e-9) * (P.h - 16);
     for (const g of [lo, (lo + hi) / 2, hi]) {
-      const lab = P.k === 'fl' ? n0(g) : P.k === 'press' ? Math.round(g) : Math.round(g);
-      const altLab = P.k === 'temp' ? `${fC(g)}°C` : P.k === 'wind' ? `${Math.round(g * KM_PER_MI)} km/h` : P.k === 'fl' ? `${n0(g / 3.28084)} m` : '';
+      const lab = P.k === 'fl' ? n0(g) : P.k === 'temp' ? fC(g) : Math.round(g);
+      const altLab = P.k === 'temp' ? `${Math.round(g)}°F` : P.k === 'wind' ? `${Math.round(g * KM_PER_MI)} km/h` : P.k === 'fl' ? `${n0(g / 3.28084)} m` : '';
       out += `<line x1="${m.l}" x2="${W - m.r}" y1="${Yv(g)}" y2="${Yv(g)}" stroke="var(--grid)"/>
         <text x="${m.l - 6}" y="${Yv(g) + 4}" text-anchor="end" font-size="10.5" fill="var(--text-muted)">${lab}</text>
         ${altLab ? `<text x="${W - m.r + 6}" y="${Yv(g) + 4}" font-size="10.5" fill="var(--text-muted)">${altLab}</text>` : ''}`;
@@ -1283,7 +1297,7 @@ function drawWxChart(s, along, fc) {
     const t = t0 + clamp((px - m.l) / iw, 0, 1) * (t1 - t0), x = series.reduce((a, b) => Math.abs(b.ts - t) < Math.abs(a.ts - t) ? b : a);
     xl.style.display = ''; xl.setAttribute('x1', X(x.ts)); xl.setAttribute('x2', X(x.ts));
     const dk = s.dark.some(z => x.ts >= z.start && x.ts <= z.end), me = eleAtT(x.ts);
-    tip.innerHTML = `<b>${fmtDT(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${Math.round(x.temp_f)}°F · ${fC(x.temp_f)} °C${x.feels_f != null ? ` · feels ${Math.round(x.feels_f)}°F` : ''} · ${esc(x.desc || '')}</div>
+    tip.innerHTML = `<b>${fmtDT(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${fC(x.temp_f)} °C · ${Math.round(x.temp_f)} °F${x.feels_f != null ? ` · feels ${fC(x.feels_f)} °C` : ''} · ${esc(x.desc || '')}</div>
       <div class="row">${x.pop != null ? x.pop + '% chance · ' : ''}${x.precip_in > 0 ? `${PRECIP_ICON[x.type] || ''} ${x.precip_in.toFixed(2)} in` + (x.snow_in > 0 ? ` (snow ${x.snow_in.toFixed(1)} in)` : '') + ' · ' : ''}wind ${x.wind_mph} mph ${windDir(x.wind_dir)}, gusts ${x.gust_mph}</div>
       <div class="row">${x.rh != null ? `RH ${x.rh}% · ` : ''}${x.cloud != null ? `cloud ${x.cloud}% · ` : ''}${x.msl_mb != null ? `${Math.round(x.msl_mb)} mbar sea level` : ''}${x.sfc_mb != null ? ` · ${Math.round(x.sfc_mb)} local` : ''}</div>
       <div class="row">${me != null ? `you ${n0(me)} ft · ` : ''}${x.fl_ft != null ? `freezing level ${n0(x.fl_ft)} ft · ` : ''}${dk ? 'dark' : 'daylight'}</div>`;
@@ -1765,9 +1779,10 @@ async function getJson(path) {
 async function loadActivities() {
   return CONFIG.dataSource === 'mock' ? mockActivities() : (await getJson('/api/activities')).activities;
 }
-async function loadTrack(id) {
+async function loadTrack(id, fresh = false) {
   if (CONFIG.dataSource === 'mock') return mockTrack(id === 'live' ? 'mock-ct' : id);
-  const d = await getJson('/api/track' + (id && id !== 'live' ? `?activity=${encodeURIComponent(id)}` : ''));
+  const q = [id && id !== 'live' ? `activity=${encodeURIComponent(id)}` : '', fresh ? 'nocache=1' : ''].filter(Boolean).join('&');
+  const d = await getJson('/api/track' + (q ? '?' + q : ''));
   // Imported activities arrive as compact rows: [t(s), lat, lon, ele(ft), hr, spm, W, moving(1/0), mi]
   if (d.pointsCompact) {
     d.points = d.pointsCompact.map(r => ({ t: new Date(r[0] * 1000).toISOString(), lat: r[1], lon: r[2], ele: r[3], hr: r[4] ?? undefined,
@@ -1873,7 +1888,7 @@ function renderLanding() {
          a.final ? `<span class="chip" title="Watch file merged">${esc((a.final.fmt || 'file').toUpperCase())}</span>` : ''].join('');
     rows += `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
       <td class="t-thumb">${thumbSvg(a.thumb, 56, 40, { sw:1.6, color: a.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</td>
-      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a><div class="act-sub">${a.name ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
+      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a>${a.has_notes ? ' <span title="Has notes">📝</span>' : ''}<div class="act-sub">${a.name ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
       <td class="num hide-narrow">${a.dist_mi.toFixed(1)} <small>mi</small>${alt(km(a.dist_mi) + ' km')}</td>
       <td class="num hide-narrow">${n0(a.gain_ft)} <small>ft</small>${alt(mOf(a.gain_ft) + ' m')}</td>
       <td class="num hide-narrow">${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${alt(mOf(a.ele_max_ft) + ' m')}` : '—'}</td>
@@ -1895,7 +1910,7 @@ function resetMap() { if (map) { map.remove(); map = null; } mapLayers = null; c
 function renderAll() {
   const D = viewOf(DATA), s = derive(D);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
-  renderHeader(D, s); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
+  renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
   renderMap(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
 }
 
@@ -1916,6 +1931,75 @@ async function refreshLanding() {
   try { ACTS = await loadActivities(); renderLanding(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
+/* ---- Owner mode: only someone with the owner key can rename activities and write notes. The key stays in this browser;
+   the Worker checks it on every save, so hidden controls alone can't change anything. ---- */
+let OWNER = (() => { try { return localStorage.getItem('aclive.ownerKey') || ''; } catch { return ''; } })();
+const isOwner = () => !!OWNER;
+async function ownerPost(path, body) {
+  if (CONFIG.dataSource === 'mock') return { ok: true };                       // demo: change only this page
+  const r = await fetch(`${CONFIG.api}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + OWNER }, body: JSON.stringify(body) });
+  if (r.status === 401) throw new Error('Owner key not accepted. Sign in again.');
+  if (!r.ok) throw new Error('Save failed (HTTP ' + r.status + ')');
+  return r.json();
+}
+function renderOwnerBox() {
+  const box = $('#ownerBox');
+  if (isOwner()) { box.innerHTML = `Signed in as owner on this browser · <a href="#" id="ownerOut">Sign out</a>`;
+    $('#ownerOut').onclick = e => { e.preventDefault(); OWNER = ''; try { localStorage.removeItem('aclive.ownerKey'); } catch {} renderOwnerBox(); if (DATA) renderAll(); }; return; }
+  box.innerHTML = `<a href="#" id="ownerIn">Owner sign-in</a>`;
+  $('#ownerIn').onclick = e => { e.preventDefault();
+    box.innerHTML = `<span class="owner-form">Owner key: <input type="password" id="ownerKey" autocomplete="current-password" size="24">
+      <span class="btn-row" style="display:inline-flex;margin:0 0 0 6px"><button class="primary" id="ownerGo">Sign in</button><button id="ownerCancel">Cancel</button></span>
+      <span id="ownerMsg" class="muted"></span></span>`;
+    $('#ownerKey').focus();
+    $('#ownerCancel').onclick = renderOwnerBox;
+    const go = async () => { const k = $('#ownerKey').value.trim(); if (!k) return;
+      try { const r = CONFIG.dataSource === 'mock' ? { ok: true } : await fetch(`${CONFIG.api}/admin/ping`, { headers: { authorization: 'Bearer ' + k } });
+        if (!r.ok) { $('#ownerMsg').textContent = ' Key not accepted.'; return; }
+        OWNER = k; try { localStorage.setItem('aclive.ownerKey', k); } catch {} renderOwnerBox(); if (DATA) renderAll();
+      } catch { $('#ownerMsg').textContent = ' Could not reach the server.'; } };
+    $('#ownerGo').onclick = go; $('#ownerKey').onkeydown = e => { if (e.key === 'Enter') go(); };
+  };
+}
+// Title: ✏️ to rename (blank = automatic name)
+function renderTitleEdit(d) {
+  if (!isOwner() || !d.trip?.id) return;
+  const h2 = $('#tripName'), b = document.createElement('button'); b.className = 'edit-btn'; b.textContent = '✏️ Rename'; h2.appendChild(b);
+  b.onclick = () => {
+    h2.innerHTML = `<span class="title-edit"><input id="titleIn" size="40" maxlength="80" value="${esc(d.trip.name)}">
+      <span class="btn-row" style="display:inline-flex;margin:0 0 0 6px"><button class="primary" id="titleSave">Save</button><button id="titleCancel">Cancel</button></span></span>
+      <div class="muted" style="font-size:.8rem;font-weight:400">Leave blank for the automatic name</div>`;
+    $('#titleIn').focus(); $('#titleIn').select();
+    $('#titleCancel').onclick = () => renderAll();
+    const save = async () => { const name = $('#titleIn').value.trim();
+      try { await ownerPost('/admin/activity/name', { id: d.trip.id, name }); if (name) { DATA.trip.name = name; } await refreshDetail(true); }
+      catch (e) { alertMsg(e.message); } };
+    $('#titleSave').onclick = save; $('#titleIn').onkeydown = e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') renderAll(); };
+  };
+}
+const alertMsg = m => { const el = document.createElement('div'); el.className = 'note-box'; el.textContent = m; $('#notesBody')?.prepend(el); $('#notesCard').hidden = false; };
+// Notes: public trip log. Links become clickable; everything else stays plain text.
+const linkify = t => esc(t).replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+function renderNotes(d) {
+  const card = $('#notesCard'), n = d.trip?.notes;
+  if (!n?.text && !isOwner()) { card.hidden = true; return; }
+  card.hidden = false;
+  $('#notesMeta').innerHTML = (n?.updated_at ? `updated ${fmtDT(n.updated_at)}` : '') + (isOwner() ? `<button class="edit-btn" id="notesEditBtn">✏️ ${n?.text ? 'Edit' : 'Add notes'}</button>` : '');
+  $('#notesBody').innerHTML = n?.text ? `<div class="notes-text">${linkify(n.text)}</div>` : '<div class="muted">No notes yet. Notes are public: everyone who opens this activity can read them.</div>';
+  const btn = $('#notesEditBtn'); if (!btn) return;
+  btn.onclick = () => {
+    $('#notesBody').innerHTML = `<div class="notes-edit"><textarea id="notesIn" placeholder="Trip log, conditions, gear, what went well…">${esc(n?.text || '')}</textarea>
+      <div class="btn-row"><button class="primary" id="notesSave">Save</button><button id="notesCancel">Cancel</button>
+      <span class="muted" style="font-size:.8rem">Public · plain text · links become clickable · save an empty box to delete</span></div></div>`;
+    $('#notesIn').focus();
+    $('#notesCancel').onclick = () => renderNotes(d);
+    $('#notesSave').onclick = async () => { const text = $('#notesIn').value;
+      try { const r = await ownerPost('/admin/activity/notes', { id: d.trip.id, text });
+        DATA.trip.notes = text.trim() ? { text, updated_at: r.updated_at || new Date().toISOString() } : null; DATA._finalView = null; renderAll(); }
+      catch (e) { alertMsg(e.message); } };
+  };
+}
+
 /* ---- Weather from the Worker (Open-Meteo + NWS). Sent: one position per hour of the track, plus the latest position. ---- */
 let WX = { id: null, at: 0, data: null, busy: false };
 function wxRequest(d) {
@@ -1944,8 +2028,8 @@ async function loadWeather(d) {
     if (j.pending) setTimeout(() => { if (DATA && DATA.trip?.id === body.id) loadWeather(DATA); }, 61e3);
   } catch (e) { console.warn('weather unavailable', e); WX.busy = false; }
 }
-async function refreshDetail() {
-  try { DATA = await loadTrack(CURRENT); loadWeather(DATA); renderAll(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
+async function refreshDetail(fresh = false) {
+  try { DATA = await loadTrack(CURRENT, fresh); loadWeather(DATA); renderAll(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
 addEventListener('hashchange', route);
@@ -1958,6 +2042,7 @@ setInterval(() => {
   if (!CURRENT) refreshLanding();
   else if (DATA && DATA.trip?.status !== 'ended') refreshDetail();
 }, CONFIG.refreshSec * 1000);
+renderOwnerBox();
 route();
 
 </script>
