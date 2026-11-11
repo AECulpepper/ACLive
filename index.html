@@ -246,6 +246,8 @@ tr.current td { background: var(--panel-2); }
 .tl .t b { display: block; color: var(--ink); font-weight: 500; }
 .chip { display: inline-block; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: 0 6px; margin-right: 6px;
         border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--muted); }
+.chip.route { border-left: 3px solid #7FC8A9; } .chip.mark { border-left: 3px solid #D9A86C; }
+.tl details summary { cursor: pointer; color: var(--muted); } .tl details ul { margin: 4px 0 0; padding-left: 18px; font-size: .9rem; }
 .chip.ir { border-left: 3px solid var(--series-ir); } .chip.lt { border-left: 3px solid var(--series-lt); } .chip.gap { border-left: 3px solid var(--plan); }
 
 details.debug { margin-top: 14px; }
@@ -430,6 +432,9 @@ footer p { margin: 0 0 6px; }
       Weather alerts: <a href="https://www.weather.gov/" target="_blank" rel="noopener">U.S. National Weather Service</a> (US only).
       Maps: <a href="https://www.cyclosm.org/" target="_blank" rel="noopener">CyclOSM</a> and <a href="https://opentopomap.org/" target="_blank" rel="noopener">OpenTopoMap</a> (CC BY-SA) tiles,
       map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL), shown with <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a>.
+      Default activity names: public lands from the USGS <a href="https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-overview" target="_blank" rel="noopener">Protected Areas Database (PAD-US)</a>;
+      towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
+      Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors, via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
   </footer>
 </div>
@@ -1003,7 +1008,8 @@ function derive(d) {
    ========================================================================= */
 function renderHeader(d, s) {
   $('#tripName').textContent = d.trip.name;
-  $('#tripSub').textContent = d.trip.subtitle;
+  const ri = routeInfo(s), st = ri?.start || (d.trip.town ? { text: `from ${d.trip.town}`, mi: null } : null);
+  $('#tripSub').textContent = d.trip.subtitle + (st ? ` · ${st.text}${st.mi ? ` · mi ${st.mi.toFixed(1)}` : ''}` : '');
   $('#mockBadge').style.display = CONFIG.dataSource === 'mock' ? '' : 'none';
   const age = s.last ? s.now - s.last.ts : null, f = freshness(age, s.ended);
   const pill = $('#statusPill'); pill.className = 'pill ' + f.cls;
@@ -1733,8 +1739,15 @@ function renderTimeline(d, s) {
     if (b.ts - a.ts > 30*MIN && a.session === b.session) ev.push({ t: a.ts, chip:'gap', tag:'No cell', html:`Out of service ${fmtDur(b.ts - a.ts)} (mi ${a.mi.toFixed(1)}–${b.mi.toFixed(1)} · km ${km(a.mi)}–${km(b.mi)})` });
   }
   if (!s.ended && s.lastLT && s.now - s.lastLT.ts > 30*MIN) ev.push({ t: s.lastLT.ts, chip:'gap', tag:'No cell', html:`Out of service since ${miKm(s.lastLT.mi)}: satellite only` });
+  const ri = routeInfo(s);
+  (ri?.events || []).forEach(e => ev.push({ t: e.ts, chip: e.type === 'passed' ? 'mark' : 'route', tag: e.type === 'passed' ? 'Landmark' : e.street ? 'Street' : 'Trail',
+    html: `${esc(e.text)} · ${miKm(e.mi)}`, street: !!e.street }));
   ev.sort((a,b) => b.t - a.t);
-  $('#timeline').innerHTML = ev.map(e => `<li><div class="t"><b>${fmtTime(e.t)}</b>${fmtDay(e.t)}, ${fmtDateShort(e.t)}</div>
+  // Three or more street turns in a row fold into one line (tap to see them)
+  const rows = []; for (let i = 0; i < ev.length;) { let j = i; while (j < ev.length && ev[j].street) j++;
+    if (j - i >= 3) { const g = ev.slice(i, j); rows.push({ t: g[0].t, chip: 'route', tag: 'Street', html: `<details><summary>${g.length} street turns · ${fmtTime(g.at(-1).t)}–${fmtTime(g[0].t)}</summary><ul>${g.map(x => `<li>${fmtTime(x.t)} · ${x.html}</li>`).join('')}</ul></details>` }); i = j; }
+    else { rows.push(ev[i]); i++; } }
+  $('#timeline').innerHTML = rows.map(e => `<li><div class="t"><b>${fmtTime(e.t)}</b>${fmtDay(e.t)}, ${fmtDateShort(e.t)}</div>
     <div><span class="chip ${e.chip}">${e.tag}</span>${e.html}</div></li>`).join('');
 }
 
@@ -1888,7 +1901,7 @@ function renderLanding() {
          a.final ? `<span class="chip" title="Watch file merged">${esc((a.final.fmt || 'file').toUpperCase())}</span>` : ''].join('');
     rows += `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
       <td class="t-thumb">${thumbSvg(a.thumb, 56, 40, { sw:1.6, color: a.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</td>
-      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a>${a.has_notes ? ' <span title="Has notes">📝</span>' : ''}<div class="act-sub">${a.name ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
+      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a>${a.has_notes ? ' <span title="Has notes">📝</span>' : ''}<div class="act-sub">${a.name || a.auto_place ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
       <td class="num hide-narrow">${a.dist_mi.toFixed(1)} <small>mi</small>${alt(km(a.dist_mi) + ' km')}</td>
       <td class="num hide-narrow">${n0(a.gain_ft)} <small>ft</small>${alt(mOf(a.gain_ft) + ' m')}</td>
       <td class="num hide-narrow">${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${alt(mOf(a.ele_max_ft) + ' m')}` : '—'}</td>
@@ -1909,6 +1922,7 @@ let DATA = null, CURRENT = null;
 function resetMap() { if (map) { map.remove(); map = null; } mapLayers = null; const old = document.getElementById('map'); old.replaceWith(Object.assign(document.createElement('div'), { id:'map' })); }
 function renderAll() {
   const D = viewOf(DATA), s = derive(D);
+  loadOsm(D, s);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
   renderMap(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
@@ -1931,6 +1945,211 @@ async function refreshLanding() {
   try { ACTS = await loadActivities(); renderLanding(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
+/* ---- Route events from OpenStreetMap: which named trails/streets you were on, turns, and landmarks passed ----
+   Input: track [{ts, lat, lon, mi}] (already privacy-trimmed), Overpass JSON. Output: events + start-location line.
+   Rules: a trail counts after ~200 m on it, a street after ~300 m AND a heading change of ≥45°; crossings never count. */
+const ROUTE = (() => {
+  const TRAIL_HW = new Set(['path', 'footway', 'track', 'bridleway', 'cycleway', 'steps', 'pedestrian']);
+  const STREET_HW = new Set(['residential', 'primary', 'secondary', 'tertiary', 'unclassified', 'living_street', 'trunk', 'service',
+    'primary_link', 'secondary_link', 'tertiary_link', 'road']);
+  const TRAIL_NAME = /\b(trail|path|greenway|trailway|track|loop|connector|singletrack)\b/i;
+  const OPT = { sample: 20, trailR: 25, streetR: 20, trailMin: 200, streetMin: 300, turnDeg: 45, againM: 1000, gapLeftM: 400 };
+
+  // Overpass query: named trails/streets within 30 m of the track; landmarks near it; parks and places near the start
+  function query(line, start) {
+    const L = line.map(p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`).join(',');
+    const S = `${start[0].toFixed(5)},${start[1].toFixed(5)}`;
+    return `[out:json][timeout:40];(
+way[highway][name](around:30,${L});
+way[highway][bridge][name](around:30,${L});
+node[highway=trailhead](around:90,${L});
+node[name][amenity=parking]["name"~"Trailhead|TH$",i](around:90,${L});
+node[name][tourism=viewpoint](around:70,${L});
+node[name][natural~"^(peak|saddle|spring)$"](around:110,${L});
+node[name][mountain_pass=yes](around:110,${L});
+way[name][natural=water](around:70,${L});
+nw[name][leisure=park](around:400,${S});
+node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"](around:1500,${S});
+);out tags geom qt;`;
+  }
+
+  // Local metres around a reference latitude
+  const proj = lat0 => { const kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540; return (lat, lon) => [lon * kx, lat * ky]; };
+
+  function parse(osm, P) {
+    const ways = [], marks = [], places = [];
+    for (const e of osm?.elements || []) {
+      const t = e.tags || {}, name = t.name;
+      const geom = e.type === 'way' ? (e.geometry || []).map(g => P(g.lat, g.lon)) : e.type === 'node' ? [P(e.lat, e.lon)] : [];
+      if (!geom.length) continue;
+      if (e.type === 'way' && t.highway && name) {
+        const trail = TRAIL_HW.has(t.highway) && t.footway !== 'sidewalk' || TRAIL_NAME.test(name);
+        if (trail || STREET_HW.has(t.highway) || t.footway === 'sidewalk')
+          ways.push({ name, kind: trail ? 'trail' : 'street', pts: geom });
+        if (t.bridge && t.bridge !== 'no' && /bridge/i.test(name)) marks.push({ name, kind: 'bridge', pts: geom, r: 25 });
+      } else if (t.highway === 'trailhead' || (t.amenity === 'parking' && name)) {
+        if (name) marks.push({ name, kind: 'trailhead', pts: geom, r: 75 });
+      } else if (t.tourism === 'viewpoint') marks.push({ name, kind: 'viewpoint', pts: geom, r: 60 });
+      else if (t.natural === 'peak') marks.push({ name, kind: 'peak', pts: geom, r: 100 });
+      else if (t.natural === 'saddle' || t.mountain_pass === 'yes') marks.push({ name, kind: 'pass', pts: geom, r: 90 });
+      else if (t.natural === 'spring') marks.push({ name, kind: 'spring', pts: geom, r: 60 });
+      else if (t.natural === 'water') marks.push({ name, kind: 'lake', pts: geom, r: 60 });
+      else if (t.leisure === 'park') places.push({ name, kind: 'park', pts: geom });
+      else if (t.place) places.push({ name, kind: t.place, pts: geom });
+    }
+    return { ways, marks, places };
+  }
+
+  // Track resampled every ~20 m, with time and mile interpolated
+  function resample(track, P) {
+    const out = []; let carry = 0;
+    for (let i = 0; i < track.length; i++) {
+      const p = track[i], xy = P(p.lat, p.lon);
+      if (!i) { out.push({ ...p, x: xy[0], y: xy[1], d: 0 }); continue; }
+      const a = track[i - 1], axy = P(a.lat, a.lon), seg = Math.hypot(xy[0] - axy[0], xy[1] - axy[1]);
+      if (seg > 2000) { out.push({ ...p, x: xy[0], y: xy[1], d: out.at(-1).d + seg }); carry = 0; continue; }   // signal gap: jump
+      let s = OPT.sample - carry;
+      while (s <= seg) { const f = s / seg;
+        out.push({ ts: a.ts + f * (p.ts - a.ts), mi: a.mi + f * (p.mi - a.mi), x: axy[0] + f * (xy[0] - axy[0]), y: axy[1] + f * (xy[1] - axy[1]), d: out.at(-1).d + OPT.sample });
+        s += OPT.sample; }
+      carry = seg - (s - OPT.sample);
+    }
+    return out;
+  }
+
+  const segDist = (px, py, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+    const t = L2 ? Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / L2)) : 0;
+    return Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy)); };
+
+  // Grid index of way segments (50 m cells)
+  function index(ways) {
+    const C = 50, grid = new Map(), key = (i, j) => i + ':' + j;
+    ways.forEach((w, wi) => { for (let k = 1; k < w.pts.length; k++) { const a = w.pts[k - 1], b = w.pts[k];
+      const i0 = Math.floor((Math.min(a[0], b[0]) - 30) / C), i1 = Math.floor((Math.max(a[0], b[0]) + 30) / C);
+      const j0 = Math.floor((Math.min(a[1], b[1]) - 30) / C), j1 = Math.floor((Math.max(a[1], b[1]) + 30) / C);
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const kk = key(i, j); if (!grid.has(kk)) grid.set(kk, []); grid.get(kk).push([wi, k]); } } });
+    return { near(x, y) { return grid.get(key(Math.floor(x / C), Math.floor(y / C))) || []; } };
+  }
+
+  const bearing = (a, b) => (Math.atan2(b.x - a.x, b.y - a.y) * 180 / Math.PI + 360) % 360;
+  const turnAt = (S, i) => {               // heading change around sample i (80 m before vs 80 m after)
+    const k = Math.round(80 / OPT.sample), a = S[Math.max(0, i - k)], m = S[i], b = S[Math.min(S.length - 1, i + k)];
+    if (a === m || m === b) return 0;
+    return ((bearing(m, b) - bearing(a, m) + 540) % 360) - 180;          // + = right
+  };
+
+  function events(track, osm) {
+    if (!track.length) return { events: [], start: null };
+    const P = proj(track[0].lat), { ways, marks, places } = parse(osm, P), S = resample(track, P), idx = index(ways);
+    // 1) Nearest named way per sample (trails preferred when a road runs right alongside)
+    const lab = S.map(s => { let bt = null, bs = null;
+      for (const [wi, k] of idx.near(s.x, s.y)) { const w = ways[wi], d = segDist(s.x, s.y, w.pts[k - 1], w.pts[k]);
+        if (w.kind === 'trail' ? d <= OPT.trailR : d <= OPT.streetR) { if (w.kind === 'trail') { if (!bt || d < bt.d) bt = { w, d }; } else if (!bs || d < bs.d) bs = { w, d }; } }
+      const pick = bt && (!bs || bt.d <= bs.d + 8) ? bt : bs; return pick ? pick.w.kind + '|' + pick.w.name : null; });
+    // 2) Runs of the same label; short interruptions inside a run (junctions, GPS wobble) are absorbed
+    let runs = []; lab.forEach((l, i) => { const r = runs.at(-1); if (r && r.l === l) r.i1 = i; else runs.push({ l, i0: i, i1: i }); });
+    const len = r => S[r.i1].d - S[r.i0].d + OPT.sample;
+    for (let changed = true; changed;) { changed = false;
+      for (let k = 1; k < runs.length - 1; k++) if (runs[k - 1].l === runs[k + 1].l && runs[k - 1].l && len(runs[k]) < 80) {
+        runs.splice(k - 1, 3, { l: runs[k - 1].l, i0: runs[k - 1].i0, i1: runs[k + 1].i1 }); changed = true; break; } }
+    // 3) Keep only runs long enough to be "on" that trail/street; merge neighbours with the same name
+    let conf = runs.filter(r => r.l && len(r) >= (r.l.startsWith('trail') ? OPT.trailMin : OPT.streetMin));
+    conf = conf.reduce((a, r) => { const p = a.at(-1); if (p && p.l === r.l) p.i1 = r.i1; else a.push({ ...r }); return a; }, []);
+    const ev = [], nm = l => l.split('|')[1], isTrail = l => l.startsWith('trail');
+    const at = (i, type, text, extra = {}) => ev.push({ ts: S[i].ts, mi: S[i].mi, type, text, ...extra });
+    for (let k = 1; k < conf.length; k++) {
+      const A = conf[k - 1], B = conf[k], gap = S[B.i0].d - S[A.i1].d;
+      if (gap > OPT.gapLeftM && isTrail(A.l)) at(A.i1, 'left', `Left ${nm(A.l)}`);
+      if (isTrail(B.l)) at(B.i0, 'joined', isTrail(A.l) && gap <= OPT.gapLeftM ? `Joined ${nm(B.l)} from ${nm(A.l)}` : `Joined ${nm(B.l)}`);
+      else if (isTrail(A.l) && gap <= OPT.gapLeftM) at(B.i0, 'left', `Left ${nm(A.l)} onto ${nm(B.l)}`);
+      else { const tn = turnAt(S, B.i0);                               // street to street: only a real turn counts
+        if (Math.abs(tn) >= OPT.turnDeg) at(B.i0, 'turned', `Turned ${tn > 0 ? 'right' : 'left'} onto ${nm(B.l)}`, { street: true }); }
+    }
+    // 4) Landmarks: closest approach within range; again after ≥1 km
+    for (const m of marks) { let best = null; const hits = [];
+      S.forEach((s, i) => { let d = Infinity;
+        if (m.pts.length === 1) d = Math.hypot(s.x - m.pts[0][0], s.y - m.pts[0][1]);
+        else for (let k = 1; k < m.pts.length; k++) d = Math.min(d, segDist(s.x, s.y, m.pts[k - 1], m.pts[k]));
+        if (d <= m.r) { if (!best || d < best.d) best = { i, d }; }
+        else if (best) { hits.push(best); best = null; } });
+      if (best) hits.push(best);
+      let lastD = -Infinity, n = 0;
+      for (const h of hits) { if (S[h.i].d - lastD < OPT.againM) continue; lastD = S[h.i].d;
+        at(h.i, 'passed', `${m.kind === 'bridge' ? 'Crossed' : 'Passed'} ${m.name}${n++ ? ' (again)' : ''}`, { mark: m.kind }); }
+    }
+    ev.sort((a, b) => a.ts - b.ts || (a.type === 'passed' ? -1 : b.type === 'passed' ? 1 : 0));   // trailhead before the trail it starts
+    // 5) Start location: trailhead passed (first 5 mi) → named path joined (first 3 mi) → park → nearby place
+    const s0 = S[0], m0 = track[0].mi ?? 0;
+    const th = ev.find(e => e.mark === 'trailhead' && e.mi - m0 <= 5);
+    const firstTrail = conf.find(r => isTrail(r.l) && S[r.i0].mi - m0 <= 3);
+    const dist0 = p => Math.min(...p.pts.map(q => Math.hypot(q[0] - s0.x, q[1] - s0.y)));
+    const park = places.filter(p => p.kind === 'park').map(p => ({ p, d: dist0(p) })).filter(x => x.d <= 400).sort((a, b) => a.d - b.d)[0];
+    const place = places.filter(p => p.kind !== 'park').map(p => ({ p, d: dist0(p) })).filter(x => x.d <= 1500).sort((a, b) => a.d - b.d)[0];
+    const mi = v => v - m0 >= 0.1 ? v - m0 : null;
+    const start = th ? { text: `from ${th.text.replace(/^Passed /, '')}`, mi: mi(th.mi) }
+      : firstTrail ? { text: `via ${nm(firstTrail.l)}`, mi: mi(S[firstTrail.i0].mi) }
+      : park ? { text: `from ${park.p.name}`, mi: null } : place ? { text: `from ${place.p.name}`, mi: null } : null;
+    return { events: ev, start, stats: { samples: S.length, ways: ways.length, marks: marks.length, runs: conf.length } };
+  }
+  return { query, events, OPT };
+})();
+
+/* ---- OpenStreetMap data for the route (Overpass), fetched by this browser and kept: finished = saved in the browser,
+   live = refreshed every 10 min as the track grows. Long routes are queried in pieces. ---- */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null };
+function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
+  const out = []; let last = null;
+  for (const p of pts) { if (!last || haversine(last, p) * 1609.34 >= 80) { out.push([p.lat, p.lon]); last = p; } }
+  if (pts.length) out.push([pts.at(-1).lat, pts.at(-1).lon]);
+  return out;
+}
+const haversine = (a, b) => { const R = 3958.8, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const q = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(q)); };
+async function overpass(q) {
+  let err;
+  for (const u of OVERPASS) { try { const r = await fetch(u, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+    if (r.ok) return await r.json(); err = new Error('Overpass HTTP ' + r.status); } catch (e) { err = e; } }
+  throw err;
+}
+async function loadOsm(d, s) {
+  if (!s.lt.length || OSM.busy) return;
+  const id = d.trip.id || 'x', key = 'aclive.osm.v1.' + id, live = !s.ended;
+  if (OSM.id !== id) { OSM = { id, at: 0, n: 0, data: null, busy: false, err: null };
+    if (!live) { try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c) { OSM.data = c; OSM.at = Date.now(); OSM.n = s.lt.length; return; } } catch {} } }
+  if (OSM.data && (!live || Date.now() - OSM.at < 10 * 60e3 || s.lt.length === OSM.n)) return;
+  if (CONFIG.dataSource === 'mock') { OSM.data = mockOsm(s); OSM.at = Date.now(); OSM.n = s.lt.length; return; }
+  OSM.busy = true;
+  try {
+    const line = routeLine(s.lt), start = [s.lt[0].lat, s.lt[0].lon], els = new Map();
+    for (let i = 0; i < line.length; i += 400) {                        // pieces of ~30 km
+      const j = await overpass(ROUTE.query(line.slice(Math.max(0, i - 1), i + 400), start));
+      for (const e of j.elements || []) els.set(e.type + e.id, e);
+    }
+    OSM = { id, at: Date.now(), n: s.lt.length, data: { elements: [...els.values()] }, busy: false, err: null };
+    if (!live) try { localStorage.setItem(key, JSON.stringify(OSM.data)); } catch {}
+    if (DATA && (DATA.trip.id || 'x') === id) renderAll();
+  } catch (e) { console.warn('OpenStreetMap lookup failed', e); OSM.busy = false; OSM.err = String(e); OSM.at = Date.now(); }
+}
+function routeInfo(s) {
+  if (!OSM.data || !s.lt.length) return null;
+  if (OSM._for !== OSM.at + ':' + s.lt.length) { OSM._r = ROUTE.events(s.lt.map(p => ({ ts: p.ts, lat: p.lat, lon: p.lon, mi: p.mi })), OSM.data); OSM._for = OSM.at + ':' + s.lt.length; }
+  return OSM._r;
+}
+// Demo mode: invent named streets/trails along the demo track so the feature can be seen
+function mockOsm(s) {
+  const P = s.lt, n = P.length, el = []; let id = 1;
+  const way = (name, highway, a, b) => el.push({ type: 'way', id: id++, tags: { name, highway }, geometry: P.slice(a, b + 1).map(p => ({ lat: p.lat, lon: p.lon })) });
+  const cut = [0, Math.floor(n * .08), Math.floor(n * .3), Math.floor(n * .55), Math.floor(n * .8), n - 1];
+  way('Main Ave', 'primary', cut[0], cut[1]); way('Animas River Trail', 'path', cut[1], cut[2]); way('Hermosa Creek Trail', 'path', cut[2], cut[3]);
+  way('Colorado Trail', 'path', cut[3], cut[4]); way('Junction Creek Rd', 'tertiary', cut[4], cut[5]);
+  const at = i => ({ lat: P[i].lat + 0.0002, lon: P[i].lon });
+  el.push({ type: 'node', id: id++, tags: { highway: 'trailhead', name: 'Lost Dog Trailhead' }, ...at(cut[1]) });
+  el.push({ type: 'node', id: id++, tags: { tourism: 'viewpoint', name: 'Talisen Overlook' }, ...at(Math.floor(n * .2)) });
+  el.push({ type: 'node', id: id++, tags: { natural: 'saddle', name: 'Blackhawk Pass' }, ...at(Math.floor(n * .6)) });
+  return { elements: el };
+}
+
 /* ---- Owner mode: only someone with the owner key can rename activities and write notes. The key stays in this browser;
    the Worker checks it on every save, so hidden controls alone can't change anything. ---- */
 let OWNER = (() => { try { return localStorage.getItem('aclive.ownerKey') || ''; } catch { return ''; } })();
