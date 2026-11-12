@@ -65,7 +65,26 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .week { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 20px; margin-bottom: 14px; }
 .week-h { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
 .week-h h2 { font-size: 1rem; margin: 0; } .week-h .muted { font-size: 0.82rem; }
-.week .now-stats { margin-bottom: 0; }
+.week .now-stats { margin-bottom: 0; gap: 10px 32px; }
+.week .now-stats .v { font-size: 1.75rem; }
+.week-last { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
+.week-h a { white-space: nowrap; }
+@media (max-width: 560px) { .week .now-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; } .week .now-stats .v { font-size: 1.35rem; } }
+.wk-ctl { display: inline-flex; gap: 6px; align-items: center; } .wk-ctl select, .wk-ctl button { font: inherit; font-size: .82rem; }
+.wk-chart-h { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+#wkChart svg { display: block; width: 100%; height: 96px; }
+.wk-table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 600px; margin-top: 8px; }
+.wk-table th { text-align: right; font-weight: 500; color: var(--muted); padding: 6px; border-bottom: 1px solid var(--line); }
+.wk-table td { text-align: right; padding: 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.wk-table th:first-child, .wk-table td:first-child { text-align: left; }
+.wk-table tr.wk { cursor: pointer; } .wk-table tr.wk:hover td { background: var(--panel-2); }
+.wk-table tr.cur td { background: color-mix(in srgb, var(--series-lt) 12%, transparent); }
+.wk-table tr.empty td { color: var(--muted); }
+.wk-table tr.sub td { text-align: left; color: var(--muted); padding: 3px 6px 3px 26px; border-bottom: none; font-size: .84rem; }
+.wk-table tr.sub.last td { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.wk-table tr.tot td { font-weight: 600; border-bottom: none; }
+.wk-table .ty { color: var(--muted); font-size: .78rem; margin-left: 4px; }
+.wk-table .tag { color: var(--series-lt); font-size: .72rem; margin-left: 6px; }
 .tl-status { font-size: 0.85rem; margin: 0 0 10px; }
 .now-main { flex: 1 1 320px; min-width: 0; }
 .eyebrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.9rem; }
@@ -251,7 +270,7 @@ tr.current td { background: var(--panel-2); }
 .tl .t b { display: block; color: var(--ink); font-weight: 500; }
 .chip { display: inline-block; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: 0 6px; margin-right: 6px;
         border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--muted); }
-.chip.route { border-left: 3px solid #7FC8A9; } .chip.mark { border-left: 3px solid #D9A86C; }
+.chip.route { border-left: 3px solid #7FC8A9; } .chip.photo { border-left: 3px solid #9B8FD9; } .chip.mark { border-left: 3px solid #D9A86C; }
 .tl details summary { cursor: pointer; color: var(--muted); } .tl details ul { margin: 4px 0 0; padding-left: 18px; font-size: .9rem; }
 .chip.ir { border-left: 3px solid var(--series-ir); } .chip.lt { border-left: 3px solid var(--series-lt); } .chip.gap { border-left: 3px solid var(--plan); }
 
@@ -267,6 +286,19 @@ footer p { margin: 0 0 6px; }
 .cp-ic { background: var(--panel); border: 2px solid var(--muted); border-radius: 50%; width: 12px !important; height: 12px !important; }
 .cp-ic.camp { border-radius: 3px; }
 .here-ic { position: relative; }
+.ph-pin img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); background: #ccc; display: block; }
+.ph-pin.sel img { border-color: var(--series-lt); width: 42px; height: 42px; margin: -4px; }
+.ph-strip { display: flex; gap: 8px; overflow-x: auto; padding: 10px 14px 12px; }
+.ph-strip button { flex: 0 0 auto; padding: 0; border: 2px solid transparent; border-radius: 8px; background: none; cursor: pointer; position: relative; }
+.ph-strip button.sel { border-color: var(--series-lt); }
+.ph-strip img { width: 84px; height: 63px; object-fit: cover; border-radius: 6px; display: block; }
+.ph-strip .hid { position: absolute; inset: 0; background: rgba(0,0,0,.55); color: #fff; font-size: .7rem; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+.ph-card { width: 260px; font-size: .82rem; line-height: 1.45; }
+.ph-card img { width: 100%; border-radius: 6px; display: block; margin-bottom: 6px; background: #ddd; }
+.ph-card .cap { font-weight: 600; margin-bottom: 2px; }
+.ph-card .row { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.ph-card .own { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; } .ph-card .own input { flex: 1; min-width: 0; }
+.leaflet-popup-content:has(.ph-card) { margin: 10px; }
 .here-ic span { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
                 background: var(--series-ir); border: 3px solid #fff; box-shadow: 0 0 0 2px var(--series-ir); }
 .here-ic span::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--series-ir); animation: ping 2s ease-out infinite; }
@@ -327,6 +359,21 @@ footer p { margin: 0 0 6px; }
     </section>
   </main>
 
+  <!-- ================= WEEKLY RECORDS ================= -->
+  <main id="weeksView" hidden>
+    <a class="d-back" href="#">← All activities</a>
+    <section class="card">
+      <div class="card-h"><h2>Weekly records</h2>
+        <span class="meta wk-ctl"><select id="wkYear" aria-label="Year"></select><button id="wkCsv">Download CSV</button></span></div>
+      <div class="card-b">
+        <div class="wk-chart-h">Miles per week · last 26 weeks</div>
+        <div id="wkChart"></div>
+        <div class="table-wrap"><table class="wk-table" id="wkTable"></table></div>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Tap a week to see its activities. Weeks run Monday–Sunday, Mountain Time. Steps from activities only.</p>
+      </div>
+    </section>
+  </main>
+
   <!-- ================= DETAIL ================= -->
   <main id="detail" hidden>
     <a class="d-back" href="#">← All activities</a>
@@ -355,9 +402,10 @@ footer p { margin: 0 0 6px; }
             <span class="lg"><i class="dt"></i>inReach</span>
             <span class="lg" id="lgPlan"><i class="pl"></i>Planned route</span>
             <span class="lg" id="lgDz" hidden><i class="dz"></i>No live signal</span>
+            <label class="lg" id="lgPh" hidden><input type="checkbox" id="phOn"> <span id="phCount"></span></label>
           </div>
         </div>
-        <div class="card-b" style="padding:10px 0 0"><div id="map"></div></div>
+        <div class="card-b" style="padding:10px 0 0"><div id="map"></div><div class="ph-strip" id="phStrip" hidden></div></div>
       </div>
       <div class="side">
         <div class="card">
@@ -442,7 +490,7 @@ footer p { margin: 0 0 6px; }
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.12.0</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.13.0</p>
   </footer>
 </div>
 <script>
@@ -1497,6 +1545,89 @@ function renderMapFallback(d, s) {     // if Leaflet CDN is blocked: plain SVG t
     <text x="${pad}" y="${H-6}" font-size="11" fill="var(--text-muted)">Map tiles unavailable — showing track only</text></svg>`;
 }
 
+/* ---- Photos: web copies in Drive (from "ACLive Photos"), placed on the track by the time they were taken ----
+   Placement uses the points this page shows, so photos inside the privacy trim (or outside the activity) are not shown.
+   Map pins live in their own layer and are only rebuilt when the photos or their spots change (popups stay open). */
+const phUrl = (id, w) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+const phAlt = (id, w) => `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
+let PH = { sig: '', layer: null, markers: {}, sel: null };
+let PH_ON = true; try { PH_ON = localStorage.getItem('aclive.photosOn') !== '0'; } catch {}
+function photoSpots(d, s) {
+  const pts = s.pts; if (pts.length < 2) return [];
+  const own = isOwner(), out = [];
+  for (const p of d.photos || []) {
+    if (p.hidden && !own) continue;
+    const t = Date.parse(p.t);
+    if (t < pts[0].ts - 60e3 || t > pts.at(-1).ts + 60e3) continue;          // outside the shown track (privacy trim)
+    let i = pts.findIndex(q => q.ts >= t); if (i < 0) i = pts.length - 1; if (i === 0) i = 1;
+    const a = pts[i - 1], b = pts[i], f = b.ts > a.ts ? clamp((t - a.ts) / (b.ts - a.ts), 0, 1) : 0;
+    const g = b.ts - a.ts > 30 * MIN ? (f < .5 ? a : b) : null;          // long gap (no signal): snap to the nearer side
+    const lat = g ? g.lat : a.lat + (b.lat - a.lat) * f, lon = g ? g.lon : a.lon + (b.lon - a.lon) * f, mi = g ? g.mi : a.mi + (b.mi - a.mi) * f;
+    const ele = a.ele != null && b.ele != null ? a.ele + (b.ele - a.ele) * f : (a.ele ?? b.ele);
+    const wx = (d.weather?.along || []).reduce((best, x) => { const dt = Math.abs(Date.parse(x.t) - t); return dt < 90 * MIN && (!best || dt < best.dt) ? { dt, x } : best; }, null)?.x;
+    out.push({ ...p, ts: t, lat, lon, mi, ele, wx });
+  }
+  return out.sort((x, y) => x.ts - y.ts);
+}
+function photoCard(p, list) {
+  const k = list.findIndex(x => x.id === p.id), own = isOwner();
+  return `<div class="ph-card"><a href="https://drive.google.com/file/d/${encodeURIComponent(p.id)}/view" target="_blank" rel="noopener">
+    <img src="${phUrl(p.id, 800)}" onerror="this.onerror=null;this.src='${phAlt(p.id, 800)}'" alt="${esc(p.caption || 'Photo')}" ${p.w && p.h ? `style="aspect-ratio:${p.w}/${p.h}"` : ''}></a>
+    ${p.caption ? `<div class="cap">${esc(p.caption)}</div>` : ''}
+    <div><b>${fmtDT(p.ts)}</b> · ${miKm(p.mi)}</div>
+    <div class="muted">${p.ele != null ? fmtFt(p.ele) : ''}${p.wx ? `${p.ele != null ? ' · ' : ''}${fC(p.wx.temp_f)} °C (${Math.round(p.wx.temp_f)} °F)` : ''}${p.hidden ? ' · <b>hidden from others</b>' : ''}</div>
+    <div class="row muted"><span>${k + 1} of ${list.length}</span><span>
+      ${k > 0 ? `<a href="#" data-ph-go="${esc(list[k - 1].id)}">‹ Prev</a>` : ''}${k > 0 && k < list.length - 1 ? ' · ' : ''}${k < list.length - 1 ? `<a href="#" data-ph-go="${esc(list[k + 1].id)}">Next ›</a>` : ''}
+      · <a href="https://drive.google.com/file/d/${encodeURIComponent(p.id)}/view" target="_blank" rel="noopener">Full size</a></span></div>
+    ${own ? `<div class="own"><input data-ph-cap="${esc(p.id)}" maxlength="300" placeholder="Caption" value="${esc(p.caption || '')}">
+      <button data-ph-save="${esc(p.id)}">Save</button><button data-ph-hide="${esc(p.id)}" data-v="${p.hidden ? 0 : 1}">${p.hidden ? 'Unhide' : 'Hide'}</button></div>` : ''}
+  </div>`;
+}
+function selectPhoto(id, pan = true) {
+  PH.sel = id;
+  document.querySelectorAll('#phStrip button').forEach(b => b.classList.toggle('sel', b.dataset.id === id));
+  Object.entries(PH.markers).forEach(([k, m]) => m.getElement()?.classList.toggle('sel', k === id));
+  const m = PH.markers[id];
+  if (m && map) { if (pan) map.panTo(m.getLatLng()); m.openPopup(); }
+  else if (!window.L) { const p = (PH.list || []).find(x => x.id === id); if (p) window.open(`https://drive.google.com/file/d/${encodeURIComponent(id)}/view`, '_blank'); }
+  document.querySelector(`#phStrip button[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+function renderPhotos(d, s) {
+  const list = photoSpots(d, s); PH.list = list;
+  const n = list.length, lg = $('#lgPh');
+  lg.hidden = !n; $('#phCount').textContent = `${n} photo${n === 1 ? '' : 's'} on map`; $('#phOn').checked = PH_ON;
+  $('#phOn').onchange = e => { PH_ON = e.target.checked; try { localStorage.setItem('aclive.photosOn', PH_ON ? '1' : '0'); } catch {} PH.sig = ''; renderPhotos(d, s); };
+  const strip = $('#phStrip'); strip.hidden = !n;
+  strip.innerHTML = list.map(p => `<button type="button" data-id="${esc(p.id)}" title="${esc((p.caption ? p.caption + ' · ' : '') + fmtDT(p.ts) + ' · ' + miKm(p.mi))}" class="${p.id === PH.sel ? 'sel' : ''}">
+    <img loading="lazy" src="${phUrl(p.id, 240)}" onerror="this.onerror=null;this.src='${phAlt(p.id, 240)}'" alt="">${p.hidden ? '<span class="hid">Hidden</span>' : ''}</button>`).join('');
+  strip.onclick = e => { const b = e.target.closest('button[data-id]'); if (b) selectPhoto(b.dataset.id); };
+  if (!window.L || !map) return;
+  const sig = PH_ON + '|' + list.map(p => `${p.id}:${p.lat.toFixed(5)},${p.lon.toFixed(5)}:${p.caption || ''}:${p.hidden ? 1 : 0}`).join(';');
+  if (sig === PH.sig && PH.layer && map.hasLayer(PH.layer)) return;
+  PH.sig = sig; if (PH.layer) PH.layer.remove(); PH.markers = {};
+  PH.layer = L.layerGroup().addTo(map);
+  if (!PH_ON) return;
+  for (const p of list) {
+    const m = L.marker([p.lat, p.lon], { icon: L.divIcon({ className: 'ph-pin' + (p.id === PH.sel ? ' sel' : ''), html: `<img src="${phUrl(p.id, 120)}" onerror="this.onerror=null;this.src='${phAlt(p.id, 120)}'" alt="">`, iconSize: [34, 34], iconAnchor: [17, 17] }), zIndexOffset: 500 })
+      .bindPopup(() => photoCard(p, PH.list), { maxWidth: 290, minWidth: 260, autoPanPadding: [20, 20] }).addTo(PH.layer);
+    m.on('click', () => selectPhoto(p.id, false));
+    PH.markers[p.id] = m;
+  }
+}
+// Popup links and owner controls (delegated: popups are rebuilt as they open)
+document.addEventListener('click', async e => {
+  const go = e.target.closest('[data-ph-go]'); if (go) { e.preventDefault(); selectPhoto(go.dataset.phGo); return; }
+  const save = e.target.closest('[data-ph-save]'), hide = e.target.closest('[data-ph-hide]');
+  if (!save && !hide) return;
+  const id = (save || hide).dataset.phSave || (save || hide).dataset.phHide;
+  const body = save ? { id, caption: document.querySelector(`[data-ph-cap="${CSS.escape(id)}"]`)?.value.trim() || '' } : { id, hidden: hide.dataset.v === '1' };
+  try { await ownerPost('/admin/photo/edit', body);
+    const p = (DATA.photos || []).find(x => x.id === id); if (p) Object.assign(p, save ? { caption: body.caption || null } : { hidden: body.hidden ? 1 : 0 });
+    PH.sig = ''; renderAll(); setTimeout(() => selectPhoto(id, false), 50);
+    refreshDetail(true);
+  } catch (err) { alert(err.message); }
+});
+
 /* ---- Elevation profile ---- */
 function renderProfile(d, s) {
   const host = $('#profile'), W = host.clientWidth, H = 230;
@@ -1766,6 +1897,7 @@ function renderTimeline(d, s) {
     if (b.ts - a.ts > 30*MIN && a.session === b.session) ev.push({ t: a.ts, chip:'gap', tag:'No cell', html:`Out of service ${fmtDur(b.ts - a.ts)} (mi ${a.mi.toFixed(1)}–${b.mi.toFixed(1)} · km ${km(a.mi)}–${km(b.mi)})` });
   }
   if (!s.ended && s.lastLT && s.now - s.lastLT.ts > 30*MIN) ev.push({ t: s.lastLT.ts, chip:'gap', tag:'No cell', html:`Out of service since ${miKm(s.lastLT.mi)}: satellite only` });
+  (PH.list || []).forEach(p => ev.push({ t: p.ts, chip: 'photo', tag: 'Photo', html: `<a href="#" data-ph-go="${esc(p.id)}">${esc(p.caption || 'Photo')}</a> · ${miKm(p.mi)}${p.hidden ? ' · hidden' : ''}` }));
   const ri = routeInfo(s);
   (ri?.events || []).forEach(e => ev.push({ t: e.ts, chip: e.type === 'passed' ? 'mark' : 'route', tag: e.type === 'passed' ? 'Landmark' : e.street ? 'Street' : 'Trail',
     html: `${esc(e.text)} · ${miKm(e.mi)}`, street: !!e.street }));
@@ -1943,30 +2075,122 @@ $('#viewTg').addEventListener('click', e => { const b = e.target.closest('button
    LANDING
    ========================================================================= */
 let ACTS = [];
-/* ---- This week (Mon–Sun, Mountain Time): every activity that starts in the week, live and imported.
-   Watch-file totals once merged (imports are watch files); live totals until then, flagged as provisional. ---- */
-function weekStart(ms) {
+/* ---- Weeks (Mon–Sun, Mountain Time): every activity that starts in the week, live and imported.
+   Watch-file totals once merged (imports are watch files); live totals until then. Steps: the watch's own count when
+   there is one, otherwise cadence × moving time (marked ≈); GPX/TCX without cadence add none. ---- */
+const mtDayKey = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(ms);   // YYYY-MM-DD
+function weekKey(ms) {                                     // Monday of the week (YYYY-MM-DD) for a moment
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })
     .formatToParts(ms).map(x => [x.type, x.value]));
   const dow = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(p.weekday);
-  return { y: +p.year, m: +p.month, d: +p.day - dow };              // Monday's calendar date (Date.UTC normalises day underflow)
+  return new Date(Date.UTC(+p.year, p.month - 1, p.day - dow)).toISOString().slice(0, 10);
 }
-function mtDayKey(ms) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(ms); }   // YYYY-MM-DD
+const addDays = (key, n) => { const d = new Date(key + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function weekLabel(key) {                                  // "09 Nov – 15 Nov 2026" / "28 Dec 2026 – 03 Jan 2027"
+  const e = addDays(key, 6), f = k => `${k.slice(8)} ${MON[+k.slice(5, 7) - 1]}`;
+  return key.slice(0, 4) === e.slice(0, 4) ? `${f(key)} – ${f(e)} ${e.slice(0, 4)}` : `${f(key)} ${key.slice(0, 4)} – ${f(e)} ${e.slice(0, 4)}`;
+}
+function actClass(t) {
+  t = String(t || '').toLowerCase();
+  if (/run|ultra|treadmill|track/.test(t)) return 'run';
+  if (/walk/.test(t)) return 'walk';
+  if (/hik|backpack|mountaineer|fastpack/.test(t)) return 'hike';
+  return 'other';
+}
+function actSteps(a) {
+  const exact = a.total_steps ?? a.final_total_steps;
+  if (exact != null && exact > 0) return { n: exact, est: false };
+  if (a.cad_avg_spm > 0 && a.moving_s > 0) return { n: Math.round(a.cad_avg_spm * a.moving_s / 60), est: true };
+  return null;
+}
+function weekStats(acts) {
+  const w = { n: acts.length, mi: 0, ft: 0, steps: 0, est: 0, noSteps: 0, hi: null, lo: null, types: { run: 0, walk: 0, hike: 0, other: 0 }, acts };
+  for (const a of acts) {
+    w.mi += a.dist_mi || 0; w.ft += a.gain_ft || 0; w.types[actClass(a.type)]++;
+    const st = actSteps(a); if (st) { w.steps += st.n; if (st.est) w.est++; } else w.noSteps++;
+    if (a.ele_max_ft != null) w.hi = w.hi == null ? a.ele_max_ft : Math.max(w.hi, a.ele_max_ft);
+    if (a.ele_min_ft != null) w.lo = w.lo == null ? a.ele_min_ft : Math.min(w.lo, a.ele_min_ft);
+  }
+  return w;
+}
+function weeksIndex() {                                    // Monday key -> activities
+  const m = new Map();
+  for (const a of ACTS) { if (!a.start) continue; const k = weekKey(Date.parse(a.start)); if (!m.has(k)) m.set(k, []); m.get(k).push(a); }
+  return m;
+}
+const typesLine = (t, short) => ['run', 'walk', 'hike', 'other'].filter(k => t[k]).map(k => short ? t[k] + k[0] : `${t[k]} ${k}`).join(short ? ' ' : ' · ');
 function renderWeek(now) {
-  const w = weekStart(now), keys = [];
-  for (let i = 0; i < 7; i++) keys.push(new Date(Date.UTC(w.y, w.m - 1, w.d + i)).toISOString().slice(0, 10));
-  const inWeek = ACTS.filter(a => a.start && keys.includes(mtDayKey(Date.parse(a.start))));
-  let mi = 0, ft = 0, prov = 0;
-  for (const a of inWeek) { mi += a.dist_mi || 0; ft += a.gain_ft || 0; if (a.kind !== 'import' && !a.final) prov++; }
-  const dm = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })
-    .replace(/^(\w+), (\w+) (\d+)$/, '$1, $3 $2');                                       // "Mon, 9 Nov"
-  $('#weekCard').innerHTML = `<div class="week-h"><h2>This week</h2><span class="muted">${dm(keys[0])} – ${dm(keys[6])}${
-      prov ? ` · ${prov} activit${prov === 1 ? 'y' : 'ies'} from live data` : ''}</span></div>
+  const idx = weeksIndex(), cur = weekKey(now), prev = addDays(cur, -7);
+  const w = weekStats(idx.get(cur) || []), p = weekStats(idx.get(prev) || []);
+  const stepsAlt = w.est ? `${w.est} estimated` : w.n && w.noSteps === w.n ? 'no step data' : '';
+  const fig = (k, v, alt0) => `<div><div class="k">${k}</div><div class="v">${v}</div>${alt0 != null ? alt(alt0) : ''}</div>`;
+  $('#weekCard').innerHTML = `<div class="week-h"><h2>This week</h2><span class="muted">${weekLabel(cur)} · <a href="#weeks">All weeks →</a></span></div>
     <div class="now-stats">
-      <div><div class="k">Distance</div><div class="v">${mi.toFixed(1)}<small>mi</small></div>${alt(km(mi) + ' km')}</div>
-      <div><div class="k">Vert</div><div class="v">${n0(ft)}<small>ft</small></div>${alt(mOf(ft) + ' m')}</div>
-      <div><div class="k">Activities</div><div class="v">${inWeek.length}</div></div>
-    </div>`;
+      ${fig('Distance', `${w.mi.toFixed(1)}<small>mi</small>`, km(w.mi) + ' km')}
+      ${fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m')}
+      ${fig('Activities', w.n, typesLine(w.types) || '')}
+      ${fig('Steps', w.steps ? `${w.est ? '≈ ' : ''}${n0(w.steps)}` : '—', stepsAlt)}
+      ${fig('High point', w.hi != null ? `${n0(w.hi)}<small>ft</small>` : '—', w.hi != null ? mOf(w.hi) + ' m' : '')}
+      ${fig('Low point', w.lo != null ? `${n0(w.lo)}<small>ft</small>` : '—', w.lo != null ? mOf(w.lo) + ' m' : '')}
+    </div>
+    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}${p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}` : 'no activities'}</div>`;
+}
+
+/* ---- Weekly records view (#weeks) ---- */
+let WK_OPEN = new Set(), WK_YEAR = null;
+function weeksRows(year) {
+  const idx = weeksIndex(), now = Date.now(), cur = weekKey(now);
+  const keys = [...idx.keys()].sort(); if (!keys.length) return { rows: [], cur };
+  const first = keys[0], rows = [];
+  for (let k = cur; k >= first; k = addDays(k, -7)) {
+    const endYear = addDays(k, 6).slice(0, 4), w = weekStats(idx.get(k) || []);
+    if (year !== 'all' && k.slice(0, 4) !== year && endYear !== year) continue;
+    if (year === 'all' && !w.n && now - Date.parse(k) > 365 * 864e5) continue;      // "All": skip empty weeks older than a year
+    rows.push({ k, w });
+  }
+  return { rows, cur };
+}
+function renderWeeks() {
+  const years = [...new Set(ACTS.filter(a => a.start).map(a => mtDayKey(Date.parse(a.start)).slice(0, 4)))].sort().reverse();
+  if (!WK_YEAR) WK_YEAR = years[0] || String(new Date().getFullYear());
+  const sel = $('#wkYear');
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('') + '<option value="all">All</option>';
+  sel.value = WK_YEAR; sel.onchange = () => { WK_YEAR = sel.value; renderWeeks(); };
+  // chart: last 26 weeks, miles
+  const idx = weeksIndex(), cur = weekKey(Date.now()), bars = [];
+  for (let i = 25; i >= 0; i--) { const k = addDays(cur, -7 * i); bars.push({ k, mi: weekStats(idx.get(k) || []).mi }); }
+  const W = $('#wkChart').clientWidth || 600, H = 96, top = Math.max(1, ...bars.map(b => b.mi)), bw = W / bars.length;
+  $('#wkChart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars.map((b, i) => {
+    const h = b.mi / top * (H - 16), x = i * bw + 2;
+    return `<rect x="${x.toFixed(1)}" y="${(H - 2 - h).toFixed(1)}" width="${Math.max(2, bw - 4).toFixed(1)}" height="${Math.max(h, b.mi ? 1.5 : 0).toFixed(1)}" rx="2" fill="var(--series-lt)" opacity="${b.k === cur ? 1 : .55}"><title>${weekLabel(b.k)}: ${b.mi.toFixed(1)} mi</title></rect>`; }).join('')}
+    <line x1="0" x2="${W}" y1="${H - 1.5}" y2="${H - 1.5}" stroke="var(--line)"/><text x="4" y="11" font-size="11" fill="var(--muted)">${top.toFixed(0)} mi</text></svg>`;
+  // table
+  const { rows } = weeksRows(WK_YEAR);
+  const all = weekStats(rows.flatMap(r => r.w.acts));
+  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Activities</th><th>Steps</th><th>High</th><th>Low</th></tr></thead>`;
+  const body = rows.map(({ k, w }) => {
+    const open = WK_OPEN.has(k), c = k === cur ? ' cur' : '';
+    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="6">no activities</td></tr>`;
+    const main = `<tr class="wk${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td>
+      <td>${w.mi.toFixed(1)} mi</td><td>${n0(w.ft)} ft</td><td>${w.n}<span class="ty">${typesLine(w.types, true)}</span></td>
+      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
+    if (!open) return main;
+    const subs = [...w.acts].sort((a, b) => a.start.localeCompare(b.start));
+    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="7"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft</td></tr>`).join('');
+  }).join('');
+  const tot = `<tr class="tot"><td>${WK_YEAR === 'all' ? 'All' : WK_YEAR} total · ${rows.length} weeks</td><td>${n0(all.mi)} mi</td><td>${n0(all.ft)} ft</td><td>${all.n}</td>
+    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : all.steps >= 1e6 ? (all.steps / 1e6).toFixed(2) + ' M' : n0(all.steps)}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
+  $('#wkTable').innerHTML = head + '<tbody>' + body + tot + '</tbody>';
+  $('#wkTable').onclick = e => { if (e.target.closest('a')) return; const r = e.target.closest('tr.wk'); if (!r) return;
+    const k = r.dataset.k; WK_OPEN.has(k) ? WK_OPEN.delete(k) : WK_OPEN.add(k); renderWeeks(); };
+  $('#wkCsv').onclick = () => {
+    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'steps', 'steps_estimated', 'high_ft', 'low_ft'].join(',')];
+    for (const { k, w } of rows) lines.push([k, addDays(k, 6), w.mi.toFixed(2), (w.mi * KM_PER_MI).toFixed(2), Math.round(w.ft), Math.round(w.ft * M_PER_FT), w.n,
+      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.hi ?? '', w.lo ?? ''].join(','));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+    a.download = `ACLive_weeks_${WK_YEAR}_${mtDayKey(Date.now()).replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
 }
 function renderLanding() {
   const now = Date.now();
@@ -2042,7 +2266,7 @@ function renderAll() {
   loadOsm(D, s);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
-  renderMap(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
+  renderMap(D, s); renderPhotos(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
 }
 
 /* =========================================================================
@@ -2051,15 +2275,16 @@ function renderAll() {
 function setStatus(state, text) { const el = $('#siteStatus'); el.dataset.state = state; $('#siteStatusText').textContent = text; }
 async function route() {
   const h = decodeURIComponent(location.hash.slice(1));
-  const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null;
-  $('#landing').hidden = !!id; $('#detail').hidden = !id;
+  const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks';
+  $('#landing').hidden = !!id || weeks; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks;
+  if (weeks) { document.title = 'Weekly records · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); return; }
   if (!id) { document.title = 'ACLive'; CURRENT = null; await refreshLanding(); return; }
   if (id !== CURRENT) { CURRENT = id; DATA = null; VIEW = 'final'; resetMap(); window.scrollTo(0, 0); }
   await refreshDetail();
 }
 async function refreshLanding() {
   setStatus('loading', 'Loading activities…');
-  try { ACTS = await loadActivities(); renderLanding(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
+  try { ACTS = await loadActivities(); renderLanding(); if (!$('#weeksView').hidden) renderWeeks(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
 /* ---- Route events from OpenStreetMap: which named trails/streets you were on, turns, and landmarks passed ----
@@ -2219,7 +2444,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.12.0';
+const VERSION = 'v0.13.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
