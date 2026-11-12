@@ -62,6 +62,11 @@ button:hover, .btn:hover { border-color: var(--muted); }
 /* ---------- Landing: now ---------- */
 .now { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: 18px 20px; margin-bottom: 36px; display: flex; gap: 20px 28px; flex-wrap: wrap; justify-content: space-between; }
 .now.live { border-left: 3px solid var(--series-lt); }
+.week { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 20px; margin-bottom: 14px; }
+.week-h { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.week-h h2 { font-size: 1rem; margin: 0; } .week-h .muted { font-size: 0.82rem; }
+.week .now-stats { margin-bottom: 0; }
+.tl-status { font-size: 0.85rem; margin: 0 0 10px; }
 .now-main { flex: 1 1 320px; min-width: 0; }
 .eyebrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.9rem; }
 .now-title { font-size: clamp(1.5rem, 3vw, 2rem); margin: 6px 0 0; }
@@ -309,6 +314,7 @@ footer p { margin: 0 0 6px; }
 
   <!-- ================= LANDING ================= -->
   <main id="landing">
+    <section aria-label="This week"><div id="weekCard" class="week"></div></section>
     <section aria-label="Current activity"><div id="nowCard" class="now"></div></section>
     <section aria-labelledby="actTitle">
       <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted" id="actCount"></span></div>
@@ -404,8 +410,8 @@ footer p { margin: 0 0 6px; }
         <div class="card-b" style="overflow-x:auto"><table id="cpTable"></table></div>
       </div>
       <div class="card">
-        <div class="card-h"><h2>Timeline</h2><span class="meta">newest first</span></div>
-        <div class="card-b"><ul class="tl" id="timeline"></ul></div>
+        <div class="card-h"><h2>Timeline</h2><span class="meta">newest first <span id="tlOwner"></span></span></div>
+        <div class="card-b"><p class="muted tl-status" id="tlStatus" hidden></p><ul class="tl" id="timeline"></ul></div>
       </div>
     </section>
 
@@ -434,8 +440,9 @@ footer p { margin: 0 0 6px; }
       map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL), shown with <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a>.
       Default activity names: public lands from the USGS <a href="https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-overview" target="_blank" rel="noopener">Protected Areas Database (PAD-US)</a>;
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
-      Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors, via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
+      Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.12.0</p>
   </footer>
 </div>
 <script>
@@ -924,12 +931,16 @@ function derive(d) {
   // Where you are along the planned route. Repo routes: match each position to the route, only moving forward
   // (handles loops and out-and-backs; detours just hold the last on-route spot). Otherwise distance traveled.
   let posMi = Math.min(curMi, totalMi);
+  const arrive = {};                                                   // checkpoint mi -> first time reached (repo routes)
   if (!freeform && d.trip?.course_src === 'repo' && course.length > 1) {
-    let k = 0;
+    let k = Math.max(0, course.findIndex(c => c.mi >= (d.trip.route_start_mi || 0)));
+    const cpMi = (d.checkpoints || []).map(c => c.mi).sort((a, b) => a - b); let ci = 0;
+    while (ci < cpMi.length && cpMi[ci] < course[k].mi - 0.05) ci++;
     for (const p of pts) {
       const lim = course[k].mi + 1.0; let best = -1, bd = 0.1;           // look up to 1 mi ahead; on-route = within 160 m
       for (let j = k; j < course.length && course[j].mi <= lim; j++) { const dd = hav(course[j], p); if (dd < bd) { bd = dd; best = j; } }
       if (best >= 0) k = best;
+      while (ci < cpMi.length && course[k].mi >= cpMi[ci] - 0.02) { arrive[cpMi[ci]] = p.ts; ci++; }
     }
     posMi = course[k].mi;
   }
@@ -946,7 +957,8 @@ function derive(d) {
 
   // Courses from the watch have no planned times: derive them from the pace model
   const cps = (d.checkpoints || []).map(c => ({ ...c, plannedDwellMin: c.plannedDwellMin ?? 0,
-    plannedArrive: c.plannedArrive ?? new Date(Date.parse(d.trip.start) + planMovingMin(d.course, 0, c.mi) * MIN).toISOString() }))
+    actualArrive: c.actualArrive ?? (arrive[c.mi] != null ? new Date(arrive[c.mi]).toISOString() : undefined),
+    plannedArrive: c.plannedArrive ?? new Date(Date.parse(d.trip.start) + planMovingMin(d.course, d.trip.route_start_mi || 0, c.mi) * MIN).toISOString() }))
     .map(c => ({ ...c, pa: Date.parse(c.plannedArrive),
     aa: c.actualArrive ? Date.parse(c.actualArrive) : null, ad: c.actualDepart ? Date.parse(c.actualDepart) : null }));
   let prevCp = null, nextCp = null, delta = null;
@@ -966,7 +978,7 @@ function derive(d) {
   // vertical: planned course -> exact; freeform track -> 10 ft hysteresis to damp GPS/baro noise
   let gainSoFar = 0;
   if (!courseEle) { let ref = trackProf[0]?.ele; for (const c of trackProf) { if (c.ele - ref >= 10) { gainSoFar += c.ele - ref; ref = c.ele; } else if (c.ele < ref) ref = c.ele; } }
-  else gainSoFar = gainBetween(course, 0, posMi);
+  else gainSoFar = gainBetween(course, d.trip?.route_start_mi || 0, posMi);   // Day 2+: from where today started
   // Current elevation and its change over the last 30 min
   const eLast = [...pts].reverse().find(p => p.ele != null) ?? null;
   const eAgo = eLast ? [...pts].reverse().find(p => p.ele != null && p.ts <= eLast.ts - 30*MIN) ?? null : null;
@@ -1250,6 +1262,7 @@ function drawWxChart(s, along, fc) {
   const t0 = Math.min(series[0].ts, s.pts[0].ts), t1 = Math.max(series.at(-1).ts, s.ended ? s.pts.at(-1).ts : 0);
   const tk = timeTicks(t0, t1), gap = 14, m = { l: 52, r: 52, top: 6, b: tk.two ? 36 : 22 };
   const W = host.clientWidth, iw = W - m.l - m.r;
+  if (W < 160) return;                       // not laid out yet (hidden tab): the resize handler redraws
   const H = m.top + panels.reduce((a, p) => a + p.h + gap, 0) + m.b - gap;
   const X = t => m.l + (t - t0) / Math.max(t1 - t0, 1) * iw, bw = Math.max(2, iw / series.length * 0.7);
   const obs = series.filter(x => !x.fc), fut = fc.length ? [obs.at(-1), ...series.filter(x => x.fc)].filter(Boolean) : [];
@@ -1487,6 +1500,7 @@ function renderMapFallback(d, s) {     // if Leaflet CDN is blocked: plain SVG t
 /* ---- Elevation profile ---- */
 function renderProfile(d, s) {
   const host = $('#profile'), W = host.clientWidth, H = 230;
+  if (W < 160) return;                       // not laid out yet (hidden tab): the resize handler redraws
   const P = s.profile, ahead = s.freeform || s.courseEle;   // ahead = projected elevation exists for the route ahead
   if (P.length < 2) { host.querySelector('svg')?.remove(); host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} 60"><text x="10" y="34" font-size="12" fill="var(--text-muted)">Elevation profile appears once there are a few positions.</text></svg>`); return; }
   const m = { l: 46, r: 46, t: 44, b: 26 };   // right margin holds the meters axis
@@ -1664,6 +1678,7 @@ function renderEffort(d, s) {
   const host = $('#effort'); host.querySelector('svg')?.remove();
   if (pts.length < 2) return;
   const multiAx = (s.ended ? s.last?.ts - s.pts[0]?.ts : s.now - s.pts[0]?.ts) > 24*HR;
+  if (host.clientWidth < 160) return;        // not laid out yet (hidden tab): the resize handler redraws
   const W = host.clientWidth, H = multiAx ? 184 : 170, m = { l: 46, r: 12, t: 10, b: multiAx ? 38 : 24 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
   const t0 = pts[0].ts, t1 = pts.at(-1).ts;
   const hMin = Math.floor((s.hr.min - 5) / 10) * 10, hMax = Math.ceil((s.hr.max + 5) / 10) * 10;
@@ -1759,6 +1774,7 @@ function renderTimeline(d, s) {
   const rows = []; for (let i = 0; i < ev.length;) { let j = i; while (j < ev.length && ev[j].street) j++;
     if (j - i >= 3) { const g = ev.slice(i, j); rows.push({ t: g[0].t, chip: 'route', tag: 'Street', html: `<details><summary>${g.length} street turns · ${fmtTime(g.at(-1).t)}–${fmtTime(g[0].t)}</summary><ul>${g.map(x => `<li>${fmtTime(x.t)} · ${x.html}</li>`).join('')}</ul></details>` }); i = j; }
     else { rows.push(ev[i]); i++; } }
+  renderTimelineStatus();
   $('#timeline').innerHTML = rows.map(e => `<li><div class="t"><b>${fmtTime(e.t)}</b>${fmtDay(e.t)}, ${fmtDateShort(e.t)}</div>
     <div><span class="chip ${e.chip}">${e.tag}</span>${e.html}</div></li>`).join('');
 }
@@ -1839,13 +1855,20 @@ async function attachRepoRoute(d) {
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(startTs);   // YYYY-MM-DD
   const p0 = (d.points || []).find(p => p.lat != null);
   for (const e of REPO.list) {
-    if (!e.file || (e.activity ? e.activity !== d.trip.id : e.date !== day)) continue;
-    const course = REPO.gpx[e.file] ?? (REPO.gpx[e.file] = await loadGpx('routes/' + e.file));
+    const dated = e.from ? day >= e.from && day <= (e.to || e.from) : e.date === day;     // multiday: "from"/"to"
+    if (!e.file || (e.activity ? e.activity !== d.trip.id : !dated)) continue;
+    const g = REPO.gpx[e.file] ?? (REPO.gpx[e.file] = await loadGpx('routes/' + e.file));
+    const course = g?.course;
     if (!course || course.length < 2) continue;
-    if (!e.activity && p0 && Math.min(...course.map(c => hav(c, p0))) > 2 * 0.621) continue;   // 2 km
-    d.course = course; d.checkpoints = d.checkpoints || [];
-    d.trip.course_src = 'repo';
-    d.trip.subtitle = `Route: ${e.name || e.file.replace(/\.gpx$/i, '').replace(/_/g, ' ')} · ${course.at(-1).mi.toFixed(1)} mi`;
+    if (!e.activity && p0 && Math.min(...course.map(c => hav(c, p0))) > 2 * 0.621) continue;   // starts within 2 km of the route
+    // Where on the route this activity starts: the first pass within 160 m of the first position (Day 2+ of a multiday)
+    let startMi = 0;
+    if (p0) { const near = course.find(c => hav(c, p0) < 0.1); startMi = near ? near.mi : course.reduce((a, c) => hav(c, p0) < hav(a, p0) ? c : a).mi; }
+    if (startMi < 0.3) startMi = 0;
+    d.course = course; d.trip.course_src = 'repo'; d.trip.route_start_mi = startMi;
+    d.checkpoints = g.cps.filter(c => c.mi >= startMi - 0.1).map(c => ({ ...c }));   // GPX waypoints on or near the route
+    d.trip.subtitle = `Route: ${e.name || e.file.replace(/\.gpx$/i, '').replace(/_/g, ' ')} · ${course.at(-1).mi.toFixed(1)} mi` +
+      (startMi ? ` · from mi ${startMi.toFixed(1)}` : '');
     return;
   }
 }
@@ -1862,7 +1885,21 @@ async function loadGpx(url) {
     if (prev) { const dd = hav(prev, p); if (dd < 1e-5) continue; mi += dd; }
     prev = p; out.push({ mi: +mi.toFixed(4), lat: p.lat, lon: p.lon, ele: lastE });
   }
-  return out.filter(c => c.ele != null);
+  const course = out.filter(c => c.ele != null);
+  // Waypoints → checkpoints (only those within ~300 m of the route), sorted along it
+  const cps = [];
+  for (const w of x.getElementsByTagName('wpt')) {
+    const p = { lat: +w.getAttribute('lat'), lon: +w.getAttribute('lon') }; let best = null, bd = Infinity;
+    for (const c of course) { const dd = hav(c, p); if (dd < bd) { bd = dd; best = c; } }
+    if (!best || bd > 0.19) continue;
+    const txt = k => w.getElementsByTagName(k)[0]?.textContent?.trim() || '';
+    const kind = (txt('sym') + ' ' + txt('type') + ' ' + txt('name')).toLowerCase();
+    const dwell = +(txt('desc').match(/(\d+)\s*min/i)?.[1] || 0);          // "stop 20 min" in the waypoint description
+    cps.push({ name: txt('name') || 'Waypoint', mi: best.mi, lat: p.lat, lon: p.lon, plannedDwellMin: dwell,
+      type: /summit|peak|pass|saddle/.test(kind) ? 'pass' : /water|spring|aid|food|drink/.test(kind) ? 'water' : /camp|tent|shelter/.test(kind) ? 'camp' : 'view' });
+  }
+  cps.sort((a, b) => a.mi - b.mi);
+  return { course, cps };
 }
 
 /* ---- Final (watch file) vs Live (what crew saw) ---- */
@@ -1906,8 +1943,34 @@ $('#viewTg').addEventListener('click', e => { const b = e.target.closest('button
    LANDING
    ========================================================================= */
 let ACTS = [];
+/* ---- This week (Mon–Sun, Mountain Time): every activity that starts in the week, live and imported.
+   Watch-file totals once merged (imports are watch files); live totals until then, flagged as provisional. ---- */
+function weekStart(ms) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })
+    .formatToParts(ms).map(x => [x.type, x.value]));
+  const dow = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(p.weekday);
+  return { y: +p.year, m: +p.month, d: +p.day - dow };              // Monday's calendar date (Date.UTC normalises day underflow)
+}
+function mtDayKey(ms) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(ms); }   // YYYY-MM-DD
+function renderWeek(now) {
+  const w = weekStart(now), keys = [];
+  for (let i = 0; i < 7; i++) keys.push(new Date(Date.UTC(w.y, w.m - 1, w.d + i)).toISOString().slice(0, 10));
+  const inWeek = ACTS.filter(a => a.start && keys.includes(mtDayKey(Date.parse(a.start))));
+  let mi = 0, ft = 0, prov = 0;
+  for (const a of inWeek) { mi += a.dist_mi || 0; ft += a.gain_ft || 0; if (a.kind !== 'import' && !a.final) prov++; }
+  const dm = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(/^(\w+), (\w+) (\d+)$/, '$1, $3 $2');                                       // "Mon, 9 Nov"
+  $('#weekCard').innerHTML = `<div class="week-h"><h2>This week</h2><span class="muted">${dm(keys[0])} – ${dm(keys[6])}${
+      prov ? ` · ${prov} activit${prov === 1 ? 'y' : 'ies'} from live data` : ''}</span></div>
+    <div class="now-stats">
+      <div><div class="k">Distance</div><div class="v">${mi.toFixed(1)}<small>mi</small></div>${alt(km(mi) + ' km')}</div>
+      <div><div class="k">Vert</div><div class="v">${n0(ft)}<small>ft</small></div>${alt(mOf(ft) + ' m')}</div>
+      <div><div class="k">Activities</div><div class="v">${inWeek.length}</div></div>
+    </div>`;
+}
 function renderLanding() {
   const now = Date.now();
+  renderWeek(now);
   const live = ACTS.find(a => a.status === 'live');
   const hero = $('#nowCard');
   if (live) {
@@ -2150,8 +2213,14 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
 
 /* ---- OpenStreetMap data for the route (Overpass), fetched by this browser and kept: finished = saved in the browser,
    live = refreshed every 10 min as the track grows. Long routes are queried in pieces. ---- */
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
-let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null };
+/* ---- Map features along the track (trails, streets, landmarks) for the Timeline ----
+   1. Stored result from the Worker (built once by whichever page got there first) → instant for every viewer.
+   2. Otherwise built here from the public OpenStreetMap (Overpass) servers, each with a time limit.
+   3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
+      retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+const VERSION = 'v0.12.0';
+let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
   for (const p of pts) { if (!last || haversine(last, p) * 1609.34 >= 80) { out.push([p.lat, p.lon]); last = p; } }
@@ -2160,30 +2229,125 @@ function routeLine(pts) {             // track thinned to a vertex every ~80 m (
 }
 const haversine = (a, b) => { const R = 3958.8, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
   const q = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(q)); };
+async function fetchT(url, opt = {}, ms = 35000) {   // fetch with a time limit
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, { ...opt, signal: ac.signal }); } finally { clearTimeout(t); }
+}
 async function overpass(q) {
   let err;
-  for (const u of OVERPASS) { try { const r = await fetch(u, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
-    if (r.ok) return await r.json(); err = new Error('Overpass HTTP ' + r.status); } catch (e) { err = e; } }
+  for (const u of OVERPASS) { try {
+    const r = await fetchT(u, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+    if (!r.ok) { err = new Error('Overpass HTTP ' + r.status); continue; }
+    const j = await r.json();
+    if (j.remark && /error|timed out|out of memory/i.test(j.remark)) { err = new Error('Overpass: ' + j.remark); continue; }
+    return j; } catch (e) { err = e; } }
   throw err;
 }
-async function loadOsm(d, s) {
+// Keep only what can matter for this track: ways within ~150 m, landmarks ~250 m,
+// parks within 600 m and places within 2 km of the start. Keeps the stored result small.
+function nearTrack(elements, line, start) {
+  const C = 0.0015, cells = new Set(), k = (a, b) => Math.floor(a / C) + ',' + Math.floor(b / C);
+  for (let i = 0; i < line.length; i++) {
+    const [a, b] = line[i], [c, d] = line[i + 1] || line[i], n = Math.max(1, Math.ceil(Math.max(Math.abs(c - a), Math.abs(d - b)) / (C / 2)));
+    for (let j = 0; j <= n; j++) { const y = a + (c - a) * j / n, x = b + (d - b) * j / n;
+      for (const dy of [-C, 0, C]) for (const dx of [-C, 0, C]) cells.add(k(y + dy, x + dx)); }
+  }
+  const near = (lat, lon) => cells.has(k(lat, lon));
+  const S = { lat: start[0], lon: start[1] }, seen = new Set(), out = [];
+  for (const e of elements) {
+    const t = e.tags || {}, pts = e.type === 'node' ? [e] : e.geometry || [];
+    if (!pts.length) continue;
+    let keep;
+    if (t.leisure === 'park') keep = pts.some(p => haversine(S, p) < 0.37);
+    else if (t.place) keep = haversine(S, pts[0]) < 1.25;
+    else { keep = false;
+      for (let i = 0; i < pts.length && !keep; i++) {            // check along each segment, not only at the vertices
+        const p = pts[i], q = pts[i + 1] || p, n = Math.max(1, Math.ceil(Math.max(Math.abs(q.lat - p.lat), Math.abs(q.lon - p.lon)) / (C / 2)));
+        for (let j = 0; j <= n && !keep; j++) keep = near(p.lat + (q.lat - p.lat) * j / n, p.lon + (q.lon - p.lon) * j / n); } }
+    if (!keep) continue;
+    const key = (e.type === 'node' ? 'n' : 'w') + JSON.stringify(t) + pts[0].lat + ',' + pts[0].lon + ',' + pts.length;   // same feature from two tiles
+    if (seen.has(key)) continue; seen.add(key);
+    out.push(e.type === 'node' ? { type: 'node', tags: t, lat: e.lat, lon: e.lon } : { type: 'way', tags: t, geometry: e.geometry.map(g => ({ lat: +g.lat.toFixed(5), lon: +g.lon.toFixed(5) })) });
+  }
+  return out;
+}
+async function buildOsm(s) {
+  const line = routeLine(s.lt), start = [s.lt[0].lat, s.lt[0].lon], els = [];
+  let ok = 0, partial = false;
+  for (let i = 0; i < line.length; i += 400) {                        // pieces of ~30 km
+    const piece = line.slice(Math.max(0, i - 1), i + 400);
+    try { const j = await overpass(ROUTE.query(piece.length > 1 ? piece : [piece[0], piece[0]], start));
+      const roads = (j.elements || []).filter(e => e.tags?.highway && e.type === 'way').length;
+      if (!roads && piece.length > 12) { partial = true; continue; }     // ~1 km with no named road or trail at all: treat as a failed answer
+      els.push(...(j.elements || [])); ok++; }
+    catch (e) { console.warn('OpenStreetMap lookup failed', e); partial = true; }
+  }
+  return { elements: nearTrack(els, line, start), partial, src: `live ${ok}` };
+}
+async function loadOsm(d, s, force = false) {
   if (!s.lt.length || OSM.busy) return;
-  const id = d.trip.id || 'x', key = 'aclive.osm.v1.' + id, live = !s.ended;
-  if (OSM.id !== id) { OSM = { id, at: 0, n: 0, data: null, busy: false, err: null };
-    if (!live) { try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c) { OSM.data = c; OSM.at = Date.now(); OSM.n = s.lt.length; return; } } catch {} } }
-  if (OSM.data && (!live || Date.now() - OSM.at < 10 * 60e3 || s.lt.length === OSM.n)) return;
-  if (CONFIG.dataSource === 'mock') { OSM.data = mockOsm(s); OSM.at = Date.now(); OSM.n = s.lt.length; return; }
-  OSM.busy = true;
-  try {
-    const line = routeLine(s.lt), start = [s.lt[0].lat, s.lt[0].lon], els = new Map();
-    for (let i = 0; i < line.length; i += 400) {                        // pieces of ~30 km
-      const j = await overpass(ROUTE.query(line.slice(Math.max(0, i - 1), i + 400), start));
-      for (const e of j.elements || []) els.set(e.type + e.id, e);
+  const id = d.trip.id || 'x', key = 'aclive.osm.v2.' + id, live = !s.ended, now = Date.now();
+  if (OSM.id !== id) {
+    OSM = { id, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
+    try { localStorage.removeItem('aclive.osm.v1.' + id); } catch {}         // v1 could hold an empty answer from a busy server
+    if (!live) { try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c) { Object.assign(OSM, { data: c, at: now, n: s.lt.length, status: 'done', src: 'saved' }); return; } } catch {} }
+    if (CONFIG.dataSource === 'api' && !force) {
+      OSM.busy = true; OSM.status = 'loading';
+      try { const j = await (await fetchT(`${CONFIG.api}/api/osm?activity=${encodeURIComponent(id)}`, { cache: 'no-store' }, 15000)).json();
+        if (j && !j.none && Array.isArray(j.data) && (!live || j.n >= s.lt.length - 5)) {
+          Object.assign(OSM, { data: { elements: j.data }, at: now, n: j.n, status: 'done', src: 'stored ' + (j.src || '') });
+          if (!live) try { localStorage.setItem(key, JSON.stringify(OSM.data)); } catch {}
+        } } catch {}
+      OSM.busy = false;
+      if (OSM.data) { if (DATA && (DATA.trip.id || 'x') === id) renderAll(); return; }
     }
-    OSM = { id, at: Date.now(), n: s.lt.length, data: { elements: [...els.values()] }, busy: false, err: null };
-    if (!live) try { localStorage.setItem(key, JSON.stringify(OSM.data)); } catch {}
-    if (DATA && (DATA.trip.id || 'x') === id) renderAll();
-  } catch (e) { console.warn('OpenStreetMap lookup failed', e); OSM.busy = false; OSM.err = String(e); OSM.at = Date.now(); }
+  }
+  const stale = live && now - OSM.at >= 10 * 60e3 && s.lt.length > OSM.n;
+  if (!force && OSM.data && OSM.status === 'done' && !stale) return;
+  if (!force && OSM.status === 'partial' && now < OSM.next) return;
+  if (!force && OSM.status === 'failed' && now < OSM.next) return;
+  if (CONFIG.dataSource === 'mock') { Object.assign(OSM, { data: mockOsm(s), at: now, n: s.lt.length, status: 'done', src: 'mock' }); return; }
+  OSM.busy = true; if (!OSM.data) OSM.status = 'loading';
+  if (DATA && (DATA.trip.id || 'x') === id) renderTimelineStatus();
+  try {
+    const r = await buildOsm(s);
+    if (OSM.id !== id) return;
+    Object.assign(OSM, { data: { elements: r.elements }, at: Date.now(), n: s.lt.length, busy: false, err: null, src: r.src,
+      status: r.partial ? 'partial' : 'done', next: r.partial ? Date.now() + 5 * 60e3 : 0 });
+    if (!r.partial) {
+      if (!live) try { localStorage.setItem(key, JSON.stringify(OSM.data)); } catch {}
+      if (CONFIG.dataSource === 'api') {
+        const body = JSON.stringify({ id, n: s.lt.length, src: r.src }) + '\n' + JSON.stringify(r.elements);
+        if (body.length < 1900000) fetchT(`${CONFIG.api}/api/osm`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body }, 20000).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('Map lookup failed', e);
+    if (OSM.id === id) Object.assign(OSM, { busy: false, err: String(e), status: OSM.data ? 'partial' : 'failed', next: Date.now() + 5 * 60e3, at: OSM.data ? OSM.at : Date.now() });
+  }
+  OSM.busy = false;
+  if (DATA && (DATA.trip.id || 'x') === id) renderAll();
+}
+// Retry a partial or failed lookup while the page is open (the 30 s refresh also calls loadOsm)
+setInterval(() => { if (DATA && CURRENT && (OSM.status === 'partial' || OSM.status === 'failed') && Date.now() >= OSM.next) renderAll(); }, 60e3);
+// Owner: forget the stored map lookup for this activity and build it again
+async function refreshMapData() {
+  const id = DATA?.trip?.id; if (!id) return;
+  try { if (CONFIG.dataSource === 'api') await ownerPost('/admin/osm/clear', { id }); } catch (e) { console.warn(e); }
+  try { localStorage.removeItem('aclive.osm.v2.' + id); localStorage.removeItem('aclive.osm.v1.' + id); } catch {}
+  OSM = { id, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
+  const D = viewOf(DATA); loadOsm(D, derive(D), true);
+}
+function renderTimelineStatus() {
+  const o = $('#tlOwner');
+  if (o) { o.innerHTML = isOwner() && DATA?.trip?.id ? ` · <a href="#" id="tlRefresh" title="Look up trails, streets and landmarks again">Refresh map data</a>` : '';
+    const a = $('#tlRefresh'); if (a) a.onclick = e => { e.preventDefault(); refreshMapData(); }; }
+  const el = $('#tlStatus'); if (!el) return;
+  const t = OSM.status === 'loading' || (OSM.busy && !OSM.data) ? 'Looking up trails and streets…'
+    : OSM.status === 'partial' && !OSM.data?.elements?.length ? `Trail and street names unavailable (map server busy) · retrying at ${fmtTime(OSM.next)}`
+    : OSM.status === 'partial' ? `Some trail and street names are still missing (map server busy) · retrying at ${fmtTime(OSM.next)}`
+    : OSM.status === 'failed' ? `Trail and street names unavailable (map server busy) · retrying at ${fmtTime(OSM.next)}` : '';
+  el.textContent = t; el.hidden = !t;
 }
 function routeInfo(s) {
   if (!OSM.data || !s.lt.length) return null;
@@ -2306,6 +2470,7 @@ async function refreshDetail(fresh = false) {
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
 addEventListener('hashchange', route);
+addEventListener('visibilitychange', () => { if (!document.hidden && DATA && CURRENT) renderAll(); });   // charts skipped while hidden
 $('#refresh').addEventListener('click', () => { MOCK_CACHE = {}; CURRENT ? refreshDetail() : refreshLanding(); });
 if (new URLSearchParams(location.search).has('debug')) $('#debug').open = true;
 $('#mockBadge').hidden = CONFIG.dataSource !== 'mock';
