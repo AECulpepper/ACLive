@@ -85,6 +85,24 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .wk-table tr.tot td { font-weight: 600; border-bottom: none; }
 .wk-table .ty { color: var(--muted); font-size: .78rem; margin-left: 4px; }
 .wk-table .tag { color: var(--series-lt); font-size: .72rem; margin-left: 6px; }
+.met-week { margin-top: -22px; margin-bottom: 36px; }
+.met-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.met-d { background: var(--panel-2); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: .74rem; line-height: 1.45; color: var(--muted); min-width: 0; }
+.met-d.today { outline: 1.5px solid var(--series-lt); }
+.met-d.fc { background: transparent; border: 1px dashed var(--line); }
+.met-d .dn { font-weight: 600; color: var(--text); font-size: .8rem; }
+.met-d .ic { font-size: 1.15rem; line-height: 1.3; }
+.met-d .tt { font-size: 1rem; font-weight: 600; color: var(--text); } .met-d .tt small { font-weight: 400; color: var(--muted); }
+.met-d .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; }
+.met-leg { font-size: .76rem; color: var(--muted); margin-top: 8px; }
+@media (max-width: 700px) { .met-days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .met-days { gap: 4px; } .met-d { font-size: .68rem; padding: 6px 2px; } .met-d .tt { font-size: .9rem; } }
+.met-table { min-width: 860px; } .met-table td small { display: block; color: var(--muted); font-size: .76rem; }
+.met-table td.loc, .met-table th:nth-child(2) { white-space: nowrap; text-align: left; } .met-table .src { font-size: .68rem; padding: 0 5px; border-radius: 4px; background: var(--panel-2); color: var(--muted); margin-left: 4px; }
+.met-table .src.st { background: color-mix(in srgb, var(--series-lt) 22%, transparent); color: var(--text); }
+.met-table tr.gap td { color: var(--muted); font-style: italic; text-align: left; }
+.met-edit { margin-top: 10px; background: var(--panel-2); border-radius: 8px; padding: 10px 12px; font-size: .86rem; }
+.met-edit .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; } .met-edit input { flex: 1; min-width: 160px; }
 .tl-status { font-size: 0.85rem; margin: 0 0 10px; }
 .now-main { flex: 1 1 320px; min-width: 0; }
 .eyebrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.9rem; }
@@ -348,6 +366,7 @@ footer p { margin: 0 0 6px; }
   <main id="landing">
     <section aria-label="This week"><div id="weekCard" class="week"></div></section>
     <section aria-label="Current activity"><div id="nowCard" class="now"></div></section>
+    <section aria-label="Weather this week"><div id="metCard" class="week met-week"></div></section>
     <section aria-labelledby="actTitle">
       <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted" id="actCount"></span></div>
       <div class="table-wrap">
@@ -355,6 +374,20 @@ footer p { margin: 0 0 6px; }
           <thead><tr><th></th><th>Activity</th><th class="num hide-narrow">Distance</th><th class="num hide-narrow">Vertical gain</th><th class="num hide-narrow">High</th><th class="num hide-narrow">Low</th><th class="num hide-narrow">Avg HR</th><th class="num hide-narrow">Time</th><th class="hide-narrow">Sources</th></tr></thead>
           <tbody id="actBody"></tbody>
         </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= DAILY WEATHER RECORD ================= -->
+  <main id="weatherView" hidden>
+    <a class="d-back" href="#">← All activities</a>
+    <section class="card">
+      <div class="card-h"><h2>Daily weather record</h2>
+        <span class="meta wk-ctl"><select id="metMonth" aria-label="Month"></select><button id="metCsv">CSV</button></span></div>
+      <div class="card-b">
+        <div class="table-wrap"><table class="wk-table met-table" id="metTable"></table></div>
+        <div id="metEdit"></div>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0" id="metNote"></p>
       </div>
     </section>
   </main>
@@ -490,7 +523,7 @@ footer p { margin: 0 0 6px; }
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.13.0</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.14.0</p>
   </footer>
 </div>
 <script>
@@ -2137,6 +2170,156 @@ function renderWeek(now) {
     <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}${p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}` : 'no activities'}</div>`;
 }
 
+/* ---- Daily weather record (Worker /api/met): location per day = pinned day > that day's activity finish > newer of last
+   activity finish and a "from this day onward" setting. Model values (Open-Meteo); a home station within range overrides.
+   Units: °C and mbar first; wind mph, precipitation inches first; metric/imperial second. Sun and moon calculated here. ---- */
+const MET = { days: {}, at: {}, settings: [], cont: '2026-11-01', today: null, poll: null };
+const DIRS16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const dirName = d => d == null ? '' : DIRS16[Math.round(d / 22.5) % 16];
+const wxIcon = (code, type) => code >= 95 ? '⛈️' : type === 'snow' || (code >= 71 && code <= 86 && code !== 80 && code !== 81 && code !== 82) ? '🌨️'
+  : type === 'rain' || type === 'freezing' || type === 'mixed' || (code >= 51 && code <= 82) ? '🌧️' : code === 45 || code === 48 ? '🌫️' : code === 3 ? '☁️' : code === 2 || code === 1 ? '🌤️' : '☀️';
+const cF = c => c == null ? '—' : Math.round(c * 9 / 5 + 32);
+const mmOf = inch => (inch * 25.4).toFixed(inch * 25.4 < 10 ? 1 : 0);
+function metVals(x) {                     // station values where it has them, model for the rest
+  const m = x.model || {}, st = x.station || null;
+  const v = { ...m }; if (st) for (const k of ['tmax_c', 'tmin_c', 'rh', 'msl_mb', 'wind_mph', 'gust_mph', 'wind_dir', 'precip_in']) if (st[k] != null) v[k] = st[k];
+  v.srcName = st ? st.station_name : 'model'; return v;
+}
+function metSky(x) {                      // sun and moon for that day, in that place's own time zone
+  if (x.lat == null) return null;
+  const off = x.model?.utc_offset_s ?? -25200, start = Date.parse(x.day + 'T00:00:00Z') - off * 1000;
+  const r = SKY.day(start, x.lat, x.lon), tz = x.model?.tz || 'America/Denver';
+  const t = ms => ms == null ? '—' : new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ms);
+  return { rise: t(r.sunrise), set: t(r.sunset), len: r.dayLen ? fmtClock(r.dayLen).replace(/:\d\d$/, '') : '—',
+    mrise: t(r.moonrise), mset: t(r.moonset), moon: r.moon };
+}
+async function fetchMet(from, to) {
+  if (CONFIG.dataSource === 'mock') return mockMet(from, to);
+  const r = await fetch(`${CONFIG.api}/api/met?from=${from}&to=${to}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('met HTTP ' + r.status);
+  return r.json();
+}
+async function loadMet(from, to, after) {
+  try {
+    const j = await fetchMet(from, to);
+    MET.today = j.today; MET.cont = j.continuous_from || MET.cont; MET.settings = j.settings || [];
+    for (let d = from; d <= to; d = addDays(d, 1)) delete MET.days[d];
+    for (const x of j.days) MET.days[x.day] = x;
+    MET.at[from + to] = Date.now();
+    after?.();
+    clearTimeout(MET.poll);
+    if (j.pending) MET.poll = setTimeout(() => loadMet(from, to, after), 8000);      // still fetching in the background
+  } catch (e) { console.warn('daily weather unavailable', e); }
+}
+function loadMetWeek() {
+  const mon = weekKey(Date.now()), sun = addDays(mon, 6);
+  if (!MET.at[mon + sun] || Date.now() - MET.at[mon + sun] > 10 * 60e3) loadMet(mon, sun, renderMetWeek);
+  renderMetWeek();
+}
+const srcIcon = s => s === 'activity' ? '🏃 ' : s === 'set' || s === 'set-from' ? '📍 ' : '';
+function renderMetWeek() {
+  const mon = weekKey(Date.now()), today = MET.today || mtDayKey(Date.now()), cards = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(mon, i), x = MET.days[d], dn = new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' }) + ' ' + d.slice(8);
+    if (!x || !x.model) { cards.push(`<div class="met-d${d === today ? ' today' : ''}${d > today ? ' fc' : ''}"><div class="dn">${dn}</div><div class="ic">·</div><div>${x?.pending ? 'loading…' : 'no record'}</div></div>`); continue; }
+    const v = metVals(x), sk = metSky(x), fc = x.forecast;
+    cards.push(`<div class="met-d${d === today ? ' today' : ''}${fc ? ' fc' : ''}" title="${esc(v.desc || '')}">
+      <div class="dn">${dn}</div><div class="ic">${wxIcon(v.code, v.type)}</div>
+      <div class="tt">${Math.round(v.tmax_c)}° <small>${Math.round(v.tmin_c)}°</small></div>
+      <div>${cF(v.tmax_c)}°F / ${cF(v.tmin_c)}°F</div>
+      <div>${fc ? `${v.pop ?? 0}% · ${v.precip_in ? v.precip_in.toFixed(2) + ' in' : 'dry'}` : v.precip_in ? `${v.precip_in.toFixed(2)} in${v.type ? ' ' + v.type : ''}` : '0 in'}</div>
+      <div>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} mph</div>
+      ${sk ? `<div>☀ ${sk.rise}–${sk.set}</div><div>🌙 ${Math.round(sk.moon.fraction * 100)}%</div>` : ''}
+      <div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></div>`);
+  }
+  $('#metCard').innerHTML = `<div class="week-h"><h2>Weather this week</h2><span class="muted">${weekLabel(mon)} · <a href="#weather">All days →</a></span></div>
+    <div class="met-days">${cards.join('')}</div>
+    <div class="met-leg">🏃 activity finish · 📍 location you set · plain = last known · dashed = forecast</div>`;
+}
+// #weather view
+let MET_MONTH = null, MET_EDIT = null;
+function metMonths() {
+  const first = ACTS.filter(a => a.start).map(a => mtDayKey(Date.parse(a.start))).sort()[0] || mtDayKey(Date.now());
+  const out = []; let m = mtDayKey(Date.now()).slice(0, 7);
+  while (m >= first.slice(0, 7)) { out.push(m); const [y, mo] = m.split('-').map(Number); m = mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, '0')}`; }
+  return out;
+}
+function monthRange(m) { const [y, mo] = m.split('-').map(Number); const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  let to = `${m}-${String(last).padStart(2, '0')}`; const t = mtDayKey(Date.now()); if (to > t) to = t; return [`${m}-01`, to]; }
+function renderMetView() {
+  const months = metMonths(); if (!MET_MONTH) MET_MONTH = months[0];
+  const sel = $('#metMonth');
+  sel.innerHTML = months.map(m => `<option value="${m}">${MON[+m.slice(5) - 1]} ${m.slice(0, 4)}</option>`).join('');
+  sel.value = MET_MONTH; sel.onchange = () => { MET_MONTH = sel.value; MET_EDIT = null; renderMetView(); };
+  const [from, to] = monthRange(MET_MONTH);
+  if (!MET.at[from + to] || Date.now() - MET.at[from + to] > 10 * 60e3) { MET.at[from + to] = Date.now(); loadMet(from, to, renderMetTable); }
+  renderMetTable();
+}
+function renderMetTable() {
+  const [from, to] = monthRange(MET_MONTH), own = isOwner(), rows = [];
+  const days = []; for (let d = to; d >= from; d = addDays(d, -1)) days.push(d);
+  let gap = [];
+  const flushGap = () => { if (!gap.length) return;
+    rows.push(`<tr class="gap"><td colspan="10">${gap.length} day${gap.length === 1 ? '' : 's'} without a record (${gap.at(-1).slice(8)}–${gap[0].slice(8)} ${MON[+gap[0].slice(5, 7) - 1]}) · before ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}: activity days only</td></tr>`); gap = []; };
+  const csv = [['date', 'place', 'location_from', 'source', 'desc', 'high_c', 'low_c', 'high_f', 'low_f', 'precip_in', 'precip_mm', 'precip_type', 'wind_mph', 'gust_mph', 'wind_dir',
+    'rh_pct', 'pressure_mbar', 'pressure_inhg', 'cloud_pct', 'sunrise', 'sunset', 'daylight', 'moon_phase', 'moon_pct', 'moonrise', 'moonset'].join(',')];
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i], x = MET.days[d];
+    if (!x || !x.model) { if (x?.pending) { flushGap(); rows.push(`<tr><td>${fmtDate(Date.parse(d + 'T12:00:00Z')).replace(/ \d{4}$/, '')}</td><td colspan="9" class="muted">loading…</td></tr>`); } else gap.push(d); continue; }
+    flushGap();
+    const v = metVals(x), sk = metSky(x), prev = MET.days[addDays(d, -1)], pv = prev?.model ? metVals(prev).msl_mb : null;
+    const arrow = v.msl_mb != null && pv != null ? (v.msl_mb - pv >= 3 ? ' ↑' : pv - v.msl_mb >= 3 ? ' ↓' : '') : '';
+    const setHere = MET.settings.find(r => r.day === d);
+    rows.push(`<tr${d === MET.today ? ' class="cur"' : ''}><td>${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })}, ${d.slice(8)} ${MON[+d.slice(5, 7) - 1]}${x.partial ? '<small>so far</small>' : ''}</td>
+      <td class="loc">${srcIcon(x.src)}${esc(x.place || '—')}<span class="src${x.station ? ' st' : ''}">${x.station ? 'station · ' + esc(x.station.station_name) : 'model'}</span>${own ? ` <a href="#" data-met-edit="${d}" style="font-size:.75rem">edit</a>` : ''}${setHere ? `<small>${setHere.mode === 'day' ? 'set for this day' : 'set from this day on'}</small>` : x.src === 'last' ? '<small>last known</small>' : ''}</td>
+      <td>${wxIcon(v.code, v.type)} ${Math.round(v.tmax_c)}° / ${Math.round(v.tmin_c)}° C<small>${cF(v.tmax_c)} / ${cF(v.tmin_c)} °F · ${esc(v.desc || '')}</small></td>
+      <td>${(v.precip_in ?? 0).toFixed(2)} in${v.type && v.precip_in ? ' ' + v.type : ''}<small>${mmOf(v.precip_in ?? 0)} mm</small></td>
+      <td>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} / ${v.gust_mph ?? '—'} mph<small>${v.wind_mph != null ? Math.round(v.wind_mph * KM_PER_MI) : '—'} / ${v.gust_mph != null ? Math.round(v.gust_mph * KM_PER_MI) : '—'} km/h</small></td>
+      <td>${v.rh ?? '—'}%</td>
+      <td>${v.msl_mb != null ? Math.round(v.msl_mb) + ' mbar' + arrow : '—'}<small>${v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) + ' inHg' : ''}</small></td>
+      <td>${v.cloud ?? '—'}%</td>
+      <td>${sk ? `${sk.rise}–${sk.set}<small>${sk.len}</small>` : '—'}</td>
+      <td>${sk ? `${sk.moon.name} ${Math.round(sk.moon.fraction * 100)}%<small>↑ ${sk.mrise} ↓ ${sk.mset}</small>` : '—'}</td></tr>`);
+    csv.push([d, `"${(x.place || '').replace(/"/g, '""')}"`, x.src, x.station ? 'station:' + x.station.station : 'model', `"${v.desc || ''}"`, v.tmax_c, v.tmin_c, cF(v.tmax_c), cF(v.tmin_c),
+      v.precip_in ?? '', v.precip_in != null ? mmOf(v.precip_in) : '', v.type || '', v.wind_mph ?? '', v.gust_mph ?? '', v.wind_dir ?? '', v.rh ?? '', v.msl_mb ?? '',
+      v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) : '', v.cloud ?? '', sk?.rise ?? '', sk?.set ?? '', sk?.len ?? '', sk?.moon.name ?? '', sk ? Math.round(sk.moon.fraction * 100) : '', sk?.mrise ?? '', sk?.mset ?? ''].join(','));
+  }
+  flushGap();
+  $('#metTable').innerHTML = `<thead><tr><th>Day</th><th>Location</th><th>High / low</th><th>Precip</th><th>Wind / gust</th><th>RH</th><th>Pressure</th><th>Cloud</th><th>Sun</th><th>Moon</th></tr></thead><tbody>${rows.join('') || '<tr><td colspan="10" class="muted">No records this month</td></tr>'}</tbody>`;
+  $('#metNote').textContent = `Every day from ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}; before that, days with an activity. Model weather: Open-Meteo. Times are local to each day's location.`;
+  $('#metTable').onclick = e => { const a = e.target.closest('[data-met-edit]'); if (!a) return; e.preventDefault(); MET_EDIT = a.dataset.metEdit; renderMetEdit(); };
+  $('#metCsv').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv.join('\n')], { type: 'text/csv' }));
+    a.download = `ACLive_weather_${MET_MONTH.replace('-', '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+  renderMetEdit();
+}
+function renderMetEdit() {
+  const box = $('#metEdit');
+  if (!MET_EDIT || !isOwner()) { box.innerHTML = ''; return; }
+  const d = MET_EDIT, cur = MET.settings.find(r => r.day === d), lab = `${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })}, ${d.slice(8)} ${MON[+d.slice(5, 7) - 1]}`;
+  box.innerHTML = `<div class="met-edit"><b>📍 Set location for ${lab}</b>
+    <div class="row"><input id="metQ" placeholder="Town or place, or lat, lon" value="${esc(cur?.label || MET.days[d]?.place || '')}">
+      <select id="metMode"><option value="from">From this day onward</option><option value="day"${cur?.mode === 'day' ? ' selected' : ''}>Only this day</option></select>
+      <button id="metFind">Check</button><button class="primary" id="metSave">Save</button>${cur ? '<button id="metClear">Clear</button>' : ''}<button id="metCancel">Cancel</button></div>
+    <div class="muted" id="metMsg" style="margin-top:6px;font-size:.8rem">An activity still wins on days you're out, unless you choose "Only this day".</div></div>`;
+  const msg = t => { $('#metMsg').textContent = t; };
+  $('#metCancel').onclick = () => { MET_EDIT = null; renderMetEdit(); };
+  $('#metFind').onclick = async () => { try { const r = CONFIG.dataSource === 'mock' ? { ok: true, label: $('#metQ').value, lat: 0, lon: 0 }
+      : await (await fetch(`${CONFIG.api}/admin/met/geocode?q=${encodeURIComponent($('#metQ').value)}`, { headers: { authorization: 'Bearer ' + OWNER } })).json();
+    msg(r.ok ? `Matched: ${r.label} (${(+r.lat).toFixed(2)}, ${(+r.lon).toFixed(2)})` : 'No match. Try "Town, ST" or "lat, lon".'); } catch { msg('Could not reach the server.'); } };
+  const after = async () => { MET_EDIT = null; const [f, t] = monthRange(MET_MONTH); MET.at = {}; await loadMet(f, t, renderMetTable); renderMetEdit(); };
+  $('#metSave').onclick = async () => { try { await ownerPost('/admin/met/loc', { day: d, mode: $('#metMode').value, q: $('#metQ').value }); msg('Saved. Updating…'); await after(); } catch (e) { msg(e.message); } };
+  if (cur) $('#metClear').onclick = async () => { try { await ownerPost('/admin/met/loc', { day: d, clear: true, mode: cur.mode }); await after(); } catch (e) { msg(e.message); } };
+}
+function mockMet(from, to) {
+  const today = mtDayKey(Date.now()), days = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) { const i = +d.slice(8), az = i >= 10 && i <= 14;
+    days.push({ day: d, place: az ? 'Scottsdale, AZ' : 'Durango, CO', kind: 'town', src: i === 11 ? 'activity' : i === 10 ? 'set' : 'last', lat: az ? 33.49 : 37.28, lon: az ? -111.93 : -107.88,
+      forecast: d > today, partial: d === today, model: { code: i % 4 === 3 ? 61 : i % 2 ? 2 : 0, desc: i % 4 === 3 ? 'Light rain' : 'Clear', tmax_c: az ? 26 + i % 3 : 8 + i % 3, tmin_c: az ? 12 : -6,
+        precip_in: i % 4 === 3 ? 0.12 : 0, type: i % 4 === 3 ? 'rain' : null, wind_mph: 9 + i % 6, gust_mph: 18 + i % 7, wind_dir: 225, rh: az ? 22 : 35, msl_mb: 1014 + i % 5, cloud: 10 * (i % 5),
+        pop: 20, tz: az ? 'America/Phoenix' : 'America/Denver', utc_offset_s: -25200 }, station: !az && i === 9 ? { tmax_c: 10, tmin_c: -10, rh: 40, msl_mb: 1020, wind_mph: 11, gust_mph: 20, wind_dir: 240, precip_in: 0, station: 'home', station_name: 'Home' } : null }); }
+  return { from, to, today, continuous_from: '2026-11-01', days, settings: [{ day: from.slice(0, 8) + '10', mode: 'day', label: 'Scottsdale, AZ' }], pending: 0 };
+}
+
 /* ---- Weekly records view (#weeks) ---- */
 let WK_OPEN = new Set(), WK_YEAR = null;
 function weeksRows(year) {
@@ -2194,7 +2377,7 @@ function renderWeeks() {
 }
 function renderLanding() {
   const now = Date.now();
-  renderWeek(now);
+  renderWeek(now); loadMetWeek();
   const live = ACTS.find(a => a.status === 'live');
   const hero = $('#nowCard');
   if (live) {
@@ -2275,9 +2458,10 @@ function renderAll() {
 function setStatus(state, text) { const el = $('#siteStatus'); el.dataset.state = state; $('#siteStatusText').textContent = text; }
 async function route() {
   const h = decodeURIComponent(location.hash.slice(1));
-  const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks';
-  $('#landing').hidden = !!id || weeks; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks;
+  const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks', wx = h === 'weather';
+  $('#landing').hidden = !!id || weeks || wx; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx;
   if (weeks) { document.title = 'Weekly records · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); return; }
+  if (wx) { document.title = 'Daily weather · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); renderMetView(); return; }
   if (!id) { document.title = 'ACLive'; CURRENT = null; await refreshLanding(); return; }
   if (id !== CURRENT) { CURRENT = id; DATA = null; VIEW = 'final'; resetMap(); window.scrollTo(0, 0); }
   await refreshDetail();
@@ -2444,7 +2628,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.13.0';
+const VERSION = 'v0.14.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
