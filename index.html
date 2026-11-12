@@ -344,6 +344,24 @@ footer p { margin: 0 0 6px; }
   .now-thumb { flex: 1 1 100%; }
   .now-map { flex: 1 1 100%; min-height: 200px; }
 }
+/* v0.15: inReach check-ins, non-GPS activities, location editor */
+.ir-week { margin-top: -22px; } .has-ir .met-week { margin-top: 0; }
+.ir-week .ir-main { display: grid; gap: 2px; }
+.ir-t { font-size: .85rem; color: var(--muted); } .ir-t b { color: var(--text); font-weight: 600; }
+.ir-pl { font-size: 1.15rem; font-weight: 600; }
+.ir-msg { font-style: italic; } .ir-x { font-size: .88rem; color: var(--muted); }
+.ir-more { font-size: .82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 5px; margin-top: 6px; }
+.ir-one { font-size: .88rem; color: var(--muted); }
+#irMap { height: 340px; border-radius: 8px; margin-bottom: 10px; }
+.ir-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.ir-chips button { padding: 4px 10px; font-size: .84rem; } .ir-chips button[aria-pressed="true"] { background: var(--panel-2); border-color: var(--muted); font-weight: 600; }
+.ir-list { list-style: none; margin: 0; padding: 0; }
+.ir-list li { display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 8px; padding: 8px 0; border-top: 1px solid var(--line); align-items: start; cursor: pointer; }
+.ir-list li .ic { font-size: 1.1rem; } .ir-list li .m { font-size: .84rem; color: var(--muted); }
+.ir-list li.hid { opacity: .5; } .ir-list li .tag { font-size: .7rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+#locEdit { margin-top: 2px; } #locEdit input { font: inherit; padding: 2px 6px; }
+#nogpsCard { display: none; } #detail.nogps #nogpsCard { display: block; }
+#detail.nogps > section.tiles, #detail.nogps > section.grid-main, #detail.nogps > section.grid-2, #detail.nogps > section.card:not(#notesCard):not(#nogpsCard), #detail.nogps > details.debug { display: none; }
 </style>
 </head>
 <body>
@@ -366,6 +384,7 @@ footer p { margin: 0 0 6px; }
   <main id="landing">
     <section aria-label="This week"><div id="weekCard" class="week"></div></section>
     <section aria-label="Current activity"><div id="nowCard" class="now"></div></section>
+    <section aria-label="inReach check-ins"><div id="irCard" class="week ir-week" hidden></div></section>
     <section aria-label="Weather this week"><div id="metCard" class="week met-week"></div></section>
     <section aria-labelledby="actTitle">
       <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted" id="actCount"></span></div>
@@ -392,6 +411,21 @@ footer p { margin: 0 0 6px; }
     </section>
   </main>
 
+  <!-- ================= INREACH FEED ================= -->
+  <main id="inreachView" hidden>
+    <a class="d-back" href="#">← All activities</a>
+    <section class="card">
+      <div class="card-h"><h2>📡 inReach feed</h2>
+        <span class="meta wk-ctl"><span class="ir-chips" id="irChips"></span><select id="irDays" aria-label="Period">
+          <option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="all">All</option></select></span></div>
+      <div class="card-b">
+        <div id="irMap"></div>
+        <ul class="ir-list" id="irList"></ul>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0" id="irNote">Check-ins are inReach points sent when you are not on an activity (a Locate, a tracking point or a message). Weather is the model at that place and hour. Times MT.</p>
+      </div>
+    </section>
+  </main>
+
   <!-- ================= WEEKLY RECORDS ================= -->
   <main id="weeksView" hidden>
     <a class="d-back" href="#">← All activities</a>
@@ -402,7 +436,7 @@ footer p { margin: 0 0 6px; }
         <div class="wk-chart-h">Miles per week · last 26 weeks</div>
         <div id="wkChart"></div>
         <div class="table-wrap"><table class="wk-table" id="wkTable"></table></div>
-        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Tap a week to see its activities. Weeks run Monday–Sunday, Mountain Time. Steps from activities only.</p>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Tap a week to see its activities. Weeks run Monday–Sunday, Mountain Time. Activity steps come from the activity files; all-day steps come from Garmin Connect, from 2 Nov 2026. High and low include inReach check-ins.</p>
       </div>
     </section>
   </main>
@@ -411,7 +445,7 @@ footer p { margin: 0 0 6px; }
   <main id="detail" hidden>
     <a class="d-back" href="#">← All activities</a>
     <div class="d-head">
-      <div><h2 id="tripName">—</h2><div class="sub" id="tripSub"></div>
+      <div><h2 id="tripName">—</h2><div class="sub" id="tripSub"></div><div class="sub" id="locEdit"></div>
         <div class="view-tg" id="viewTg" role="group" aria-label="Which data to show" hidden>
           <button type="button" data-v="final" aria-pressed="true">Final · watch file</button>
           <button type="button" data-v="live" aria-pressed="false">Live · what crew saw</button>
@@ -424,6 +458,11 @@ footer p { margin: 0 0 6px; }
     <section class="card" id="notesCard" style="margin-bottom:14px" hidden>
       <div class="card-h"><h2>Notes</h2><span class="meta" id="notesMeta"></span></div>
       <div class="card-b" id="notesBody"></div>
+    </section>
+
+    <section class="card" id="nogpsCard" style="margin-bottom:14px">
+      <div class="card-h"><h2>No GPS</h2><span class="meta">indoor or no-signal activity</span></div>
+      <div class="card-b" id="nogpsBody"></div>
     </section>
 
     <section class="grid-main">
@@ -523,7 +562,7 @@ footer p { margin: 0 0 6px; }
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.14.0</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.15.0</p>
   </footer>
 </div>
 <script>
@@ -1971,7 +2010,11 @@ function renderDebug(d, s) {
   }, null, 2);
   const base = CONFIG.api;
   $('#debugLinks').innerHTML = CONFIG.dataSource === 'api'
-    ? `<a href="${base}/api/points.csv" target="_blank">Download points.csv</a> · <a href="${base}/admin" target="_blank">Admin</a> · <a href="${base}/api/track?activity=${encodeURIComponent(d.trip.id ?? '')}&nocache=1" target="_blank">Raw API</a>` : 'Mock mode';
+    ? `${isOwner() ? '<a href="#" id="ptsCsv">Download points.csv</a> · ' : ''}<a href="${base}/admin" target="_blank">Admin</a> · <a href="${base}/api/track?activity=${encodeURIComponent(d.trip.id ?? '')}&nocache=1" target="_blank">Raw API</a>` : 'Mock mode';
+  const pc = $('#ptsCsv'); if (pc) pc.onclick = async e => { e.preventDefault();
+    try { const r = await fetch(`${base}/api/points.csv`, { headers: { authorization: 'Bearer ' + OWNER } }); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = `ACLive_${mtDayKey(Date.now()).replace(/-/g, '')}_points.csv`; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000); } catch (err) { pc.textContent = 'Download failed (' + err.message + ')'; } };
 }
 
 /* =========================================================================
@@ -1983,7 +2026,10 @@ async function getJson(path) {
   return r.json();
 }
 async function loadActivities() {
-  return CONFIG.dataSource === 'mock' ? mockActivities() : (await getJson('/api/activities')).activities;
+  if (CONFIG.dataSource === 'mock') { STEPS = {}; CKS = []; return mockActivities(); }
+  const j = await getJson('/api/activities');
+  STEPS = j.steps || {}; CKS = j.checkins || [];                // all-day steps by day; check-in elevations
+  return j.activities;
 }
 async function loadTrack(id, fresh = false) {
   if (CONFIG.dataSource === 'mock') return mockTrack(id === 'live' ? 'mock-ct' : id);
@@ -2107,7 +2153,7 @@ $('#viewTg').addEventListener('click', e => { const b = e.target.closest('button
 /* =========================================================================
    LANDING
    ========================================================================= */
-let ACTS = [];
+let ACTS = [], STEPS = {}, CKS = [];
 /* ---- Weeks (Mon–Sun, Mountain Time): every activity that starts in the week, live and imported.
    Watch-file totals once merged (imports are watch files); live totals until then. Steps: the watch's own count when
    there is one, otherwise cadence × moving time (marked ≈); GPX/TCX without cadence add none. ---- */
@@ -2137,13 +2183,20 @@ function actSteps(a) {
   if (a.cad_avg_spm > 0 && a.moving_s > 0) return { n: Math.round(a.cad_avg_spm * a.moving_s / 60), est: true };
   return null;
 }
-function weekStats(acts) {
+function weekStats(acts, k) {
   const w = { n: acts.length, mi: 0, ft: 0, steps: 0, est: 0, noSteps: 0, hi: null, lo: null, types: { run: 0, walk: 0, hike: 0, other: 0 }, acts };
   for (const a of acts) {
     w.mi += a.dist_mi || 0; w.ft += a.gain_ft || 0; w.types[actClass(a.type)]++;
     const st = actSteps(a); if (st) { w.steps += st.n; if (st.est) w.est++; } else w.noSteps++;
     if (a.ele_max_ft != null) w.hi = w.hi == null ? a.ele_max_ft : Math.max(w.hi, a.ele_max_ft);
     if (a.ele_min_ft != null) w.lo = w.lo == null ? a.ele_min_ft : Math.min(w.lo, a.ele_min_ft);
+  }
+  if (k) {                                                  // the week's Monday: add check-in elevations and all-day steps
+    const end = addDays(k, 7);
+    for (const c of CKS) { if (c.ele_ft == null) continue; const d = mtDayKey(Date.parse(c.t)); if (d < k || d >= end) continue;
+      w.hi = w.hi == null ? c.ele_ft : Math.max(w.hi, c.ele_ft); w.lo = w.lo == null ? c.ele_ft : Math.min(w.lo, c.ele_ft); }
+    let sum = 0, nd = 0; for (let i = 0; i < 7; i++) { const v = STEPS[addDays(k, i)]; if (v != null) { sum += v; nd++; } }
+    w.all = nd && k >= '2026-11-02' ? sum : null; w.allDays = nd;          // all-day steps start with the week of 2 Nov 2026
   }
   return w;
 }
@@ -2155,7 +2208,7 @@ function weeksIndex() {                                    // Monday key -> acti
 const typesLine = (t, short) => ['run', 'walk', 'hike', 'other'].filter(k => t[k]).map(k => short ? t[k] + k[0] : `${t[k]} ${k}`).join(short ? ' ' : ' · ');
 function renderWeek(now) {
   const idx = weeksIndex(), cur = weekKey(now), prev = addDays(cur, -7);
-  const w = weekStats(idx.get(cur) || []), p = weekStats(idx.get(prev) || []);
+  const w = weekStats(idx.get(cur) || [], cur), p = weekStats(idx.get(prev) || [], prev);
   const stepsAlt = w.est ? `${w.est} estimated` : w.n && w.noSteps === w.n ? 'no step data' : '';
   const fig = (k, v, alt0) => `<div><div class="k">${k}</div><div class="v">${v}</div>${alt0 != null ? alt(alt0) : ''}</div>`;
   $('#weekCard').innerHTML = `<div class="week-h"><h2>This week</h2><span class="muted">${weekLabel(cur)} · <a href="#weeks">All weeks →</a></span></div>
@@ -2163,11 +2216,12 @@ function renderWeek(now) {
       ${fig('Distance', `${w.mi.toFixed(1)}<small>mi</small>`, km(w.mi) + ' km')}
       ${fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m')}
       ${fig('Activities', w.n, typesLine(w.types) || '')}
-      ${fig('Steps', w.steps ? `${w.est ? '≈ ' : ''}${n0(w.steps)}` : '—', stepsAlt)}
+      ${w.all != null ? fig('Steps', n0(w.all), `${w.steps ? (w.est ? '≈ ' : '') + n0(w.steps) : 0} in activities · ${n0(w.all / w.allDays)}/day`)
+        : fig('Steps', w.steps ? `${w.est ? '≈ ' : ''}${n0(w.steps)}` : '—', stepsAlt)}
       ${fig('High point', w.hi != null ? `${n0(w.hi)}<small>ft</small>` : '—', w.hi != null ? mOf(w.hi) + ' m' : '')}
       ${fig('Low point', w.lo != null ? `${n0(w.lo)}<small>ft</small>` : '—', w.lo != null ? mOf(w.lo) + ' m' : '')}
     </div>
-    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}${p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}` : 'no activities'}</div>`;
+    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}</div>`;
 }
 
 /* ---- Daily weather record (Worker /api/met): location per day = pinned day > that day's activity finish > newer of last
@@ -2216,7 +2270,7 @@ function loadMetWeek() {
   if (!MET.at[mon + sun] || Date.now() - MET.at[mon + sun] > 10 * 60e3) loadMet(mon, sun, renderMetWeek);
   renderMetWeek();
 }
-const srcIcon = s => s === 'activity' ? '🏃 ' : s === 'set' || s === 'set-from' ? '📍 ' : '';
+const srcIcon = s => s === 'activity' ? '🏃 ' : s === 'checkin' ? '📡 ' : s === 'set' || s === 'set-from' ? '📍 ' : '';
 function renderMetWeek() {
   const mon = weekKey(Date.now()), today = MET.today || mtDayKey(Date.now()), cards = [];
   for (let i = 0; i < 7; i++) {
@@ -2234,7 +2288,7 @@ function renderMetWeek() {
   }
   $('#metCard').innerHTML = `<div class="week-h"><h2>Weather this week</h2><span class="muted">${weekLabel(mon)} · <a href="#weather">All days →</a></span></div>
     <div class="met-days">${cards.join('')}</div>
-    <div class="met-leg">🏃 activity finish · 📍 location you set · plain = last known · dashed = forecast</div>`;
+    <div class="met-leg">🏃 activity finish · 📡 inReach check-in · 📍 location you set · plain = last known · dashed = forecast</div>`;
 }
 // #weather view
 let MET_MONTH = null, MET_EDIT = null;
@@ -2324,12 +2378,13 @@ function mockMet(from, to) {
 let WK_OPEN = new Set(), WK_YEAR = null;
 function weeksRows(year) {
   const idx = weeksIndex(), now = Date.now(), cur = weekKey(now);
-  const keys = [...idx.keys()].sort(); if (!keys.length) return { rows: [], cur };
+  const sd = Object.keys(STEPS).filter(d => d >= '2026-11-02').sort()[0];
+  const keys = [...idx.keys(), ...(sd ? [weekKey(Date.parse(sd + 'T12:00:00Z'))] : [])].sort(); if (!keys.length) return { rows: [], cur };
   const first = keys[0], rows = [];
   for (let k = cur; k >= first; k = addDays(k, -7)) {
-    const endYear = addDays(k, 6).slice(0, 4), w = weekStats(idx.get(k) || []);
+    const endYear = addDays(k, 6).slice(0, 4), w = weekStats(idx.get(k) || [], k);
     if (year !== 'all' && k.slice(0, 4) !== year && endYear !== year) continue;
-    if (year === 'all' && !w.n && now - Date.parse(k) > 365 * 864e5) continue;      // "All": skip empty weeks older than a year
+    if (year === 'all' && !w.n && w.all == null && now - Date.parse(k) > 365 * 864e5) continue;      // "All": skip empty weeks older than a year
     rows.push({ k, w });
   }
   return { rows, cur };
@@ -2350,34 +2405,38 @@ function renderWeeks() {
     <line x1="0" x2="${W}" y1="${H - 1.5}" y2="${H - 1.5}" stroke="var(--line)"/><text x="4" y="11" font-size="11" fill="var(--muted)">${top.toFixed(0)} mi</text></svg>`;
   // table
   const { rows } = weeksRows(WK_YEAR);
-  const all = weekStats(rows.flatMap(r => r.w.acts));
-  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Activities</th><th>Steps</th><th>High</th><th>Low</th></tr></thead>`;
+  const all = weekStats(rows.flatMap(r => r.w.acts)), allSteps = rows.reduce((t, r) => t + (r.w.all || 0), 0);
+  for (const r of rows) { if (r.w.hi != null) all.hi = all.hi == null ? r.w.hi : Math.max(all.hi, r.w.hi); if (r.w.lo != null) all.lo = all.lo == null ? r.w.lo : Math.min(all.lo, r.w.lo); }
+  const big = n => n >= 1e6 ? (n / 1e6).toFixed(2) + ' M' : n0(n);
+  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Activities</th><th>Activity steps</th><th>All-day steps</th><th>High</th><th>Low</th></tr></thead>`;
   const body = rows.map(({ k, w }) => {
     const open = WK_OPEN.has(k), c = k === cur ? ' cur' : '';
-    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="6">no activities</td></tr>`;
+    const allD = w.all != null ? n0(w.all) : '—';
+    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="4">no activities</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
     const main = `<tr class="wk${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td>
       <td>${w.mi.toFixed(1)} mi</td><td>${n0(w.ft)} ft</td><td>${w.n}<span class="ty">${typesLine(w.types, true)}</span></td>
-      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
+      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
     if (!open) return main;
     const subs = [...w.acts].sort((a, b) => a.start.localeCompare(b.start));
-    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="7"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft</td></tr>`).join('');
+    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="8"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft</td></tr>`).join('');
   }).join('');
   const tot = `<tr class="tot"><td>${WK_YEAR === 'all' ? 'All' : WK_YEAR} total · ${rows.length} weeks</td><td>${n0(all.mi)} mi</td><td>${n0(all.ft)} ft</td><td>${all.n}</td>
-    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : all.steps >= 1e6 ? (all.steps / 1e6).toFixed(2) + ' M' : n0(all.steps)}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
+    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : big(all.steps)}</td><td>${allSteps ? big(allSteps) : '—'}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
   $('#wkTable').innerHTML = head + '<tbody>' + body + tot + '</tbody>';
   $('#wkTable').onclick = e => { if (e.target.closest('a')) return; const r = e.target.closest('tr.wk'); if (!r) return;
     const k = r.dataset.k; WK_OPEN.has(k) ? WK_OPEN.delete(k) : WK_OPEN.add(k); renderWeeks(); };
+  $('#wkCsv').hidden = !isOwner();                         // your weekly records download only for you
   $('#wkCsv').onclick = () => {
-    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'steps', 'steps_estimated', 'high_ft', 'low_ft'].join(',')];
+    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'high_ft', 'low_ft'].join(',')];
     for (const { k, w } of rows) lines.push([k, addDays(k, 6), w.mi.toFixed(2), (w.mi * KM_PER_MI).toFixed(2), Math.round(w.ft), Math.round(w.ft * M_PER_FT), w.n,
-      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.hi ?? '', w.lo ?? ''].join(','));
+      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', w.hi ?? '', w.lo ?? ''].join(','));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     a.download = `ACLive_weeks_${WK_YEAR}_${mtDayKey(Date.now()).replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
 }
 function renderLanding() {
   const now = Date.now();
-  renderWeek(now); loadMetWeek();
+  renderWeek(now); loadMetWeek(); loadIrCard();
   const live = ACTS.find(a => a.status === 'live');
   const hero = $('#nowCard');
   if (live) {
@@ -2446,6 +2505,12 @@ let DATA = null, CURRENT = null;
 function resetMap() { if (map) { map.remove(); map = null; } mapLayers = null; const old = document.getElementById('map'); old.replaceWith(Object.assign(document.createElement('div'), { id:'map' })); }
 function renderAll() {
   const D = viewOf(DATA), s = derive(D);
+  const ng = !!D.trip?.nogps || (!s.pts.length && String(D.trip?.id || '').startsWith('imp-'));
+  $('#detail').classList.toggle('nogps', ng);
+  if (ng) {                                                  // rowing machine, treadmill …: no map, charts or splits
+    renderHeader(D, s); renderTitleEdit(D); renderLocEdit(D); renderNotes(D); renderNoGps(D); return;
+  }
+  renderLocEdit(D);
   loadOsm(D, s);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
@@ -2458,8 +2523,9 @@ function renderAll() {
 function setStatus(state, text) { const el = $('#siteStatus'); el.dataset.state = state; $('#siteStatusText').textContent = text; }
 async function route() {
   const h = decodeURIComponent(location.hash.slice(1));
-  const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks', wx = h === 'weather';
-  $('#landing').hidden = !!id || weeks || wx; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx;
+  const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks', wx = h === 'weather', irv = h === 'inreach';
+  $('#landing').hidden = !!id || weeks || wx || irv; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx; $('#inreachView').hidden = !irv;
+  if (irv) { document.title = 'inReach feed · ACLive'; CURRENT = null; window.scrollTo(0, 0); renderIrView(); return; }
   if (weeks) { document.title = 'Weekly records · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); return; }
   if (wx) { document.title = 'Daily weather · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); renderMetView(); return; }
   if (!id) { document.title = 'ACLive'; CURRENT = null; await refreshLanding(); return; }
@@ -2628,7 +2694,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.14.0';
+const VERSION = 'v0.15.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -2791,7 +2857,7 @@ async function ownerPost(path, body) {
 function renderOwnerBox() {
   const box = $('#ownerBox');
   if (isOwner()) { box.innerHTML = `Signed in as owner on this browser · <a href="#" id="ownerOut">Sign out</a>`;
-    $('#ownerOut').onclick = e => { e.preventDefault(); OWNER = ''; try { localStorage.removeItem('aclive.ownerKey'); } catch {} renderOwnerBox(); if (DATA) renderAll(); }; return; }
+    $('#ownerOut').onclick = e => { e.preventDefault(); OWNER = ''; try { localStorage.removeItem('aclive.ownerKey'); } catch {} renderOwnerBox(); ownerChanged(); }; return; }
   box.innerHTML = `<a href="#" id="ownerIn">Owner sign-in</a>`;
   $('#ownerIn').onclick = e => { e.preventDefault();
     box.innerHTML = `<span class="owner-form">Owner key: <input type="password" id="ownerKey" autocomplete="current-password" size="24">
@@ -2802,11 +2868,140 @@ function renderOwnerBox() {
     const go = async () => { const k = $('#ownerKey').value.trim(); if (!k) return;
       try { const r = CONFIG.dataSource === 'mock' ? { ok: true } : await fetch(`${CONFIG.api}/admin/ping`, { headers: { authorization: 'Bearer ' + k } });
         if (!r.ok) { $('#ownerMsg').textContent = ' Key not accepted.'; return; }
-        OWNER = k; try { localStorage.setItem('aclive.ownerKey', k); } catch {} renderOwnerBox(); if (DATA) renderAll();
+        OWNER = k; try { localStorage.setItem('aclive.ownerKey', k); } catch {} renderOwnerBox(); ownerChanged();
       } catch { $('#ownerMsg').textContent = ' Could not reach the server.'; } };
     $('#ownerGo').onclick = go; $('#ownerKey').onkeydown = e => { if (e.key === 'Enter') go(); };
   };
 }
+function ownerChanged() {
+  if (!$('#detail').hidden && DATA) renderAll();
+  if (!$('#weeksView').hidden) renderWeeks();
+  IR.at = 0; if (!$('#inreachView').hidden) renderIrView();
+}
+// Activity location (owner): for activities without GPS, or to override where the weather is taken
+function renderLocEdit(d) {
+  const box = $('#locEdit'), id = String(d.trip?.id || ''), loc = d.trip?.loc;
+  const label = loc ? esc(loc.label || `${(+loc.lat).toFixed(3)}, ${(+loc.lon).toFixed(3)}`) : '';
+  if (!id || id === 'live' || id.startsWith('ir-') || CONFIG.dataSource === 'mock' && !isOwner()) { box.innerHTML = ''; return; }
+  if (!isOwner()) { box.innerHTML = loc && d.trip?.nogps ? `📍 ${label}` : ''; return; }
+  box.innerHTML = `${loc ? `📍 ${label} · ` : d.trip?.nogps ? '📍 no location yet · ' : ''}<a href="#" id="locBtn">${loc ? 'Change location' : 'Set location'}</a>`;
+  $('#locBtn').onclick = e => { e.preventDefault();
+    box.innerHTML = `<input id="locQ" size="30" placeholder="Town or place, e.g. Durango, CO" value="${loc?.label ? esc(loc.label) : ''}">
+      <span class="btn-row" style="display:inline-flex;margin:0 0 0 6px"><button class="primary" id="locSave">Save</button>${loc ? '<button id="locClear">Clear</button>' : ''}<button id="locCancel">Cancel</button></span>
+      <div class="muted" id="locMsg" style="font-size:.8rem">${d.trip?.nogps ? 'Where you were. Sets the name and the weather for this activity.' : 'Overrides the track for the name and the weather record.'}</div>`;
+    $('#locQ').focus();
+    const msg = t => { $('#locMsg').textContent = t; };
+    $('#locCancel').onclick = () => renderLocEdit(d);
+    const save = async body => { msg('Saving…');
+      try { const r = await ownerPost('/admin/activity/location', { id, ...body }); if (r.ok === false) { msg(r.error === 'place not found' ? 'Place not found. Try "Town, ST".' : r.error); return; }
+        await refreshDetail(true); } catch (err) { msg(err.message); } };
+    $('#locSave').onclick = () => { const q = $('#locQ').value.trim(); if (q) save({ q }); };
+    $('#locQ').onkeydown = e => { if (e.key === 'Enter') $('#locSave').click(); if (e.key === 'Escape') renderLocEdit(d); };
+    if (loc) $('#locClear').onclick = () => save({ clear: true });
+  };
+}
+function renderNoGps(d) {
+  const t = d.trip || {}, day = t.start ? mtDayKey(Date.parse(t.start)) : null, x = day && MET.days[day];
+  const where = t.loc ? `📍 ${esc(t.loc.label || '')}` : isOwner() ? 'No location yet: use <b>Set location</b> above.' : '';
+  let wx = '';
+  if (x?.model) { const v = metVals(x);
+    wx = `${wxIcon(v.code, v.type)} ${Math.round(v.tmax_c)}° / ${Math.round(v.tmin_c)}°C · ${cF(v.tmax_c)}°F / ${cF(v.tmin_c)}°F · ${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} mph${v.precip_in ? ` · ${v.precip_in.toFixed(2)} in` : ''}${x.place ? ` <span class="muted">(day's weather at ${esc(x.place)})</span>` : ''}`; }
+  else if (day && !MET.at['ng' + day]) { MET.at['ng' + day] = 1; loadMet(day, day, () => { if (DATA && $('#detail').classList.contains('nogps')) renderNoGps(viewOf(DATA)); }); }
+  const fig = (k, v, a0) => v == null ? '' : `<div><div class="k">${k}</div><div class="v">${v}</div>${a0 ? alt(a0) : ''}</div>`;
+  const dur = t.moving_s ?? (t.end && t.start ? (Date.parse(t.end) - Date.parse(t.start)) / 1000 : null);
+  const stats = [fig('Distance', t.dist_mi ? `${t.dist_mi.toFixed(2)}<small>mi</small>` : null, t.dist_mi ? km(t.dist_mi) + ' km' : ''),
+    fig('Time', dur != null ? fmtClock(dur * 1000) : null, fmtTime(t.start) + (t.end ? '–' + fmtTime(t.end) : '')),
+    fig('Heart rate', t.hr_avg ? `${t.hr_avg}<small>bpm</small>` : null, t.hr_max ? `avg · max ${t.hr_max}` : 'avg'),
+    fig('Power', t.power_avg ? `${Math.round(t.power_avg)}<small>W</small>` : null, t.power_max ? `avg · max ${Math.round(t.power_max)} W` : 'avg'),
+    fig('Steps', t.total_steps ? n0(t.total_steps) : null, '')].join('');
+  $('#nogpsBody').innerHTML = `${stats ? `<div class="now-stats" style="margin-bottom:10px">${stats}</div>` : ''}<p style="margin:0 0 6px">This activity was recorded without GPS (for example a rowing machine or treadmill), so there is no map, elevation or splits.</p>
+    ${where ? `<p style="margin:0 0 4px">${where}</p>` : ''}${wx ? `<p style="margin:0">${wx}</p>` : ''}`;
+}
+
+/* ---- inReach check-ins (Worker /api/checkins): points sent when not on an activity. Front-page card + #inreach feed. ---- */
+const IR = { list: null, acts: [], at: 0, days: null, poll: null };
+let IR_DAYS = '30', IR_F = 'all', IRMAP = null;
+async function loadIr(days, after) {
+  if (CONFIG.dataSource === 'mock') { IR.list = []; IR.acts = []; IR.days = days; IR.at = Date.now(); after?.(); return; }
+  try {
+    const r = await fetch(`${CONFIG.api}/api/checkins?days=${days}`, { cache: 'no-store', headers: isOwner() ? { authorization: 'Bearer ' + OWNER } : {} });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json(); IR.list = j.checkins || []; IR.acts = j.activities || []; IR.days = days; IR.at = Date.now(); after?.();
+    clearTimeout(IR.poll); if (j.pending) IR.poll = setTimeout(() => loadIr(days, after), 8000);    // places and weather still being looked up
+  } catch (e) { console.warn('inReach check-ins unavailable', e); }
+}
+function loadIrCard() {
+  if (!IR.at || IR.days !== '30' || Date.now() - IR.at > 5 * 60e3) loadIr('30', renderIrCard);
+  renderIrCard();
+}
+const ckEle = c => c.ele_ft != null ? `${n0(c.ele_ft)} ft · ${mOf(c.ele_ft)} m` : '';
+const ckWx = c => c.wx?.temp_c != null ? `${wxIcon(c.wx.code)} ${Math.round(c.wx.temp_c)}°C · ${cF(c.wx.temp_c)}°F${c.wx.desc ? ' ' + esc(c.wx.desc.toLowerCase()) : ''}${c.wx.wind_mph != null ? ` · ${dirName(c.wx.wind_dir)} ${c.wx.wind_mph} mph` : ''}`
+  : c.pending ? 'weather loading…' : '';
+function renderIrCard() {
+  const el = $('#irCard'), L = (IR.days === '30' ? IR.list || [] : []).filter(c => !c.hidden);
+  document.body.classList.toggle('has-ir', !!L.length);
+  if (!L.length) { el.hidden = true; return; }
+  el.hidden = false;
+  const c = L[0], age = Date.now() - Date.parse(c.t), feed = '<a href="#inreach">inReach feed →</a>';
+  if (age > 7 * 864e5) { el.innerHTML = `<div class="ir-one">📡 Last inReach check-in: ${fmtDT(Date.parse(c.t))} · ${esc(c.place || '')} · ${feed}</div>`; return; }
+  el.innerHTML = `<div class="week-h"><h2>📡 inReach check-in</h2><span class="muted">${feed}</span></div>
+    <div class="ir-main"><div class="ir-t">${fmtDT(Date.parse(c.t))} · <b>${fmtAge(age)}</b></div>
+      <div class="ir-pl">${esc(c.place || 'Looking up place…')}</div>
+      ${c.msg ? `<div class="ir-msg">“${esc(c.msg)}”</div>` : ''}
+      <div class="ir-x">${[ckEle(c), ckWx(c)].filter(Boolean).join(' · ')}</div></div>
+    ${L.slice(1, 3).map(x => `<div class="ir-more">${fmtDT(Date.parse(x.t))} · ${esc(x.place || '')}${x.ele_ft != null ? ' · ' + n0(x.ele_ft) + ' ft' : ''}${x.msg ? ' · “' + esc(x.msg) + '”' : ''}</div>`).join('')}`;
+}
+function renderIrView() {
+  if (IR.days !== IR_DAYS || !IR.at) { loadIr(IR_DAYS, renderIrView); if (!IR.list || IR.days !== IR_DAYS) { $('#irList').innerHTML = '<li class="muted" style="cursor:default">Loading…</li>'; } }
+  const sel = $('#irDays'); sel.value = IR_DAYS; sel.onchange = () => { IR_DAYS = sel.value; renderIrView(); };
+  const F = [['all', 'All'], ['loc', '📍 Check-ins'], ['msg', '💬 Messages'], ['act', '🥾 Activities']];
+  $('#irChips').innerHTML = F.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${IR_F === k}">${l}</button>`).join('');
+  $('#irChips').onclick = e => { const b = e.target.closest('button'); if (b) { IR_F = b.dataset.f; renderIrView(); } };
+  if (IR.days !== IR_DAYS) return;
+  const own = isOwner(), items = [];
+  for (const c of IR.list || []) if (IR_F === 'all' || IR_F === c.kind) items.push({ t: c.t, c });
+  if (IR_F === 'all' || IR_F === 'act') for (const a of IR.acts || []) items.push({ t: a.start, a });
+  items.sort((x, y) => x.t < y.t ? 1 : -1);
+  $('#irList').innerHTML = items.length ? items.map(({ c, a }, i) => a
+    ? `<li data-i="${i}"><span class="ic">🥾</span><div><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a>
+        <div class="m">${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${a.n_ir} inReach point${a.n_ir === 1 ? '' : 's'}</div></div><span></span></li>`
+    : `<li data-i="${i}" class="${c.hidden ? 'hid' : ''}"><span class="ic">${c.kind === 'msg' ? '💬' : '📍'}</span><div>
+        <b>${esc(c.place || (c.pending ? 'Looking up place…' : `${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}`))}</b>${c.hidden ? '<span class="tag">hidden</span>' : ''}
+        ${c.msg ? `<div class="ir-msg">“${esc(c.msg)}”</div>` : ''}
+        <div class="m">${fmtDT(Date.parse(c.t))}${ckEle(c) ? ' · ' + ckEle(c) : ''}</div>${ckWx(c) ? `<div class="m">${ckWx(c)}</div>` : ''}</div>
+        ${own ? `<button type="button" class="edit-btn" data-hide="${esc(c.id)}" data-h="${c.hidden ? 0 : 1}">${c.hidden ? 'Unhide' : 'Hide'}</button>` : '<span></span>'}</li>`).join('')
+    : '<li class="muted" style="cursor:default">No inReach check-ins in this period.</li>';
+  // map
+  if (typeof L === 'undefined') return;
+  if (!IRMAP) {
+    const map = L.map('irMap', { zoomControl: true, attributionControl: true });
+    L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxZoom: 18,
+      attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases">CyclOSM</a> | © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+    map.attributionControl.setPrefix(false);
+    IRMAP = { map, layer: L.layerGroup().addTo(map), marks: [] };
+  }
+  setTimeout(() => IRMAP.map.invalidateSize(), 0);
+  IRMAP.layer.clearLayers(); IRMAP.marks = [];
+  const bounds = [];
+  items.forEach(({ c, a }, i) => {
+    if (a) { const th = (a.thumb || []).filter(p => p && p[0] != null); if (th.length < 2) return;
+      const ln = L.polyline(th, { color: '#d97706', weight: 3, opacity: .85 }).bindTooltip(esc(a.title)).addTo(IRMAP.layer); bounds.push(...th); IRMAP.marks[i] = ln; return; }
+    const m = L.circleMarker([c.lat, c.lon], { radius: 7, color: '#fff', weight: 2, fillColor: c.kind === 'msg' ? '#2563eb' : '#d97706', fillOpacity: c.hidden ? .35 : .95 })
+      .bindPopup(`<b>${esc(c.place || '')}</b><br>${fmtDT(Date.parse(c.t))}${c.ele_ft != null ? '<br>' + n0(c.ele_ft) + ' ft' : ''}${c.msg ? '<br>“' + esc(c.msg) + '”' : ''}`).addTo(IRMAP.layer);
+    bounds.push([c.lat, c.lon]); IRMAP.marks[i] = m;
+  });
+  if (bounds.length) IRMAP.map.fitBounds(bounds, { padding: [24, 24], maxZoom: 13 }); else IRMAP.map.setView([37.27, -107.88], 8);
+  $('#irList').onclick = async e => {
+    const hb = e.target.closest('[data-hide]');
+    if (hb) { e.stopPropagation(); hb.disabled = true;
+      try { await ownerPost('/admin/checkin/hide', { id: hb.dataset.hide, hidden: hb.dataset.h === '1' }); IR.at = 0; loadIr(IR_DAYS, renderIrView); } catch (err) { hb.textContent = err.message; } return; }
+    if (e.target.closest('a')) return;
+    const li = e.target.closest('li[data-i]'), mk = li && IRMAP.marks[+li.dataset.i]; if (!mk) return;
+    if (mk.getLatLng) { IRMAP.map.setView(mk.getLatLng(), Math.max(IRMAP.map.getZoom(), 12)); mk.openPopup(); } else IRMAP.map.fitBounds(mk.getBounds(), { padding: [24, 24] });
+    $('#irMap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+}
+
 // Title: ✏️ to rename (blank = automatic name)
 function renderTitleEdit(d) {
   if (!isOwner() || !d.trip?.id) return;
