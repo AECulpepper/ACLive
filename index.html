@@ -164,6 +164,14 @@ td.srcs .sw { margin-right: 4px; }
 .card-b { padding: 10px 16px 16px; }
 
 .tiles { margin-bottom: 14px; }
+.alert-ok { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font-size: .82rem; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; margin-bottom: 14px; }
+.alert-ok b { color: #5ec27a; font-weight: 600; } .alert-ok.err b { color: #e8b04a; }
+.sum-line { display: flex; flex-wrap: wrap; gap: 6px 34px; margin: -4px 0 16px; }
+.sum-line:empty { display: none; }
+.sum-line .v { font-family: var(--font-display); font-weight: 600; font-size: 1.55rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sum-line .v small { font-family: var(--font); font-weight: 400; font-size: .8rem; color: var(--muted); margin-left: 3px; }
+.sum-line .a { font-size: .8rem; color: var(--muted); }
+@media (max-width: 560px) { .sum-line { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; } }
 .tile-row { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0,1fr)); gap: 12px; }
 .tile-row + .tile-row { margin-top: 12px; }
 .tile-row-h { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 0 0 6px 2px; }
@@ -351,7 +359,8 @@ footer p { margin: 0 0 6px; }
 /* v0.15: inReach check-ins, non-GPS activities, location editor */
 .top-row { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; align-items: stretch; }
 .top-row > .week { margin-bottom: 0; }
-.top-row .now-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; }
+.top-row .now-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 16px; }
+@media (max-width: 560px) { .top-row .now-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .top-row { grid-template-columns: 1fr; } }
 .ir-week .ir-main { display: grid; gap: 2px; }
 .ir-t { font-size: .85rem; color: var(--muted); } .ir-t b { color: var(--text); font-weight: 600; }
@@ -411,6 +420,7 @@ footer p { margin: 0 0 6px; }
         <span class="meta wk-ctl"><select id="metMonth" aria-label="Month"></select><button id="metCsv">CSV</button></span></div>
       <div class="card-b">
         <div id="metComing"></div>
+        <div id="alertTest"></div>
         <div id="metEdit"></div>
         <div class="table-wrap"><table class="wk-table met-table" id="metTable"></table></div>
         <p class="muted" style="font-size:.8rem;margin:6px 0 0" id="metNote"></p>
@@ -459,6 +469,7 @@ footer p { margin: 0 0 6px; }
         </div></div>
       <span class="pill" id="statusPill"><span class="dot"></span><span id="statusText">—</span></span>
     </div>
+    <div class="sum-line" id="sumLine"></div>
 
     <div id="alerts"></div>
     <section class="tiles" id="tiles"></section>
@@ -569,7 +580,7 @@ footer p { margin: 0 0 6px; }
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.15.3</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.15.4</p>
   </footer>
 </div>
 <script>
@@ -1190,6 +1201,20 @@ function renderTiles(d, s) {
     : { label:'Vs plan', value: Math.abs(s.delta) < 5*MIN ? 'On plan' : fmtDur(Math.abs(s.delta)), alt: '',
         foot: behind ? 'behind plan' : ahead ? 'ahead of plan' : 'within 5 min', footCls: behind ? 'behind' : ahead ? 'ahead' : '' };
   const liveHr = !s.ended && s.lastLT?.hr && hrAge <= 20*MIN;
+  // Pace: average moving pace (stops excluded), average including stops, and (live) the recent moving pace
+  const mi = s.curMi > 0.05 ? s.curMi : 0, movAvg = mi && s.movingMs ? s.movingMs / MIN / mi : null, allAvg = mi && elapsed ? elapsed / MIN / mi : null;
+  const pk = v => v ? `${fmtPace(v / KM_PER_MI)} /km` : '';
+  const paceT = !s.ended && s.recentPace
+    ? { label: 'Pace', value: `${fmtPace(s.recentPace)}<small>/mi now</small>`, alt: `${movAvg ? `avg ${fmtPace(movAvg)} moving<br>` : ''}${allAvg ? `${fmtPace(allAvg)} incl. stops` : ''}`, foot: `${pk(s.recentPace)} now · moving, last 2 h` }
+    : { label: 'Pace', value: movAvg || allAvg ? `${fmtPace(movAvg || allAvg)}<small>/mi</small>` : '—', alt: movAvg && allAvg ? `${pk(movAvg)}<br>${fmtPace(allAvg)} /mi incl. stops` : pk(movAvg || allAvg),
+        foot: movAvg ? 'average, moving' : allAvg ? 'average, incl. stops' : '' };
+  // Summary under the title
+  $('#sumLine').innerHTML = !s.last && !imp ? '' : [
+    [`${s.curMi.toFixed(1)}<small>mi</small>`, `${km(s.curMi)} km`],
+    [`${n0(s.gainSoFar)}<small>ft</small>`, `${mOf(s.gainSoFar)} m vert`],
+    [fmtClock(elapsed), s.movingMs != null ? `${fmtClock(s.movingMs)} moving` : s.ended ? 'total' : 'elapsed'],
+    [movAvg || allAvg ? `${fmtPace(movAvg || allAvg)}<small>/mi</small>` : '—', `${movAvg ? 'avg moving' : 'avg'}${!s.ended && s.recentPace ? ` · now ${fmtPace(s.recentPace)}` : movAvg || allAvg ? ' · ' + pk(movAvg || allAvg) : ''}`],
+  ].map(([v, a]) => `<div><div class="v">${v}</div><div class="a">${a}</div></div>`).join('');
   const tiles = [
     { label:'Distance', value:`${s.curMi.toFixed(1)}<small>mi</small>`, alt:`${km(s.curMi)} km`,
       foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.posMi/s.totalMi*100)}%` },
@@ -1201,8 +1226,7 @@ function renderTiles(d, s) {
       foot: s.gainTotal != null ? `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` : s.ended ? 'total' : 'so far' },
     { label:'High · low', value: s.eleHigh != null ? `${n0(s.eleHigh)}<small>ft</small>` : '—', alt: s.eleHigh != null ? `${mOf(s.eleHigh)} m` : '',
       foot: s.eleLow != null ? `low ${n0(s.eleLow)} ft<br>${mOf(s.eleLow)} m` : '' },
-    { label: s.ended ? 'Moving pace' : 'Recent pace', value: s.recentPace ? `${fmtPace(s.recentPace)}<small>/mi</small>` : '—',
-      alt: s.recentPace ? `${fmtPace(s.recentPace / KM_PER_MI)} /km` : '', foot: s.ended ? 'average, stops excluded' : 'moving, last 2 h' },
+    paceT,
     stepsTile(s),
     weatherTile(d, s),
     elevationTile(s),
@@ -1216,10 +1240,10 @@ function renderTiles(d, s) {
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`;
   // Row 1: right now (or how it ended). Row 2: the effort so far.
   const [dist, el, th, gain, hl, pace, stepsT, wxT, eleT, day, sun, hr] = tiles;
-  $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
-    <div class="tile-row" style="--n:6">${[wxT, eleT, day, sun, hr, pace].map(html).join('')}</div>
-    <div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
-    <div class="tile-row" style="--n:6">${[dist, el, th, gain, hl, stepsT].map(html).join('')}</div>`;
+  $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
+    <div class="tile-row" style="--n:7">${[dist, el, pace, th, gain, hl, stepsT].map(html).join('')}</div>
+    <div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
+    <div class="tile-row" style="--n:5">${[wxT, eleT, day, sun, hr].map(html).join('')}</div>`;
 }
 // Sun & moon for today at your position (finished: the day you finished)
 function sunTile(s) {
@@ -1294,13 +1318,33 @@ function flNote(n, s) {
 
 /* ---- NWS alerts (live only) ---- */
 function renderAlerts(d, s) {
-  const list = !s.ended ? (d.alerts || []) : [];
+  const list = !s.ended ? (d.alerts || []) : [], w = d.weather || {};
+  const near = s.last ? ` at your last position${s.last.ele != null ? ` (${n0(s.last.ele)} ft)` : ''}` : '';
+  const line = s.ended || CONFIG.dataSource === 'mock' ? '' : list.length ? ''
+    : w.alerts_error && !w.alerts_at ? `<div class="alert-ok err"><span><b>Weather alerts unavailable</b> · the NWS service didn't respond</span><span>tried ${w.alerts_tried_at ? fmtTime(Date.parse(w.alerts_tried_at)) : ''} · retrying every 15 min</span></div>`
+    : w.alerts_at ? `<div class="alert-ok"><span><b>✓ No NWS weather alerts</b>${near}</span><span>checked ${fmtTime(Date.parse(w.alerts_at))}${w.alerts_error ? ' · last retry failed' : ''} · every 15 min · US only</span></div>`
+    : `<div class="alert-ok"><span>Checking NWS weather alerts…</span><span></span></div>`;
   $('#alerts').innerHTML = list.map(a => `<div class="alert-box${/severe|extreme/i.test(a.severity) ? ' severe' : ''}" role="alert">
     <div><div class="ev">⚠ ${esc(a.event)}${a.ends ? ` <span class="muted" style="font-weight:400">· until ${fmtDT(a.ends)}</span>` : ''}</div>
-    <div class="hl">${esc(a.headline || '')}${a.url ? ` <a href="${esc(a.url)}" target="_blank" rel="noopener">NWS details</a>` : ''}</div></div></div>`).join('');
+    <div class="hl">${esc(a.headline || '')}${a.url ? ` <a href="${esc(a.url)}" target="_blank" rel="noopener">NWS details</a>` : ''}</div></div></div>`).join('') + line;
 }
 
 /* ---- Conditions: weather now/next (live) or what it was like (finished), temperature along the way, night, sun & moon ---- */
+// Dew point (Magnus), wind chill and heat index (NWS formulas; °F in, °F out; null where they don't apply)
+const dewF = (tF, rh) => { if (tF == null || !rh) return null; const t = (tF - 32) * 5 / 9, g = Math.log(rh / 100) + 17.62 * t / (243.12 + t); return (243.12 * g / (17.62 - g)) * 9 / 5 + 32; };
+const chillF = (tF, mph) => tF != null && tF <= 50 && mph >= 3 ? 35.74 + 0.6215 * tF - 35.75 * mph ** 0.16 + 0.4275 * tF * mph ** 0.16 : null;
+function heatF(T, R) {
+  if (T == null || R == null || T < 80) return null;
+  let hi = 0.5 * (T + 61 + (T - 68) * 1.2 + R * 0.094);
+  if (hi < 80) return hi;
+  hi = -42.379 + 2.04901523 * T + 10.14333127 * R - .22475541 * T * R - .00683783 * T * T - .05481717 * R * R + .00122874 * T * T * R + .00085282 * T * R * R - .00000199 * T * T * R * R;
+  if (R < 13 && T <= 112) hi -= ((13 - R) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
+  else if (R > 85 && T <= 87) hi += ((R - 85) / 10) * ((87 - T) / 5);
+  return hi;
+}
+const heatRisk = f => f >= 125 ? 'extreme danger' : f >= 103 ? 'danger' : f >= 90 ? 'extreme caution' : f >= 80 ? 'caution' : '';
+const dewFeel = f => f < 50 ? 'dry air' : f < 60 ? 'comfortable' : f < 65 ? 'a bit humid' : f < 70 ? 'humid' : 'muggy';
+const cfPair = f => `${fC(f)} °C · ${Math.round(f)} °F`;
 function renderWx(d, s) {
   const card = $('#wxCard'), w = d.weather, rows = skyDays(s);
   if (!s.pts.length) { card.hidden = true; return; }
@@ -1318,6 +1362,8 @@ function renderWx(d, s) {
       <div>${esc(n.desc)} · feels ${fC(n.feels_f)} °C</div>
       <div class="muted" style="font-size:.88rem">wind ${n.wind_mph} mph ${windDir(n.wind_dir)}, gusts ${n.gust_mph} · ${Math.round(n.gust_mph * KM_PER_MI)} km/h</div>
       <div class="muted" style="font-size:.88rem">${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}%` : ''}</div>
+      ${(() => { const dp = dewF(n.temp_f, n.rh), wc = chillF(n.temp_f, n.wind_mph), hx = heatF(n.temp_f, n.rh);
+        return `<div class="muted" style="font-size:.88rem">${dp != null ? `dew point ${cfPair(dp)} (${dewFeel(dp)})` : ''}${wc != null ? ` · wind chill ${cfPair(wc)}` : ''}${hx != null ? ` · heat index ${cfPair(hx)}${heatRisk(hx) ? ' (' + heatRisk(hx) + ')' : ''}` : ''}</div>`; })()}
       <div class="muted" style="font-size:.88rem">${n.msl_mb != null ? `${Math.round(n.msl_mb)} mbar sea level${trendTxt(n.msl_trend_3h)} in 3 h` : ''}${n.sfc_mb != null ? ` · ${Math.round(n.sfc_mb)} local` : ''}</div>
       ${flNote(n, s)}</div>
       <div class="wx-hours">${fc.filter((_, i) => i % 2 === 1).slice(0, 7).map(h => `<div><div class="t">${fmtTime(h.ts)}</div>
@@ -1328,7 +1374,10 @@ function renderWx(d, s) {
   } else if (along.length) {
     const tf = along.map(x => x.temp_f), lo = Math.min(...tf), hi = Math.max(...tf);
     const pr = along.reduce((a, x) => a + x.precip_in, 0), snowy = along.some(x => x.precip_in > 0 && x.temp_f <= 33);
-    const g = along.reduce((a, x) => x.gust_mph > a.gust_mph ? x : a), frz = along.filter(x => x.temp_f <= 32).length;
+    const g = along.reduce((a, x) => x.gust_mph > a.gust_mph ? x : a), frz = Math.round(along.filter(x => x.temp_f <= 32).reduce((a, x) => a + (x.step_h ?? 1), 0) * 10) / 10;
+    const dps = along.map(x => dewF(x.temp_f, x.rh)).filter(v => v != null);
+    const wcs = along.map(x => ({ x, v: chillF(x.temp_f, x.wind_mph) })).filter(o => o.v != null).sort((a, b) => a.v - b.v)[0];
+    const hxs = along.map(x => ({ x, v: heatF(x.temp_f, x.rh) })).filter(o => o.v != null).sort((a, b) => b.v - a.v)[0];
     const rainT = along.reduce((a, x) => a + (x.rain_in ?? (x.type === 'snow' ? 0 : x.precip_in)), 0), snowT = along.reduce((a, x) => a + (x.snow_in || 0), 0);
     const rng = k => { const v = along.map(x => x[k]).filter(x => x != null); return v.length ? [Math.min(...v), Math.max(...v), v.reduce((a, b) => a + b, 0) / v.length] : null; };
     const rh = rng('rh'), cl = rng('cloud'), msl = rng('msl_mb'), sfc = rng('sfc_mb'), fl = rng('fl_ft'), pw = prevailing(along);
@@ -1342,6 +1391,10 @@ function renderWx(d, s) {
       ${cl ? stat('Cloud cover', `${Math.round(cl[2])}<small>% avg</small>`, `${Math.round(cl[0])}–${Math.round(cl[1])}%`) : ''}
       ${msl ? stat('Pressure', `${span(msl)}<small>mbar</small>`, `sea level${sfc ? ` · local ${span(sfc)}` : ''}`) : ''}
       ${fl ? stat('Freezing level', `${span(fl, n0)}<small>ft</small>`, `${span(fl, v => n0(v / 3.28084))} m · dashed on the elevation chart`) : ''}
+      ${dps.length ? stat('Dew point', `${fC(Math.min(...dps)) === fC(Math.max(...dps)) ? fC(dps[0]) : `${fC(Math.min(...dps))} to ${fC(Math.max(...dps))}`}<small>°C</small>`,
+        `${Math.round(Math.min(...dps))}–${Math.round(Math.max(...dps))} °F · ${dewFeel(Math.max(...dps))}`) : ''}
+      ${stat('Coldest wind chill', wcs ? `${fC(wcs.v)}<small>°C</small>` : '<span class="muted" style="font-size:1rem">n/a</span>', wcs ? `${Math.round(wcs.v)} °F · ${fmtDT(Date.parse(wcs.x.t))}${wcs.x.ele_ft != null ? ' · ' + n0(wcs.x.ele_ft) + ' ft' : ''}` : 'never 10 °C or colder with wind')}
+      ${stat('Highest heat index', hxs ? `${fC(hxs.v)}<small>°C</small>` : '<span class="muted" style="font-size:1rem">n/a</span>', hxs ? `${Math.round(hxs.v)} °F · ${heatRisk(hxs.v) || 'below caution'} · ${fmtDT(Date.parse(hxs.x.t))}` : 'never above 27 °C')}
       ${stat('Below freezing', `${frz}<small>h</small>`, frz ? 'hours at or below 0 °C' : 'never')}
       ${stat('In the dark', fmtClock(s.dark.reduce((a, z) => a + (z.end - z.start), 0)), 'sun below 6°')}</div>`;
   }
@@ -2190,10 +2243,17 @@ function actSteps(a) {
   if (a.cad_avg_spm > 0 && a.moving_s > 0) return { n: Math.round(a.cad_avg_spm * a.moving_s / 60), est: true };
   return null;
 }
+const actSec = a => { const e = Date.parse(a.end || a.last_t || '') || (a.status === 'live' ? Date.now() : 0), s0 = Date.parse(a.start);
+  return e && s0 && e > s0 ? (e - s0) / 1000 : 0; };
+const hm = sec => `${Math.floor(sec / 3600)}:${String(Math.floor(sec % 3600 / 60)).padStart(2, '0')}`;
+const timesLine = ts => ['run', 'walk', 'hike', 'other'].filter(k => ts[k] >= 60).map(k => `${k} ${hm(ts[k])}`).join(' · ');
 function weekStats(acts, k) {
-  const w = { n: acts.length, mi: 0, ft: 0, steps: 0, est: 0, noSteps: 0, hi: null, lo: null, types: { run: 0, walk: 0, hike: 0, other: 0 }, acts };
+  const w = { n: acts.length, mi: 0, ft: 0, steps: 0, est: 0, noSteps: 0, hi: null, lo: null, types: { run: 0, walk: 0, hike: 0, other: 0 },
+    sec: 0, mov: 0, movN: 0, tsec: { run: 0, walk: 0, hike: 0, other: 0 }, acts };
   for (const a of acts) {
     w.mi += a.dist_mi || 0; w.ft += a.gain_ft || 0; w.types[actClass(a.type)]++;
+    const sec = actSec(a); w.sec += sec; w.tsec[actClass(a.type)] += sec;               // elapsed, start to finish
+    if (a.moving_s != null) { w.mov += a.moving_s; w.movN++; } else w.mov += sec;
     const st = actSteps(a); if (st) { w.steps += st.n; if (st.est) w.est++; } else w.noSteps++;
     if (a.ele_max_ft != null) w.hi = w.hi == null ? a.ele_max_ft : Math.max(w.hi, a.ele_max_ft);
     if (a.ele_min_ft != null) w.lo = w.lo == null ? a.ele_min_ft : Math.min(w.lo, a.ele_min_ft);
@@ -2221,14 +2281,15 @@ function renderWeek(now) {
   $('#weekCard').innerHTML = `<div class="week-h"><h2>This week</h2><span class="muted">${weekLabel(cur)} · <a href="#weeks">All weeks →</a></span></div>
     <div class="now-stats">
       ${fig('Distance', `${w.mi.toFixed(1)}<small>mi</small>`, km(w.mi) + ' km')}
-      ${fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m')}
-      ${fig('Activities', w.n, typesLine(w.types) || '')}
       ${w.all != null ? fig('Steps', n0(w.all), `${w.steps ? (w.est ? '≈ ' : '') + n0(w.steps) : 0} in activities · ${n0(w.all / w.allDays)}/day`)
         : fig('Steps', w.steps ? `${w.est ? '≈ ' : ''}${n0(w.steps)}` : '—', stepsAlt)}
+      <div title="Elapsed, start to finish. Moving ${hm(w.mov)}${w.movN < w.n ? ' (some activities have no moving time; elapsed used)' : ''}"><div class="k">Time</div><div class="v">${w.sec ? hm(w.sec) + '<small>h</small>' : '—'}</div>${alt(timesLine(w.tsec) || (w.sec ? 'moving ' + hm(w.mov) : ''))}</div>
+      ${fig('Activities', w.n, typesLine(w.types) || '')}
+      ${fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m')}
       ${fig('High point', w.hi != null ? `${n0(w.hi)}<small>ft</small>` : '—', w.hi != null ? mOf(w.hi) + ' m' : '')}
       ${fig('Low point', w.lo != null ? `${n0(w.lo)}<small>ft</small>` : '—', w.lo != null ? mOf(w.lo) + ' m' : '')}
     </div>
-    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}</div>`;
+    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${hm(p.sec)} h · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}</div>`;
 }
 
 /* ---- Daily weather record (Worker /api/met): location per day = pinned day > that day's activity finish > newer of last
@@ -2317,7 +2378,23 @@ function renderMetView() {
   if (!MET.at[from + to] || Date.now() - MET.at[from + to] > 10 * 60e3) { MET.at[from + to] = Date.now(); loadMet(from, to, renderMetTable); }
   const c0 = addDays(mtDayKey(Date.now()), 1), c1 = addDays(c0, 13);
   if (!MET.at[c0 + c1] || Date.now() - MET.at[c0 + c1] > 10 * 60e3) { MET.at[c0 + c1] = Date.now(); loadMet(c0, c1, renderMetComing); }
-  renderMetTable(); renderMetComing();
+  renderMetTable(); renderMetComing(); renderAlertTest();
+}
+// Owner: ask NWS for alerts at any place, to check the alert path end to end (pick a place with an active alert)
+function renderAlertTest() {
+  const box = $('#alertTest');
+  if (!isOwner()) { box.innerHTML = ''; return; }
+  box.innerHTML = `<details class="met-edit" style="margin-bottom:12px"><summary style="cursor:pointer"><b>Test NWS weather alerts</b> <span class="muted" style="font-size:.8rem">owner only</span></summary>
+    <div class="row" style="margin-top:8px"><input id="atQ" placeholder="Town, ST or lat, lon"><button id="atGo">Check alerts</button></div>
+    <div id="atOut" class="muted" style="margin-top:6px;font-size:.85rem">Find a place with an active alert at alerts.weather.gov, then check it here. Same lookup the live activity page uses.</div></details>`;
+  $('#atGo').onclick = async () => { const out = $('#atOut'), q = $('#atQ').value.trim(); if (!q) return; out.textContent = 'Asking NWS…';
+    try { const r = await (await fetch(`${CONFIG.api}/admin/alerts-test?q=${encodeURIComponent(q)}`, { headers: { authorization: 'Bearer ' + OWNER } })).json();
+      if (!r.ok) { out.textContent = r.place ? `${r.place}: NWS didn't answer (${r.error})` : 'Place not found. Try "Town, ST" or "lat, lon".'; return; }
+      out.innerHTML = `<b>${esc(r.place)}</b> (${(+r.lat).toFixed(3)}, ${(+r.lon).toFixed(3)}) · checked ${fmtTime(Date.parse(r.at))}<br>` + (r.alerts.length
+        ? r.alerts.map(a => `⚠ <b>${esc(a.event)}</b>${a.ends ? ` · until ${fmtDT(a.ends)}` : ''}<br><span style="font-size:.8rem">${esc(a.headline || '')}</span>`).join('<br>')
+        : '✓ No active alerts there right now. The lookup worked.');
+    } catch (e) { out.textContent = 'Could not reach the Worker: ' + e.message; } };
+  $('#atQ').onkeydown = e => { if (e.key === 'Enter') $('#atGo').click(); };
 }
 // Coming days: where each forecast day is taken, and (owner) where you plan to be
 const SRC_TXT = { activity: 'activity', checkin: 'inReach check-in', set: 'set', 'set-from': 'from your setting', plan: 'planned', last: 'last known' };
@@ -2441,28 +2518,28 @@ function renderWeeks() {
   const all = weekStats(rows.flatMap(r => r.w.acts)), allSteps = rows.reduce((t, r) => t + (r.w.all || 0), 0);
   for (const r of rows) { if (r.w.hi != null) all.hi = all.hi == null ? r.w.hi : Math.max(all.hi, r.w.hi); if (r.w.lo != null) all.lo = all.lo == null ? r.w.lo : Math.min(all.lo, r.w.lo); }
   const big = n => n >= 1e6 ? (n / 1e6).toFixed(2) + ' M' : n0(n);
-  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Activities</th><th>Activity steps</th><th>All-day steps</th><th>High</th><th>Low</th></tr></thead>`;
+  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Time</th><th>Activities</th><th>Activity steps</th><th>All-day steps</th><th>High</th><th>Low</th></tr></thead>`;
   const body = rows.map(({ k, w }) => {
     const open = WK_OPEN.has(k), c = k === cur ? ' cur' : '';
     const allD = w.all != null ? n0(w.all) : '—';
-    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="4">no activities</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
+    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="5">no activities</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
     const main = `<tr class="wk${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td>
-      <td>${w.mi.toFixed(1)} mi</td><td>${n0(w.ft)} ft</td><td>${w.n}<span class="ty">${typesLine(w.types, true)}</span></td>
+      <td>${w.mi.toFixed(1)} mi</td><td>${n0(w.ft)} ft</td><td title="moving ${hm(w.mov)}">${hm(w.sec)}</td><td>${w.n}<span class="ty">${typesLine(w.types, true)}</span></td>
       <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
     if (!open) return main;
     const subs = [...w.acts].sort((a, b) => a.start.localeCompare(b.start));
-    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="8"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft</td></tr>`).join('');
+    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="9"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${hm(actSec(a))}${a.moving_s != null ? ` (${hm(a.moving_s)} moving)` : ''}</td></tr>`).join('');
   }).join('');
-  const tot = `<tr class="tot"><td>${WK_YEAR === 'all' ? 'All' : WK_YEAR} total · ${rows.length} weeks</td><td>${n0(all.mi)} mi</td><td>${n0(all.ft)} ft</td><td>${all.n}</td>
+  const tot = `<tr class="tot"><td>${WK_YEAR === 'all' ? 'All' : WK_YEAR} total · ${rows.length} weeks</td><td>${n0(all.mi)} mi</td><td>${n0(all.ft)} ft</td><td>${n0(all.sec / 3600)} h</td><td>${all.n}</td>
     <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : big(all.steps)}</td><td>${allSteps ? big(allSteps) : '—'}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
   $('#wkTable').innerHTML = head + '<tbody>' + body + tot + '</tbody>';
   $('#wkTable').onclick = e => { if (e.target.closest('a')) return; const r = e.target.closest('tr.wk'); if (!r) return;
     const k = r.dataset.k; WK_OPEN.has(k) ? WK_OPEN.delete(k) : WK_OPEN.add(k); renderWeeks(); };
   $('#wkCsv').hidden = !isOwner();                         // your weekly records download only for you
   $('#wkCsv').onclick = () => {
-    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'high_ft', 'low_ft'].join(',')];
+    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'time_h', 'moving_h', 'high_ft', 'low_ft'].join(',')];
     for (const { k, w } of rows) lines.push([k, addDays(k, 6), w.mi.toFixed(2), (w.mi * KM_PER_MI).toFixed(2), Math.round(w.ft), Math.round(w.ft * M_PER_FT), w.n,
-      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', w.hi ?? '', w.lo ?? ''].join(','));
+      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', (w.sec / 3600).toFixed(2), (w.mov / 3600).toFixed(2), w.hi ?? '', w.lo ?? ''].join(','));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     a.download = `ACLive_weeks_${WK_YEAR}_${mtDayKey(Date.now()).replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
@@ -2727,7 +2804,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.15.3';
+const VERSION = 'v0.15.4';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -3083,7 +3160,8 @@ function wxRequest(d) {
   const src = (d.final?.length ? d.final : d.points || []).filter(p => p.lat != null).map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a, b) => a.ts - b.ts);
   if (!src.length) return null;
   const hours = [], seen = new Set();
-  for (const p of src) { const h = Math.floor(p.ts / HR); if (!seen.has(h)) { seen.add(h); hours.push([Math.round(p.ts / 1000), +p.lat.toFixed(4), +p.lon.toFixed(4), p.ele != null ? Math.round(p.ele / 3.28084) : null]); } }
+  // one position per half hour
+  for (const p of src) { const h = Math.floor(p.ts / (HR / 2)); if (!seen.has(h)) { seen.add(h); hours.push([Math.round(p.ts / 1000), +p.lat.toFixed(4), +p.lon.toFixed(4), p.ele != null ? Math.round(p.ele / 3.28084) : null]); } }
   const L = (d.points || []).filter(p => p.lat != null).map(p => ({ ...p, ts: Date.parse(p.t) })).sort((a, b) => a.ts - b.ts).at(-1) || src.at(-1);
   return { id: d.trip.id, live: d.trip.status !== 'ended', hours, last: { lat: L.lat, lon: L.lon, ele_m: L.ele != null ? L.ele / 3.28084 : null } };
 }
