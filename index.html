@@ -96,10 +96,17 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .met-d .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; }
 .met-leg { font-size: .76rem; color: var(--muted); margin-top: 8px; }
 .moon-ic { vertical-align: -2px; }
+.aqi { display: inline-block; border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: .9em; white-space: nowrap; }
+.aqi small { font-weight: 500; font-size: .78em; opacity: .92; }
+.aq-g { background: #1f6f3a; color: #d9ffe4; } .aq-m { background: #7a6c10; color: #fff6c2; } .aq-s { background: #9a5a12; color: #ffe2bf; }
+.aq-u { background: #8a1f1f; color: #ffd6d6; } .aq-v { background: #5e2a7a; color: #f0d9ff; } .aq-h { background: #5a1020; color: #ffd0d8; }
+.tile .value .aqi { font-size: 1.05rem; }
+.now-fire summary b { color: #ffcf7a; }
+.rf { display: inline-block; background: #7a2a10; color: #ffd2b8; border-radius: 999px; font-size: .74rem; padding: 0 8px; margin-left: 6px; }
 .now-bar { border: 1px solid #5b7fa6; border-radius: 10px; padding: 10px 12px; margin: 4px 0 12px; }
 .now-bar:empty { display: none; }
 .now-h { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 6px; } .now-h .muted { font-size: .78rem; }
-.now-g { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(5, minmax(0, 1fr)); gap: 8px 14px; align-items: end; }
+.now-g { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(6, minmax(0, 1fr)); gap: 8px 14px; align-items: end; }
 .now-g .k { font-size: .76rem; color: var(--muted); } .now-g .v { font-weight: 600; font-size: 1.15rem; } .now-g .v small { font-weight: 400; font-size: .75rem; color: var(--muted); }
 .now-bar .a { font-size: .78rem; color: var(--muted); line-height: 1.4; }
 .now-big { font-family: var(--font-display); font-size: 2rem; font-weight: 600; line-height: 1; }
@@ -595,7 +602,7 @@ footer p { margin: 0 0 6px; }
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.16.1</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.16.2</p>
   </footer>
 </div>
 <script>
@@ -1244,6 +1251,7 @@ function renderTiles(d, s) {
     paceT,
     stepsTile(s),
     weatherTile(d, s),
+    airTile(d, s),
     elevationTile(s),
     daylightTile(s),
     sunTile(s),
@@ -1254,11 +1262,11 @@ function renderTiles(d, s) {
   const html = t => `<div class="card tile"><div class="label">${t.label}</div><div class="value">${t.value}</div>${t.alt ? alt(t.alt) : ''}
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`;
   // Row 1: right now (or how it ended). Row 2: the effort so far.
-  const [dist, el, th, gain, hl, pace, stepsT, wxT, eleT, day, sun, hr] = tiles;
+  const [dist, el, th, gain, hl, pace, stepsT, wxT, aqT, eleT, day, sun, hr] = tiles;
   $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
     <div class="tile-row" style="--n:7">${[dist, el, pace, th, gain, hl, stepsT].map(html).join('')}</div>
     <div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
-    <div class="tile-row" style="--n:5">${[wxT, eleT, day, sun, hr].map(html).join('')}</div>`;
+    <div class="tile-row" style="--n:6">${[wxT, aqT, eleT, day, sun, hr].map(html).join('')}</div>`;
 }
 // Sun & moon for today at your position (finished: the day you finished)
 function sunTile(s) {
@@ -1271,6 +1279,22 @@ function sunTile(s) {
     foot: `${moon}${r.moonrise ? `<br>rises ${fmtTime(r.moonrise)}` : ''}${r.moonset ? ` · sets ${fmtTime(r.moonset)}` : ''}` };
 }
 // Weather now at your last position (Worker refreshes ~15 min); finished: the range you had
+// US AQI (EPA) categories; chip colours tuned for the dark theme
+const AQI_CAT = [[50, 'Good', 'aq-g'], [100, 'Moderate', 'aq-m'], [150, 'Unhealthy for sensitive groups', 'aq-s'], [200, 'Unhealthy', 'aq-u'], [300, 'Very unhealthy', 'aq-v'], [1e9, 'Hazardous', 'aq-h']];
+const aqiCat = v => AQI_CAT.find(c => v <= c[0]);
+const aqiShort = name => name === 'Unhealthy for sensitive groups' ? 'USG' : name;
+const aqiChip = (v, opt = {}) => { if (v == null) return ''; const c = aqiCat(v);
+  return `<span class="aqi ${c[2]}" title="US AQI ${v}: ${c[1]}">${opt.bare ? '' : 'AQI '}${v}${opt.cat === false ? '' : ` <small>${opt.short ? aqiShort(c[1]) : c[1]}</small>`}</span>`; };
+function airTile(d, s) {
+  const w = d.weather, q = !s.ended ? w?.now?.aq : null, a = (w?.along || []).filter(x => x.aqi != null);
+  const mx = a.length ? a.reduce((p, x) => x.aqi > p.aqi ? x : p) : null;
+  if (q?.aqi != null) return { label: 'Air quality', value: aqiChip(q.aqi, { short: true }),
+    alt: `PM2.5 ${q.pm25 ?? '—'} µg/m³${q.main ? ` · main: ${q.main}` : ''}`,
+    foot: `${mx ? `max so far ${mx.aqi} at ${fmtTime(Date.parse(mx.t))}<br>` : ''}${q.day_max != null ? `today's max ${q.day_max} (model)` : 'modeled'}` };
+  if (mx) return { label: 'Air quality', value: aqiChip(mx.aqi, { short: true }), alt: `max at ${fmtDT(Date.parse(mx.t))}`,
+    foot: `${mx.aqi_main ? `main: ${mx.aqi_main} · ` : ''}PM2.5 max ${Math.max(...a.map(x => x.pm25 || 0)).toFixed(1)} µg/m³<br>modeled, along your track` };
+  return { label: 'Air quality', value: '—', foot: w?.pending ? 'fetching…' : 'not available' };
+}
 function weatherTile(d, s) {
   const w = d.weather;
   if (!s.ended && w?.now) { const n = w.now;
@@ -1378,7 +1402,7 @@ function renderWx(d, s) {
       <div class="muted" style="font-size:.88rem">wind ${n.wind_mph} mph ${windDir(n.wind_dir)}, gusts ${n.gust_mph} · ${Math.round(n.gust_mph * KM_PER_MI)} km/h</div>
       <div class="muted" style="font-size:.88rem">${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}%` : ''}</div>
       ${(() => { const dp = dewF(n.temp_f, n.rh), wc = chillF(n.temp_f, n.wind_mph), hx = heatF(n.temp_f, n.rh);
-        return `<div class="muted" style="font-size:.88rem">${dp != null ? `dew point ${cfPair(dp)} (${dewFeel(dp)})` : ''}${wc != null ? ` · wind chill ${cfPair(wc)}` : ''}${hx != null ? ` · heat index ${cfPair(hx)}${heatRisk(hx) ? ' (' + heatRisk(hx) + ')' : ''}` : ''}</div>`; })()}
+        return `${n.aq?.aqi != null ? `<div style="font-size:.88rem;margin:3px 0">${aqiChip(n.aq.aqi)} <span class="muted">PM2.5 ${n.aq.pm25 ?? '—'} µg/m³${n.aq.main ? ' · main: ' + n.aq.main : ''}</span></div>` : ''}<div class="muted" style="font-size:.88rem">${dp != null ? `dew point ${cfPair(dp)} (${dewFeel(dp)})` : ''}${wc != null ? ` · wind chill ${cfPair(wc)}` : ''}${hx != null ? ` · heat index ${cfPair(hx)}${heatRisk(hx) ? ' (' + heatRisk(hx) + ')' : ''}` : ''}</div>`; })()}
       <div class="muted" style="font-size:.88rem">${n.msl_mb != null ? `${Math.round(n.msl_mb)} mbar sea level${trendTxt(n.msl_trend_3h)} in 3 h` : ''}${n.sfc_mb != null ? ` · ${Math.round(n.sfc_mb)} local` : ''}</div>
       ${flNote(n, s)}</div>
       <div class="wx-hours">${fc.filter((_, i) => i % 2 === 1).slice(0, 7).map(h => `<div><div class="t">${fmtTime(h.ts)}</div>
@@ -1406,6 +1430,9 @@ function renderWx(d, s) {
       ${cl ? stat('Cloud cover', `${Math.round(cl[2])}<small>% avg</small>`, `${Math.round(cl[0])}–${Math.round(cl[1])}%`) : ''}
       ${msl ? stat('Pressure', `${span(msl)}<small>mbar</small>`, `sea level${sfc ? ` · local ${span(sfc)}` : ''}`) : ''}
       ${fl ? stat('Freezing level', `${span(fl, n0)}<small>ft</small>`, `${span(fl, v => n0(v / 3.28084))} m · dashed on the elevation chart`) : ''}
+      ${(() => { const q = along.filter(x => x.aqi != null); if (!q.length) return '';
+        const mx = q.reduce((p, x) => x.aqi > p.aqi ? x : p);
+        return stat('Air quality', aqiChip(mx.aqi, { short: true }).replace('AQI ', 'max AQI '), `${fmtDT(Date.parse(mx.t))}${mx.ele_ft != null ? ' · ' + n0(mx.ele_ft) + ' ft' : ''}${mx.aqi_main ? ' · main: ' + mx.aqi_main : ''}`); })()}
       ${dps.length ? stat('Dew point', `${fC(Math.min(...dps)) === fC(Math.max(...dps)) ? fC(dps[0]) : `${fC(Math.min(...dps))} to ${fC(Math.max(...dps))}`}<small>°C</small>`,
         `${Math.round(Math.min(...dps))}–${Math.round(Math.max(...dps))} °F · ${dewFeel(Math.max(...dps))}`) : ''}
       ${stat('Coldest wind chill', wcs ? `${fC(wcs.v)}<small>°C</small>` : '<span class="muted" style="font-size:1rem">n/a</span>', wcs ? `${Math.round(wcs.v)} °F · ${fmtDT(Date.parse(wcs.x.t))}${wcs.x.ele_ft != null ? ' · ' + n0(wcs.x.ele_ft) + ' ft' : ''}` : 'never 10 °C or colder with wind')}
@@ -1438,13 +1465,14 @@ const WX_SERIES = [
   { k:'cloud', label:'Cloud cover', h:64, unit:'%', color:'#B9B4AC', fixed:[0,100], area:true },
   { k:'press', label:'Pressure', h:72, unit:'mbar', color:'#D9A86C' },
   { k:'fl',    label:'Freezing level', h:92, unit:'ft', color:'#A9D6E5' },
+  { k:'aqi',   label:'Air quality', h:72, unit:'AQI', color:'#E8B04A' },
 ];
 let WX_ON = (() => { try { return JSON.parse(localStorage.getItem('aclive.wxOn')) || ['temp','precip','wind']; } catch { return ['temp','precip','wind']; } })();
 function drawWxChart(s, along, fc) {
   const host = $('#wxChart'); host.querySelector('svg')?.remove();
   const series = along.concat(fc.map(x => ({ ...x, fc: true })));
   const has = { temp: true, feels: series.some(x => x.feels_f != null), precip: true, wind: true, dir: series.some(x => x.wind_dir != null),
-    rh: series.some(x => x.rh != null), cloud: series.some(x => x.cloud != null), press: series.some(x => x.msl_mb != null), fl: series.some(x => x.fl_ft != null) };
+    rh: series.some(x => x.rh != null), cloud: series.some(x => x.cloud != null), press: series.some(x => x.msl_mb != null), fl: series.some(x => x.fl_ft != null), aqi: series.some(x => x.aqi != null) };
   $('#wxChips').innerHTML = series.length ? WX_SERIES.filter(c => has[c.k]).map(c =>
     `<button type="button" data-k="${c.k}" aria-pressed="${WX_ON.includes(c.k)}"><i style="background:${c.bars ? 'var(--precip)' : c.arrows ? 'var(--text-muted)' : c.color}"></i>${c.label}</button>`).join('') : '';
   $('#wxLegend').innerHTML = series.length ? `<span><i style="width:14px;height:10px;background:var(--night);border:1px solid var(--line)"></i>Dark (sun below 6°)</span>
@@ -1462,14 +1490,14 @@ function drawWxChart(s, along, fc) {
   const X = t => m.l + (t - t0) / Math.max(t1 - t0, 1) * iw, bw = Math.max(2, iw / series.length * 0.7);
   const obs = series.filter(x => !x.fc), fut = fc.length ? [obs.at(-1), ...series.filter(x => x.fc)].filter(Boolean) : [];
   const nightAll = s.dark.filter(z => z.end > t0 && z.start < t1);
-  const val = { temp: x => x.temp_f, feels: x => x.feels_f, wind: x => x.wind_mph, gust: x => x.gust_mph, rh: x => x.rh, cloud: x => x.cloud, press: x => x.msl_mb, fl: x => x.fl_ft };
+  const val = { temp: x => x.temp_f, feels: x => x.feels_f, wind: x => x.wind_mph, gust: x => x.gust_mph, rh: x => x.rh, cloud: x => x.cloud, press: x => x.msl_mb, fl: x => x.fl_ft, aqi: x => x.aqi };
   // Your elevation at each hour (for the freezing-level panel)
   const eleAtT = ts => { let p = null; for (const q of s.pts) if (q.ele != null && (!p || Math.abs(q.ts - ts) < Math.abs(p.ts - ts))) p = q; return p?.ele ?? null; };
   let out = '', y = m.top; const yMap = {};
   for (const P of panels) {
     const top = y, bot = y + P.h; yMap[P.k] = [top, bot];
     out += nightAll.map(z => `<rect x="${X(Math.max(z.start, t0))}" y="${top}" width="${Math.max(1, X(Math.min(z.end, t1)) - X(Math.max(z.start, t0)))}" height="${P.h}" fill="var(--night)"/>`).join('');
-    const unitTxt = { temp: '°C · °F right', precip: 'in · mm right', wind: 'mph · km/h right; dots = gusts', rh: '%', cloud: '%', press: 'mbar, sea level', fl: 'ft · m right; blue = your elevation' }[P.k];
+    const unitTxt = { temp: '°C · °F right', precip: 'in · mm right', wind: 'mph · km/h right; dots = gusts', rh: '%', cloud: '%', press: 'mbar, sea level', fl: 'ft · m right; blue = your elevation', aqi: 'US AQI · dashed = 50 Moderate, 100 USG' }[P.k];
     out += `<text x="${m.l}" y="${top + 11}" font-size="10.5" fill="var(--text-muted)" dx="4">${P.label}${P.k === 'temp' && WX_ON.includes('feels') ? ' & feels like (dotted)' : ''}${unitTxt ? ` · ${unitTxt}` : ''}</text>`;
     if (P.arrows) {
       series.filter((x, i) => x.wind_dir != null && i % Math.max(1, Math.round(series.length / 40)) === 0).forEach(x =>
@@ -1490,7 +1518,7 @@ function drawWxChart(s, along, fc) {
     let vs = series.flatMap(x => keys.map(k => val[k](x))).filter(v => v != null);
     if (P.k === 'fl') vs = vs.concat(obs.map(x => eleAtT(x.ts)).filter(v => v != null));
     let lo = P.fixed ? P.fixed[0] : Math.min(...vs), hi = P.fixed ? P.fixed[1] : Math.max(...vs);
-    if (!P.fixed) { const pad = Math.max((hi - lo) * 0.12, P.k === 'press' ? 2 : P.k === 'fl' ? 300 : 2); lo -= pad; hi += pad; if (P.k === 'wind') lo = 0; }
+    if (!P.fixed) { const pad = Math.max((hi - lo) * 0.12, P.k === 'press' ? 2 : P.k === 'fl' ? 300 : 2); lo -= pad; hi += pad; if (P.k === 'wind' || P.k === 'aqi') lo = 0; if (P.k === 'aqi') hi = Math.max(hi, 60); }
     const Yv = v => bot - (v - lo) / Math.max(hi - lo, 1e-9) * (P.h - 16);
     for (const g of [lo, (lo + hi) / 2, hi]) {
       const lab = P.k === 'fl' ? n0(g) : P.k === 'temp' ? fC(g) : Math.round(g);
@@ -1499,6 +1527,7 @@ function drawWxChart(s, along, fc) {
         <text x="${m.l - 6}" y="${Yv(g) + 4}" text-anchor="end" font-size="10.5" fill="var(--text-muted)">${lab}</text>
         ${altLab ? `<text x="${W - m.r + 6}" y="${Yv(g) + 4}" font-size="10.5" fill="var(--text-muted)">${altLab}</text>` : ''}`;
     }
+    if (P.k === 'aqi') for (const th of [50, 100, 150]) if (th > lo && th < hi) out += `<line x1="${m.l}" x2="${W - m.r}" y1="${Yv(th)}" y2="${Yv(th)}" stroke="${th === 50 ? '#bba64a' : th === 100 ? '#d89a52' : '#e06b6b'}" stroke-dasharray="4 4" opacity=".8"/>`;
     if (P.k === 'temp' && lo < 32 && hi > 32) out += `<line x1="${m.l}" x2="${W - m.r}" y1="${Yv(32)}" y2="${Yv(32)}" stroke="var(--precip)" stroke-dasharray="3 4" opacity=".7"/>`;
     const path = (arr, f) => { let d = '', pen = false; for (const x of arr) { const v = f(x); if (v == null) { pen = false; continue; } d += `${pen ? 'L' : 'M'}${X(x.ts).toFixed(1)},${Yv(v).toFixed(1)}`; pen = true; } return d; };
     const draw = (f, color, w = 2, extra = '') => `<path d="${path(obs, f)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" ${extra}/>` +
@@ -1526,6 +1555,7 @@ function drawWxChart(s, along, fc) {
     tip.innerHTML = `<b>${fmtDT(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${fC(x.temp_f)} °C · ${Math.round(x.temp_f)} °F${x.feels_f != null ? ` · feels ${fC(x.feels_f)} °C` : ''} · ${esc(x.desc || '')}</div>
       <div class="row">${x.pop != null ? x.pop + '% chance · ' : ''}${x.precip_in > 0 ? `${PRECIP_ICON[x.type] || ''} ${x.precip_in.toFixed(2)} in` + (x.snow_in > 0 ? ` (snow ${x.snow_in.toFixed(1)} in)` : '') + ' · ' : ''}wind ${x.wind_mph} mph ${windDir(x.wind_dir)}, gusts ${x.gust_mph}</div>
       <div class="row">${x.rh != null ? `RH ${x.rh}% · ` : ''}${x.cloud != null ? `cloud ${x.cloud}% · ` : ''}${x.msl_mb != null ? `${Math.round(x.msl_mb)} mbar sea level` : ''}${x.sfc_mb != null ? ` · ${Math.round(x.sfc_mb)} local` : ''}</div>
+      ${x.aqi != null ? `<div class="row">air quality ${aqiChip(x.aqi, { short: true })}${x.pm25 != null ? ` · PM2.5 ${x.pm25} µg/m³` : ''}${x.aqi_main ? ` · main: ${x.aqi_main}` : ''}</div>` : ''}
       <div class="row">${me != null ? `you ${n0(me)} ft · ` : ''}${x.fl_ft != null ? `freezing level ${n0(x.fl_ft)} ft · ` : ''}${dk ? 'dark' : 'daylight'}</div>`;
     tip.style.display = 'block';
     const tx = X(x.ts) + 12, tw = tip.offsetWidth; tip.style.left = (tx + tw > W ? X(x.ts) - tw - 12 : tx) + 'px'; tip.style.top = (m.top + 4) + 'px';
@@ -2388,18 +2418,30 @@ function nowBarHtml() {
   const fig = (k, v, s2) => `<div><div class="k">${k}</div><div class="v">${v}</div>${s2 ? `<div class="a">${s2}</div>` : ''}</div>`;
   const stats = n ? `<div class="now-g">
       <div><div class="now-big">${fC(n.temp_f)}°C</div><div class="a">${Math.round(n.temp_f)} °F · ${esc((n.desc || '').toLowerCase())} · feels ${fC(n.feels_f)} °C</div></div>
+      ${D.aq?.aqi != null ? `<div><div class="k">Air quality</div><div style="margin-top:3px">${aqiChip(D.aq.aqi)}</div><div class="a">PM2.5 ${D.aq.pm25 ?? '—'} µg/m³${D.aq.main ? ` · main: ${D.aq.main}` : ''}${D.aq.day_max != null ? `<br>today's max ${D.aq.day_max}` : ''}</div></div>` : ''}
       ${fig('Wind', `${n.wind_mph}<small> mph</small>`, `${n.wind_dir != null ? dirName(n.wind_dir) + ' · ' : ''}gusts ${n.gust_mph} · ${Math.round(n.wind_mph * KM_PER_MI)} km/h`)}
       ${fig('Humidity', `${n.rh ?? '—'}<small>%</small>`, n.dew_f != null ? `dew point ${fC(n.dew_f)} °C · ${Math.round(n.dew_f)} °F` : '')}
       ${fig('Pressure', n.msl_mb != null ? `${Math.round(n.msl_mb)}<small> mbar</small>` : '—', n.msl_mb != null ? `${n.msl_trend_3h != null ? (n.msl_trend_3h > 0.4 ? '↑' : n.msl_trend_3h < -0.4 ? '↓' : '→') + ' ' + Math.abs(n.msl_trend_3h).toFixed(1) + ' in 3 h · ' : ''}${(n.msl_mb * 0.02953).toFixed(2)} inHg` : '')}
       ${fig('Today', n.tmax_f != null ? `${fC(n.tmax_f)}° / ${fC(n.tmin_f)}°C` : '—', n.tmax_f != null ? `${Math.round(n.tmax_f)}/${Math.round(n.tmin_f)} °F${n.pop != null ? ` · ${n.pop}% rain` : ''}` : '')}
-      ${fig('Sun', n.sunrise ? fmtTime(Date.parse(n.sunrise)) : '—', n.sunset ? `sets ${fmtTime(Date.parse(n.sunset))}` : '')}
+      ${(() => { const r0 = Date.parse(n.sunrise), s0 = Date.parse(n.sunset), now = Date.now(), cd = ms => { const mn = Math.max(0, Math.round(ms / 60e3)); return `${Math.floor(mn / 60)}:${String(mn % 60).padStart(2, '0')}`; };
+        if (!r0 || !s0) return fig('Sun', '—', '');
+        if (now < r0) return fig('Sun', `Sunrise ${fmtTime(r0)}`, `in ${cd(r0 - now)} · sets ${fmtTime(s0)}`);
+        if (now < s0) return fig('Sun', `Sunset ${fmtTime(s0)}`, `in ${cd(s0 - now)} · rose ${fmtTime(r0)}`);
+        const r1 = r0 + 864e5;                                    // tomorrow's sunrise ≈ today's + 24 h
+        return fig('Sun', `Sunrise ${fmtTime(r1)}`, `in ${cd(r1 - now)} · set ${fmtTime(s0)}`); })()}
     </div>` : `<div class="muted" style="font-size:.85rem">Current conditions unavailable right now.</div>`;
   const met = m ? `<div class="now-sec"><div class="now-sh"><span><b>METAR ${esc(m.id)}</b> · ${esc(m.name.replace(/, US$/, ''))} · ${m.dist_mi} mi${m.elev_ft != null ? ` · ${n0(m.elev_ft)} ft` : ''}${m.obs ? ` · observed ${fmtTime(Date.parse(m.obs))} (${fmtAge(Date.now() - Date.parse(m.obs))})` : ''}</span><span class="muted">${esc(m.cat || '')}</span></div>
       <div class="metar">${esc(m.raw)}</div><div class="a">${esc(metarDecoded(m))}</div></div>` : '';
   const afd = a?.text ? `<details class="now-sec now-afd"><summary><b>NWS forecast discussion</b> · ${esc(a.office)} office · issued ${fmtDT(Date.parse(a.issued))}</summary>
       <pre>${esc(a.text)}</pre><div class="a"><a href="${esc(a.url)}" target="_blank" rel="noopener">Open on weather.gov →</a></div></details>` : '';
+  const f = D.fire, fa = f?.alerts || [];
+  const fire = !f ? '' : `<details class="now-sec now-afd now-fire"><summary><b>🔥 Fire weather</b> · zone ${esc(f.zone)} · ${esc(f.office)} office${f.issued && !f.old ? ` · issued ${fmtDT(Date.parse(f.issued))}` : ''}${fa.map(x => ` <span class="rf">${esc(x.event)}${x.ends ? ' until ' + fmtDT(Date.parse(x.ends)) : ''}</span>`).join('')}</summary>
+      ${fa.length ? `<div style="margin:8px 0 4px">${fa.map(x => `⚠ <b>${esc(x.event)}</b> · ${esc(x.headline || '')}`).join('<br>')}</div>` : ''}
+      ${f.old || !f.zone_text ? `<div class="a" style="margin-top:8px">No fire weather forecast issued for this zone in the last 48 h${f.old ? ` (last one ${fmtDT(Date.parse(f.issued))})` : ''}. Outside fire season some offices issue them less often.</div>`
+        : `${f.summary ? `<pre>${esc(f.summary)}</pre>` : ''}<pre>${esc(f.zone_text)}</pre>`}
+      <div class="a"><a href="${esc(f.url)}" target="_blank" rel="noopener">Full fire weather forecast on weather.gov →</a></div></details>`;
   return `<div class="now-h"><b>Now · ${esc(D.place || '')}</b><span class="muted">${NOW_SRC[D.src] || ''}${n ? ` · updated ${fmtTime(Date.parse(n.t))}` : ''}</span></div>
-    ${ctl}${stats}${met}${afd}`;
+    ${ctl}${stats}${met}${afd}${fire}`;
 }
 function ownCtl(ov) {
   if (NOWX.ui === 'search') return `<div class="now-ctl"><input id="nowQ" placeholder="Town, ST or lat, lon" size="24"> <button id="nowFind">Find</button> <button id="nowCancel">Cancel</button> <span class="muted" id="nowMsg">${esc(NOWX.msg)}</span></div>`;
@@ -2452,6 +2494,7 @@ function renderMetWeek() {
       <div>${cF(v.tmax_c)}°F / ${cF(v.tmin_c)}°F</div>
       <div>${fc ? `${v.pop ?? 0}% · ${v.precip_in ? v.precip_in.toFixed(2) + ' in' : 'dry'}` : v.precip_in ? `${v.precip_in.toFixed(2)} in${v.type ? ' ' + v.type : ''}` : '0 in'}</div>
       <div>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} mph</div>
+      ${x.model.aqi_max != null ? `<div>${aqiChip(x.model.aqi_max, { cat: false })}</div>` : ''}
       ${sk ? `<div>☀ ${sk.rise}–${sk.set}</div><div title="${sk.moon.name}">${moonIc(sk.moon)} ${Math.round(sk.moon.fraction * 100)}%</div>` : ''}
       <div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></div>`);
   }
@@ -2520,12 +2563,12 @@ function renderMetTable() {
   const days = []; for (let d = to; d >= from; d = addDays(d, -1)) days.push(d);
   let gap = [];
   const flushGap = () => { if (!gap.length) return;
-    rows.push(`<tr class="gap"><td colspan="10">${gap.length} day${gap.length === 1 ? '' : 's'} without a record (${gap.at(-1).slice(8)}–${gap[0].slice(8)} ${MON[+gap[0].slice(5, 7) - 1]}) · before ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}: activity days only</td></tr>`); gap = []; };
+    rows.push(`<tr class="gap"><td colspan="11">${gap.length} day${gap.length === 1 ? '' : 's'} without a record (${gap.at(-1).slice(8)}–${gap[0].slice(8)} ${MON[+gap[0].slice(5, 7) - 1]}) · before ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}: activity days only</td></tr>`); gap = []; };
   const csv = [['date', 'place', 'location_from', 'source', 'desc', 'high_c', 'low_c', 'high_f', 'low_f', 'precip_in', 'precip_mm', 'precip_type', 'wind_mph', 'gust_mph', 'wind_dir',
-    'rh_pct', 'pressure_mbar', 'pressure_inhg', 'cloud_pct', 'sunrise', 'sunset', 'daylight', 'moon_phase', 'moon_pct', 'moonrise', 'moonset'].join(',')];
+    'rh_pct', 'pressure_mbar', 'pressure_inhg', 'cloud_pct', 'sunrise', 'sunset', 'daylight', 'moon_phase', 'moon_pct', 'moonrise', 'moonset', 'aqi_max', 'pm25_max'].join(',')];
   for (let i = 0; i < days.length; i++) {
     const d = days[i], x = MET.days[d];
-    if (!x || !x.model) { if (x?.pending) { flushGap(); rows.push(`<tr><td>${fmtDate(Date.parse(d + 'T12:00:00Z')).replace(/ \d{4}$/, '')}</td><td colspan="9" class="muted">loading…</td></tr>`); } else gap.push(d); continue; }
+    if (!x || !x.model) { if (x?.pending) { flushGap(); rows.push(`<tr><td>${fmtDate(Date.parse(d + 'T12:00:00Z')).replace(/ \d{4}$/, '')}</td><td colspan="10" class="muted">loading…</td></tr>`); } else gap.push(d); continue; }
     flushGap();
     const v = metVals(x), sk = metSky(x), prev = MET.days[addDays(d, -1)], pv = prev?.model ? metVals(prev).msl_mb : null;
     const arrow = v.msl_mb != null && pv != null ? (v.msl_mb - pv >= 3 ? ' ↑' : pv - v.msl_mb >= 3 ? ' ↓' : '') : '';
@@ -2538,14 +2581,15 @@ function renderMetTable() {
       <td>${v.rh ?? '—'}%</td>
       <td>${v.msl_mb != null ? Math.round(v.msl_mb) + ' mbar' + arrow : '—'}<small>${v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) + ' inHg' : ''}</small></td>
       <td>${v.cloud ?? '—'}%</td>
+      <td>${x.model.aqi_max != null ? aqiChip(x.model.aqi_max, { bare: true, cat: false }) : '—'}<small>${x.model.pm25_max != null ? `PM2.5 ${x.model.pm25_max} µg/m³` : ''}</small></td>
       <td>${sk ? `${sk.rise}–${sk.set}<small>${sk.len}</small>` : '—'}</td>
       <td>${sk ? `${moonIc(sk.moon)} ${sk.moon.name} ${Math.round(sk.moon.fraction * 100)}%<small>↑ ${sk.mrise} ↓ ${sk.mset}</small>` : '—'}</td></tr>`);
     csv.push([d, `"${(x.place || '').replace(/"/g, '""')}"`, x.src, x.station ? 'station:' + x.station.station : 'model', `"${v.desc || ''}"`, v.tmax_c, v.tmin_c, cF(v.tmax_c), cF(v.tmin_c),
       v.precip_in ?? '', v.precip_in != null ? mmOf(v.precip_in) : '', v.type || '', v.wind_mph ?? '', v.gust_mph ?? '', v.wind_dir ?? '', v.rh ?? '', v.msl_mb ?? '',
-      v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) : '', v.cloud ?? '', sk?.rise ?? '', sk?.set ?? '', sk?.len ?? '', sk?.moon.name ?? '', sk ? Math.round(sk.moon.fraction * 100) : '', sk?.mrise ?? '', sk?.mset ?? ''].join(','));
+      v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) : '', v.cloud ?? '', sk?.rise ?? '', sk?.set ?? '', sk?.len ?? '', sk?.moon.name ?? '', sk ? Math.round(sk.moon.fraction * 100) : '', sk?.mrise ?? '', sk?.mset ?? '', x.model.aqi_max ?? '', x.model.pm25_max ?? ''].join(','));
   }
   flushGap();
-  $('#metTable').innerHTML = `<thead><tr><th>Day</th><th>Location</th><th>High / low</th><th>Precip</th><th>Wind / gust</th><th>RH</th><th>Pressure</th><th>Cloud</th><th>Sun</th><th>Moon</th></tr></thead><tbody>${rows.join('') || '<tr><td colspan="10" class="muted">No records this month</td></tr>'}</tbody>`;
+  $('#metTable').innerHTML = `<thead><tr><th>Day</th><th>Location</th><th>High / low</th><th>Precip</th><th>Wind / gust</th><th>RH</th><th>Pressure</th><th>Cloud</th><th>Air (max)</th><th>Sun</th><th>Moon</th></tr></thead><tbody>${rows.join('') || '<tr><td colspan="11" class="muted">No records this month</td></tr>'}</tbody>`;
   $('#metNote').textContent = `Every day from ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}; before that, days with an activity. Model weather: Open-Meteo. Times are local to each day's location.`;
   $('#metTable').onclick = e => { const a = e.target.closest('[data-met-edit]'); if (!a) return; e.preventDefault(); MET_EDIT = a.dataset.metEdit; renderMetEdit(); };
   $('#metCsv').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv.join('\n')], { type: 'text/csv' }));
@@ -2906,7 +2950,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.16.1';
+const VERSION = 'v0.16.2';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
