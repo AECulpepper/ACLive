@@ -423,7 +423,7 @@ footer p { margin: 0 0 6px; }
       <div class="card-b">
         <div id="irMap"></div>
         <ul class="ir-list" id="irList"></ul>
-        <p class="muted" style="font-size:.8rem;margin:6px 0 0" id="irNote">Check-ins are inReach points sent when you are not on an activity (a Locate, a tracking point or a message). Weather is the model at that place and hour. Times MT.</p>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0" id="irNote">Everything you send to MapShare: messages and Locates, during an activity or not, plus the latest point of a stop that wasn't an activity (a lake, camp, a work site). Weather is the model at that place and hour. Times MT.</p>
       </div>
     </section>
   </main>
@@ -564,7 +564,7 @@ footer p { margin: 0 0 6px; }
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.15.1</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.15.2</p>
   </footer>
 </div>
 <script>
@@ -2696,7 +2696,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.15.1';
+const VERSION = 'v0.15.2';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -2936,6 +2936,7 @@ function loadIrCard() {
   if (!IR.at || IR.days !== '30' || Date.now() - IR.at > 5 * 60e3) loadIr('30', renderIrCard);
   renderIrCard();
 }
+const ckDuring = c => c.during ? `during <a href="#a/${encodeURIComponent(c.during.id)}">${esc(c.during.title.replace(/ · .*$/, ''))}</a>` : '';
 const ckEle = c => c.ele_ft != null ? `${n0(c.ele_ft)} ft · ${mOf(c.ele_ft)} m` : '';
 const ckWx = c => c.wx?.temp_c != null ? `${wxIcon(c.wx.code)} ${Math.round(c.wx.temp_c)}°C · ${cF(c.wx.temp_c)}°F${c.wx.desc ? ' ' + esc(c.wx.desc.toLowerCase()) : ''}${c.wx.wind_mph != null ? ` · ${dirName(c.wx.wind_dir)} ${c.wx.wind_mph} mph` : ''}`
   : c.pending ? 'weather loading…' : '';
@@ -2946,10 +2947,10 @@ function renderIrCard() {                                 // always shown, besid
   const c = L[0], age = c ? Date.now() - Date.parse(c.t) : Infinity;
   if (!c || age > 7 * 864e5) {
     el.innerHTML = head + `<div class="ir-one">${c ? `Last check-in ${fmtDate(Date.parse(c.t))} · ${esc(c.place || '')}` : 'No check-ins in the last 30 days.'}</div>`; return; }
-  const more = [...L.slice(1).map(x => ({ t: x.t, h: `${fmtDT(Date.parse(x.t))} · ${esc(x.place || '')}${x.ele_ft != null ? ' · ' + n0(x.ele_ft) + ' ft' : ''}${x.msg ? ' · “' + esc(x.msg) + '”' : ''}` })),
+  const more = [...L.slice(1).map(x => ({ t: x.t, h: `${fmtDT(Date.parse(x.t))} · ${esc(x.place || '')}${x.during ? ' · ' + ckDuring(x) : ''}${x.ele_ft != null ? ' · ' + n0(x.ele_ft) + ' ft' : ''}${x.msg ? ' · “' + esc(x.msg) + '”' : ''}` })),
     ...(IR.acts || []).map(a => ({ t: a.start, h: `${fmtDT(Date.parse(a.start))} · <a href="#a/${encodeURIComponent(a.id)}">${esc(a.title.replace(/ · .*$/, ''))}</a> · ${(a.dist_mi || 0).toFixed(1)} mi` }))]
     .sort((x, y) => x.t < y.t ? 1 : -1).slice(0, 2);
-  el.innerHTML = head + `<div class="ir-main"><div class="ir-t">${fmtDT(Date.parse(c.t))} · <b>${fmtAge(age)}</b></div>
+  el.innerHTML = head + `<div class="ir-main"><div class="ir-t">${fmtDT(Date.parse(c.t))} · <b>${fmtAge(age)}</b>${c.during ? ' · ' + ckDuring(c) : ''}</div>
       <div class="ir-pl">${esc(c.place || 'Looking up place…')}</div>
       ${c.msg ? `<div class="ir-msg">“${esc(c.msg)}”</div>` : ''}
       <div class="ir-x">${ckEle(c)}</div>${ckWx(c) ? `<div class="ir-x">${ckWx(c)}</div>` : ''}</div>
@@ -2972,7 +2973,7 @@ function renderIrView() {
     : `<li data-i="${i}" class="${c.hidden ? 'hid' : ''}"><span class="ic">${c.kind === 'msg' ? '💬' : '📍'}</span><div>
         <b>${esc(c.place || (c.pending ? 'Looking up place…' : `${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}`))}</b>${c.hidden ? '<span class="tag">hidden</span>' : ''}
         ${c.msg ? `<div class="ir-msg">“${esc(c.msg)}”</div>` : ''}
-        <div class="m">${fmtDT(Date.parse(c.t))}${ckEle(c) ? ' · ' + ckEle(c) : ''}</div>${ckWx(c) ? `<div class="m">${ckWx(c)}</div>` : ''}</div>
+        <div class="m">${fmtDT(Date.parse(c.t))}${ckEle(c) ? ' · ' + ckEle(c) : ''}${c.during ? ' · ' + ckDuring(c) : ''}</div>${ckWx(c) ? `<div class="m">${ckWx(c)}</div>` : ''}</div>
         ${own ? `<button type="button" class="edit-btn" data-hide="${esc(c.id)}" data-h="${c.hidden ? 0 : 1}">${c.hidden ? 'Unhide' : 'Hide'}</button>` : '<span></span>'}</li>`).join('')
     : '<li class="muted" style="cursor:default">No inReach check-ins in this period.</li>';
   // map
