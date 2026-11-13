@@ -95,6 +95,21 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .met-d .tt { font-size: 1rem; font-weight: 600; color: var(--text); } .met-d .tt small { font-weight: 400; color: var(--muted); }
 .met-d .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; }
 .met-leg { font-size: .76rem; color: var(--muted); margin-top: 8px; }
+.moon-ic { vertical-align: -2px; }
+.now-bar { border: 1px solid #5b7fa6; border-radius: 10px; padding: 10px 12px; margin: 4px 0 12px; }
+.now-bar:empty { display: none; }
+.now-h { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 6px; } .now-h .muted { font-size: .78rem; }
+.now-g { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(5, minmax(0, 1fr)); gap: 8px 14px; align-items: end; }
+.now-g .k { font-size: .76rem; color: var(--muted); } .now-g .v { font-weight: 600; font-size: 1.15rem; } .now-g .v small { font-weight: 400; font-size: .75rem; color: var(--muted); }
+.now-bar .a { font-size: .78rem; color: var(--muted); line-height: 1.4; }
+.now-big { font-family: var(--font-display); font-size: 2rem; font-weight: 600; line-height: 1; }
+.now-sec { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; font-size: .84rem; }
+.now-sh { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; }
+.metar { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; background: rgba(0,0,0,.18); border-radius: 6px; padding: 5px 8px; margin: 5px 0 4px; overflow-x: auto; white-space: nowrap; }
+.now-afd summary { cursor: pointer; }
+.now-afd pre { font-family: ui-monospace, Consolas, monospace; font-size: .78rem; line-height: 1.5; white-space: pre-wrap; background: rgba(0,0,0,.18); border-radius: 6px; padding: 10px 12px; margin: 8px 0 6px; max-height: 420px; overflow-y: auto; }
+.now-ctl { font-size: .8rem; margin-bottom: 8px; } .now-ctl input { font: inherit; padding: 2px 6px; } .now-ctl button { font-size: .78rem; padding: 2px 8px; }
+@media (max-width: 640px) { .now-g { grid-template-columns: 1fr 1fr; } .now-g > div:first-child { grid-column: 1 / -1; } }
 .met-wk { font-size: .78rem; color: var(--muted); margin: 10px 0 4px; } .met-wk:first-of-type { margin-top: 0; }
 .met-coming { margin-bottom: 12px; } .met-coming h3 { font-size: .92rem; margin: 0 0 4px; }
 .met-coming table { width: 100%; border-collapse: collapse; font-size: .86rem; } .met-coming td { padding: 5px 6px; border-top: 1px solid var(--line); }
@@ -573,14 +588,14 @@ footer p { margin: 0 0 6px; }
       Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a>, licensed
       <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>; modeled, not station readings.
       Activities before 2021 use ERA5 reanalysis from the Copernicus Climate Change Service (C3S), via Open-Meteo.
-      Weather alerts: <a href="https://www.weather.gov/" target="_blank" rel="noopener">U.S. National Weather Service</a> (US only).
+      Weather alerts and forecast discussions: <a href="https://www.weather.gov/" target="_blank" rel="noopener">U.S. National Weather Service</a> (US only). Airport observations (METAR): <a href="https://aviationweather.gov/" target="_blank" rel="noopener">NWS Aviation Weather Center</a>.
       Maps: <a href="https://www.cyclosm.org/" target="_blank" rel="noopener">CyclOSM</a> and <a href="https://opentopomap.org/" target="_blank" rel="noopener">OpenTopoMap</a> (CC BY-SA) tiles,
       map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL), shown with <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a>.
       Default activity names: public lands from the USGS <a href="https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-overview" target="_blank" rel="noopener">Protected Areas Database (PAD-US)</a>;
       towns from OpenStreetMap <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.
       Trails, streets, trailheads and landmarks in the Timeline: © OpenStreetMap contributors (ODbL), via the <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>.
       Sun and moon times: calculated on this page with formulas after <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener">SunCalc</a> (V. Agafonkin, BSD-2-Clause); flat-horizon times, terrain not modeled.</p>
-    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.15.4</p>
+    <p class="muted" id="verLine" style="font-size:.78rem">ACLive v0.16.1</p>
   </footer>
 </div>
 <script>
@@ -1249,7 +1264,7 @@ function renderTiles(d, s) {
 function sunTile(s) {
   if (!s.last) return { label:'Sun · moon', value:'—', foot:'' };
   const t = s.ended ? s.last.ts : s.now, r = SKY.day(localMidnight(t), s.last.lat, s.last.lon);
-  const moon = `${r.moon.name} · ${Math.round(r.moon.fraction * 100)}%`;
+  const moon = `${moonIc(r.moon)} ${r.moon.name} · ${Math.round(r.moon.fraction * 100)}%`;
   return { label: s.ended ? `Sun · ${fmtDay(t)}` : 'Sun today',
     value: `<span style="font-size:.8em;white-space:nowrap">${r.sunrise ? fmtTime(r.sunrise) : '—'}<small>↑</small> ${r.sunset ? fmtTime(r.sunset) : '—'}<small>↓</small></span>`,
     alt: `dawn ${r.dawn ? fmtTime(r.dawn) : '—'} · dusk ${r.dusk ? fmtTime(r.dusk) : '—'}`,
@@ -1305,7 +1320,7 @@ function daylightTile(s) {
   }
   const dawn = today.dawn && today.dawn > t ? today.dawn : next.dawn;
   const m = SKY.moonIllum(t), up = SKY.moonAlt(t, L.lat, L.lon) > 0;
-  return { label:'Dark', value: fmtClock(dawn - t), alt: `until dawn ${fmtTime(dawn)}`, foot: `moon ${Math.round(m.fraction * 100)}% · ${up ? 'up' : 'down'}` };
+  return { label:'Dark', value: fmtClock(dawn - t), alt: `until dawn ${fmtTime(dawn)}`, foot: `${moonIc(m, 12)} moon ${Math.round(m.fraction * 100)}% · ${up ? 'up' : 'down'}` };
 }
 
 // Live: a note when you're near or above the freezing level
@@ -1409,7 +1424,7 @@ function renderWx(d, s) {
   $('#skyTable').innerHTML = rows.length ? `<thead><tr><th>Day</th><th>Dawn</th><th>Sunrise</th><th>Sunset</th><th>Dusk</th><th>Daylight</th><th>Moon</th><th>Moonrise</th><th>Moonset</th></tr></thead><tbody>` +
     rows.map(r => `<tr><td>${fmtDate(r.day + 12*HR)}</td><td>${r.dawn ? fmtTime(r.dawn) : '—'}</td><td>${r.sunrise ? fmtTime(r.sunrise) : '—'}</td>
       <td>${r.sunset ? fmtTime(r.sunset) : '—'}</td><td>${r.dusk ? fmtTime(r.dusk) : '—'}</td><td>${r.dayLen ? fmtClock(r.dayLen) : '—'}</td>
-      <td>${r.moon.name} · ${Math.round(r.moon.fraction * 100)}%</td><td>${r.moonrise ? fmtTime(r.moonrise) : '—'}</td><td>${r.moonset ? fmtTime(r.moonset) : '—'}</td></tr>`).join('') +
+      <td>${moonIc(r.moon)} ${r.moon.name} · ${Math.round(r.moon.fraction * 100)}%</td><td>${r.moonrise ? fmtTime(r.moonrise) : '—'}</td><td>${r.moonset ? fmtTime(r.moonset) : '—'}</td></tr>`).join('') +
     `</tbody>` : '';
 }
 /* ---- Conditions chart: one small panel per chosen value, stacked on a shared time axis (no doubled-up scales) ---- */
@@ -2339,6 +2354,91 @@ function loadMetWeek() {
   renderMetWeek();
 }
 const srcIcon = s => s === 'activity' ? '🏃 ' : s === 'checkin' ? '📡 ' : s === 'set' || s === 'set-from' || s === 'plan' ? '📍 ' : '';
+/* ---- Weather "Now" bar (Worker /api/now): current conditions, nearest METAR (≤ 50 mi), NWS forecast discussion.
+   Place: live activity position > today's weather-log location. Owner only: "just for now" (this browser) or set as today's location. ---- */
+const NOWX = { d: null, at: 0, busy: false, ui: null, geo: null, msg: '' };
+const nowOv = () => { if (!isOwner()) return null; try { return JSON.parse(localStorage.getItem('aclive.nowLoc') || 'null'); } catch { return null; } };
+const setNowOv = v => { try { v ? localStorage.setItem('aclive.nowLoc', JSON.stringify(v)) : localStorage.removeItem('aclive.nowLoc'); } catch {} };
+async function loadNow(force) {
+  if (CONFIG.dataSource === 'mock' || NOWX.busy || (!force && NOWX.at && Date.now() - NOWX.at < 5 * 60e3)) return;
+  NOWX.busy = true; const ov = nowOv();
+  try {
+    const r = await fetch(`${CONFIG.api}/api/now${ov ? `?lat=${ov.lat}&lon=${ov.lon}` : ''}`, { cache: 'no-store', headers: isOwner() ? { authorization: 'Bearer ' + OWNER } : {} });
+    NOWX.d = await r.json(); NOWX.at = Date.now();
+  } catch (e) { console.warn('now bar unavailable', e); }
+  NOWX.busy = false; const el = $('#nowBar'); if (el) { el.innerHTML = nowBarHtml(); bindNowBar(); }
+}
+const NOW_SRC = { live: '🏃 live activity position', now: '📍 just for now (only you see this)', activity: "🏃 today's activity finish", checkin: '📡 inReach check-in today',
+  set: '📍 location you set', 'set-from': '📍 location you set', plan: '📍 planned location', last: 'last known location' };
+const CLOUD = { CLR: 'sky clear', SKC: 'sky clear', CAVOK: 'ceiling and visibility OK', FEW: 'few', SCT: 'scattered', BKN: 'broken', OVC: 'overcast', VV: 'vertical visibility' };
+function metarDecoded(m) {
+  const wind = !m.wspd_kt ? 'wind calm' : `wind ${m.wdir === 'VRB' ? 'variable' : m.wdir != null ? dirName(+m.wdir) : ''} ${m.wspd_kt} kt${m.wgst_kt ? `, gusts ${m.wgst_kt}` : ''}`;
+  const cl = (m.clouds || []).map(c => `${CLOUD[c.cover] || c.cover}${c.base_ft ? ' ' + n0(c.base_ft) + ' ft' : ''}`).join(', ');
+  const cF2 = c => Math.round(c * 9 / 5 + 32);
+  return [wind, m.visib != null ? `visibility ${m.visib} mi` : '', cl, m.temp_c != null ? `${Math.round(m.temp_c)} °C (${cF2(m.temp_c)} °F)` : '',
+    m.dew_c != null ? `dew point ${Math.round(m.dew_c)} °C` : '', m.altim_mb != null ? `altimeter ${(m.altim_mb * 0.02953).toFixed(2)} inHg (${Math.round(m.altim_mb)} mbar)` : ''].filter(Boolean).join(' · ');
+}
+function nowBarHtml() {
+  const D = NOWX.d, own = isOwner(), ov = nowOv();
+  if (CONFIG.dataSource === 'mock') return '';
+  if (!D) return '<div class="muted" style="font-size:.85rem">Loading current weather…</div>';
+  if (!D.ok) return own ? `<div class="muted" style="font-size:.85rem">No location yet. ${ownCtl()}</div>` : '';
+  const n = D.now, m = D.metar, a = D.afd;
+  const ctl = own ? ownCtl(ov) : '';
+  const fig = (k, v, s2) => `<div><div class="k">${k}</div><div class="v">${v}</div>${s2 ? `<div class="a">${s2}</div>` : ''}</div>`;
+  const stats = n ? `<div class="now-g">
+      <div><div class="now-big">${fC(n.temp_f)}°C</div><div class="a">${Math.round(n.temp_f)} °F · ${esc((n.desc || '').toLowerCase())} · feels ${fC(n.feels_f)} °C</div></div>
+      ${fig('Wind', `${n.wind_mph}<small> mph</small>`, `${n.wind_dir != null ? dirName(n.wind_dir) + ' · ' : ''}gusts ${n.gust_mph} · ${Math.round(n.wind_mph * KM_PER_MI)} km/h`)}
+      ${fig('Humidity', `${n.rh ?? '—'}<small>%</small>`, n.dew_f != null ? `dew point ${fC(n.dew_f)} °C · ${Math.round(n.dew_f)} °F` : '')}
+      ${fig('Pressure', n.msl_mb != null ? `${Math.round(n.msl_mb)}<small> mbar</small>` : '—', n.msl_mb != null ? `${n.msl_trend_3h != null ? (n.msl_trend_3h > 0.4 ? '↑' : n.msl_trend_3h < -0.4 ? '↓' : '→') + ' ' + Math.abs(n.msl_trend_3h).toFixed(1) + ' in 3 h · ' : ''}${(n.msl_mb * 0.02953).toFixed(2)} inHg` : '')}
+      ${fig('Today', n.tmax_f != null ? `${fC(n.tmax_f)}° / ${fC(n.tmin_f)}°C` : '—', n.tmax_f != null ? `${Math.round(n.tmax_f)}/${Math.round(n.tmin_f)} °F${n.pop != null ? ` · ${n.pop}% rain` : ''}` : '')}
+      ${fig('Sun', n.sunrise ? fmtTime(Date.parse(n.sunrise)) : '—', n.sunset ? `sets ${fmtTime(Date.parse(n.sunset))}` : '')}
+    </div>` : `<div class="muted" style="font-size:.85rem">Current conditions unavailable right now.</div>`;
+  const met = m ? `<div class="now-sec"><div class="now-sh"><span><b>METAR ${esc(m.id)}</b> · ${esc(m.name.replace(/, US$/, ''))} · ${m.dist_mi} mi${m.elev_ft != null ? ` · ${n0(m.elev_ft)} ft` : ''}${m.obs ? ` · observed ${fmtTime(Date.parse(m.obs))} (${fmtAge(Date.now() - Date.parse(m.obs))})` : ''}</span><span class="muted">${esc(m.cat || '')}</span></div>
+      <div class="metar">${esc(m.raw)}</div><div class="a">${esc(metarDecoded(m))}</div></div>` : '';
+  const afd = a?.text ? `<details class="now-sec now-afd"><summary><b>NWS forecast discussion</b> · ${esc(a.office)} office · issued ${fmtDT(Date.parse(a.issued))}</summary>
+      <pre>${esc(a.text)}</pre><div class="a"><a href="${esc(a.url)}" target="_blank" rel="noopener">Open on weather.gov →</a></div></details>` : '';
+  return `<div class="now-h"><b>Now · ${esc(D.place || '')}</b><span class="muted">${NOW_SRC[D.src] || ''}${n ? ` · updated ${fmtTime(Date.parse(n.t))}` : ''}</span></div>
+    ${ctl}${stats}${met}${afd}`;
+}
+function ownCtl(ov) {
+  if (NOWX.ui === 'search') return `<div class="now-ctl"><input id="nowQ" placeholder="Town, ST or lat, lon" size="24"> <button id="nowFind">Find</button> <button id="nowCancel">Cancel</button> <span class="muted" id="nowMsg">${esc(NOWX.msg)}</span></div>`;
+  if (NOWX.ui === 'choose' && NOWX.geo) return `<div class="now-ctl"><span>${esc(NOWX.geo.label || `${NOWX.geo.lat.toFixed(3)}, ${NOWX.geo.lon.toFixed(3)}`)}:</span>
+    <button id="nowJust">Just for now</button> <button id="nowSet">Set as today's location</button> <button id="nowCancel">Cancel</button> <span class="muted" id="nowMsg">${esc(NOWX.msg)}</span></div>`;
+  return `<div class="now-ctl">${ov ? `<span>📍 Just for now: ${esc(ov.label || '')} · <a href="#" id="nowBack">Back to default</a> · </span>` : ''}<a href="#" id="nowUpd">Update location</a> · <a href="#" id="nowGeo">📍 Use my current position</a>${NOWX.msg ? ` <span class="muted" id="nowMsg">${esc(NOWX.msg)}</span>` : ''}</div>`;
+}
+function bindNowBar() {
+  const el = $('#nowBar'); if (!el || !isOwner()) return;
+  const redraw = () => { el.innerHTML = nowBarHtml(); bindNowBar(); };
+  const on = (id, f) => { const b = el.querySelector('#' + id); if (b) b.onclick = e => { e.preventDefault(); f(); }; };
+  on('nowUpd', () => { NOWX.ui = 'search'; NOWX.msg = ''; redraw(); el.querySelector('#nowQ')?.focus(); });
+  on('nowCancel', () => { NOWX.ui = null; NOWX.geo = null; NOWX.msg = ''; redraw(); });
+  on('nowBack', () => { setNowOv(null); NOWX.msg = ''; loadNow(true); });
+  on('nowGeo', () => {
+    if (!navigator.geolocation) { NOWX.msg = 'This browser cannot share its location.'; redraw(); return; }
+    NOWX.msg = 'Asking the browser for your position…'; redraw();
+    navigator.geolocation.getCurrentPosition(p => { NOWX.geo = { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), label: `your position (±${n0(p.coords.accuracy * 3.28084)} ft)` };
+      NOWX.ui = 'choose'; NOWX.msg = ''; redraw(); },
+      err => { NOWX.msg = err.code === 1 ? 'Location permission was refused in the browser.' : 'Could not get a position.'; redraw(); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  });
+  const find = async () => { const q = el.querySelector('#nowQ').value.trim(); if (!q) return; NOWX.msg = 'Looking up…'; el.querySelector('#nowMsg').textContent = NOWX.msg;
+    try { const r = await (await fetch(`${CONFIG.api}/admin/met/geocode?q=${encodeURIComponent(q)}`, { headers: { authorization: 'Bearer ' + OWNER } })).json();
+      if (!r.ok) { NOWX.msg = 'No match. Try "Town, ST" or "lat, lon".'; el.querySelector('#nowMsg').textContent = NOWX.msg; return; }
+      NOWX.geo = { lat: +r.lat, lon: +r.lon, label: r.label || q }; NOWX.ui = 'choose'; NOWX.msg = ''; redraw(); } catch { NOWX.msg = 'Could not reach the server.'; redraw(); } };
+  on('nowFind', find); const q = el.querySelector('#nowQ'); if (q) q.onkeydown = e => { if (e.key === 'Enter') find(); if (e.key === 'Escape') { NOWX.ui = null; redraw(); } };
+  on('nowJust', () => { setNowOv({ lat: NOWX.geo.lat, lon: NOWX.geo.lon, label: NOWX.geo.label.startsWith('your position') ? '' : NOWX.geo.label }); NOWX.ui = null; NOWX.geo = null; NOWX.msg = ''; loadNow(true); });
+  on('nowSet', async () => { NOWX.msg = 'Saving…'; el.querySelector('#nowMsg').textContent = NOWX.msg;
+    try { const r = await ownerPost('/admin/met/loc', { day: mtDayKey(Date.now()), mode: 'day', lat: NOWX.geo.lat, lon: NOWX.geo.lon });
+      if (r.ok === false) { NOWX.msg = r.error; redraw(); return; }
+      setNowOv(null); NOWX.ui = null; NOWX.geo = null; NOWX.msg = ''; MET.at = {}; loadMetWeek(); loadNow(true); } catch (e) { NOWX.msg = e.message; redraw(); } });
+}
+// Moon icon drawn to the exact lit fraction: right side lit while waxing, left while waning (northern hemisphere view)
+function moonIc(m, size = 14) {
+  const f = m.fraction, waxing = m.phase < 0.5, r = 10, rx = (Math.abs(1 - 2 * f) * r).toFixed(2);
+  const lit = f < 0.01 ? '' : f > 0.99 ? `<circle r="${r}" fill="#f2efe4"/>`
+    : `<path d="M0,${-r} A${r},${r} 0 0 1 0,${r} A${rx},${r} 0 0 ${f > 0.5 ? 1 : 0} 0,${-r} Z" fill="#f2efe4"${waxing ? '' : ' transform="scale(-1,1)"'}/>`;
+  return `<svg class="moon-ic" width="${size}" height="${size}" viewBox="-11 -11 22 22" aria-hidden="true"><title>${m.name || ''}</title><circle r="${r}" fill="#1f1f1f" stroke="#888" stroke-width="0.9"/>${lit}</svg>`;
+}
 function renderMetWeek() {
   const mon = weekKey(Date.now()), today = MET.today || mtDayKey(Date.now()), cards = [];
   for (let i = 0; i < 14; i++) {
@@ -2352,12 +2452,14 @@ function renderMetWeek() {
       <div>${cF(v.tmax_c)}°F / ${cF(v.tmin_c)}°F</div>
       <div>${fc ? `${v.pop ?? 0}% · ${v.precip_in ? v.precip_in.toFixed(2) + ' in' : 'dry'}` : v.precip_in ? `${v.precip_in.toFixed(2)} in${v.type ? ' ' + v.type : ''}` : '0 in'}</div>
       <div>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} mph</div>
-      ${sk ? `<div>☀ ${sk.rise}–${sk.set}</div><div>🌙 ${Math.round(sk.moon.fraction * 100)}%</div>` : ''}
+      ${sk ? `<div>☀ ${sk.rise}–${sk.set}</div><div title="${sk.moon.name}">${moonIc(sk.moon)} ${Math.round(sk.moon.fraction * 100)}%</div>` : ''}
       <div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></div>`);
   }
   $('#metCard').innerHTML = `<div class="week-h"><h2>Weather</h2><span class="muted">${weekLabel(mon).split(' – ')[0]} – ${weekLabel(addDays(mon, 7)).split(' – ')[1]} · <a href="#weather">All days →</a></span></div>
+    <div class="now-bar" id="nowBar">${nowBarHtml()}</div>
     <div class="met-wk">This week</div><div class="met-days">${cards.join('')}</div>
     <div class="met-leg">🏃 activity finish · 📡 inReach check-in · 📍 location you set or planned · plain = last known · dashed = forecast, less reliable after 7 days</div>`;
+  bindNowBar(); loadNow();
 }
 // #weather view
 let MET_MONTH = null, MET_EDIT = null;
@@ -2437,7 +2539,7 @@ function renderMetTable() {
       <td>${v.msl_mb != null ? Math.round(v.msl_mb) + ' mbar' + arrow : '—'}<small>${v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) + ' inHg' : ''}</small></td>
       <td>${v.cloud ?? '—'}%</td>
       <td>${sk ? `${sk.rise}–${sk.set}<small>${sk.len}</small>` : '—'}</td>
-      <td>${sk ? `${sk.moon.name} ${Math.round(sk.moon.fraction * 100)}%<small>↑ ${sk.mrise} ↓ ${sk.mset}</small>` : '—'}</td></tr>`);
+      <td>${sk ? `${moonIc(sk.moon)} ${sk.moon.name} ${Math.round(sk.moon.fraction * 100)}%<small>↑ ${sk.mrise} ↓ ${sk.mset}</small>` : '—'}</td></tr>`);
     csv.push([d, `"${(x.place || '').replace(/"/g, '""')}"`, x.src, x.station ? 'station:' + x.station.station : 'model', `"${v.desc || ''}"`, v.tmax_c, v.tmin_c, cF(v.tmax_c), cF(v.tmin_c),
       v.precip_in ?? '', v.precip_in != null ? mmOf(v.precip_in) : '', v.type || '', v.wind_mph ?? '', v.gust_mph ?? '', v.wind_dir ?? '', v.rh ?? '', v.msl_mb ?? '',
       v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) : '', v.cloud ?? '', sk?.rise ?? '', sk?.set ?? '', sk?.len ?? '', sk?.moon.name ?? '', sk ? Math.round(sk.moon.fraction * 100) : '', sk?.mrise ?? '', sk?.mset ?? ''].join(','));
@@ -2804,7 +2906,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.15.4';
+const VERSION = 'v0.16.1';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -2987,6 +3089,7 @@ function ownerChanged() {
   if (!$('#detail').hidden && DATA) renderAll();
   if (!$('#weeksView').hidden) renderWeeks();
   IR.at = 0; if (!$('#inreachView').hidden) renderIrView();
+  NOWX.ui = null; NOWX.msg = ''; if (!$('#landing').hidden) loadNow(true);
 }
 // Activity location (owner): for activities without GPS, or to override where the weather is taken
 function renderLocEdit(d) {
