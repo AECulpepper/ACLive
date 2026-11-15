@@ -20,6 +20,7 @@
   --bg: #302F2F; --panel: #444343; --panel-2: #504E4D; --ink: #F0EEEC; --muted: #BAB6B2; --line: #5A5857;
   --spruce: #9CCBB9; --bad: #F09A88;
   --series-lt: #4299CC; --series-ir: #CF7D40; --plan: #8A8682; --done-fill: #2F4B5E;   /* validated on #444343 */
+  --drive: #E0645A;                                                                      /* v0.17 drives: driven track */
   --map-track: #D62828; --map-plan: #111111;   /* map lines only (on the light basemap) */
   --temp: #B79CE0; --precip: #6FA8DC; --night: rgba(0,0,0,.24);
   --good: #5DBB7E; --warning: #E0B54A; --critical: #E07A66;
@@ -190,6 +191,24 @@ td.srcs .sw { margin-right: 4px; }
 .alert-ok b { color: #5ec27a; font-weight: 600; } .alert-ok.err b { color: #e8b04a; }
 .sum-line { display: flex; flex-wrap: wrap; gap: 6px 34px; margin: -4px 0 16px; }
 .sum-line:empty { display: none; }
+/* v0.17 drives */
+.drive-card { background: var(--panel); border: 1px solid #7fb3e6; border-radius: var(--r-md); padding: 14px 20px; margin-bottom: 14px; }
+.drv-h { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.drv-h h2 { font-size: 1.15rem; margin: 0; }
+.pill { display: inline-block; font-size: .75rem; padding: 1px 9px; border-radius: 999px; background: #1f4f7a; color: #cfe6ff; }
+.drv-stats .v { font-size: 1.6rem; } .drv-foot { font-size: .85rem; margin-top: 8px; }
+.drv-alert { margin: 10px 0 0; font-size: .9rem; }
+.drv-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+#drvMap { height: 360px; border-radius: 8px; overflow: hidden; background: var(--bg); }
+.drv-stops { list-style: none; padding: 0; margin: 0; font-size: .9rem; } .drv-stops li { padding: 6px 0; border-top: 1px solid var(--line); }
+.drv-dest-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: .9rem; } .drv-dest-form input { font: inherit; padding: 4px 8px; }
+.drv-plan { font-size: .9rem; } .drv-change summary { cursor: pointer; margin-top: 8px; color: var(--link, #8fd3b4); }
+#driveHint { border: 1px solid var(--series-ir); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-size: .9rem; }
+@media (max-width: 720px) { .drv-grid { grid-template-columns: 1fr; } #drvTiles .tile-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.prof-note { border: 1px solid var(--series-ir); border-radius: 8px; padding: 7px 11px; font-size: .86rem; margin: 0 0 8px; }
+.prof-lg { display: flex; gap: 16px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: 6px; }
+.prof-lg i { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 6px; }
+.offroute { color: var(--text-muted) !important; }
 .sum-line .v { font-family: var(--font-display); font-weight: 600; font-size: 1.55rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .sum-line .v small { font-family: var(--font); font-weight: 400; font-size: .8rem; color: var(--muted); margin-left: 3px; }
 .sum-line .a { font-size: .8rem; color: var(--muted); }
@@ -420,14 +439,15 @@ footer p { margin: 0 0 6px; }
 
   <!-- ================= LANDING ================= -->
   <main id="landing">
+    <section aria-label="Drive"><div id="driveCard" class="drive-card" hidden></div></section>
     <section class="top-row" aria-label="This week and inReach check-ins"><div id="weekCard" class="week"></div><div id="irCard" class="week ir-week"></div></section>
     <section aria-label="Current activity"><div id="nowCard" class="now"></div></section>
     <section aria-label="Weather this week"><div id="metCard" class="week met-week"></div></section>
     <section aria-labelledby="actTitle">
-      <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted" id="actCount"></span></div>
+      <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted"><span id="actCount"></span> · <a href="#drives">🚗 Drives →</a></span></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th></th><th>Activity</th><th class="num hide-narrow">Distance</th><th class="num hide-narrow">Vertical gain</th><th class="num hide-narrow">High</th><th class="num hide-narrow">Low</th><th class="num hide-narrow">Avg HR</th><th class="num hide-narrow">Time</th><th class="hide-narrow">Sources</th></tr></thead>
+          <thead><tr><th></th><th>Activity</th><th class="num hide-narrow">Distance</th><th class="num hide-narrow">Vertical gain</th><th class="num hide-narrow">High</th><th class="num hide-narrow">Low</th><th class="num hide-narrow">Avg HR</th><th class="num hide-narrow">Calories</th><th class="num hide-narrow">Time</th><th class="hide-narrow">Sources</th></tr></thead>
           <tbody id="actBody"></tbody>
         </table>
       </div>
@@ -465,6 +485,32 @@ footer p { margin: 0 0 6px; }
     </section>
   </main>
 
+  <!-- ================= DRIVES (v0.17) ================= -->
+  <main id="drivesView" hidden>
+    <a class="d-back" href="#">← All activities</a>
+    <section class="card">
+      <div class="card-h"><h2>🚗 Drives</h2><span class="meta" id="drvTotals"></span></div>
+      <div class="card-b">
+        <div id="drvPlan"></div>
+        <div class="table-wrap"><table class="drv-table" id="drvTable"></table></div>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Drives have their own totals and never count toward activities, weekly numbers, steps or high/low. Source: 📱 phone (OwnTracks), 📡 inReach where the phone had no signal.</p>
+      </div>
+    </section>
+  </main>
+  <main id="driveView" hidden>
+    <a class="d-back" href="#drives">← All drives</a>
+    <div class="drv-head"><h1 id="drvTitle" style="margin:0 0 4px">Drive</h1><div class="muted" id="drvSub"></div><div id="drvOwn" style="margin-top:8px"></div></div>
+    <section id="drvTiles" style="margin-top:14px"></section>
+    <div class="drv-grid">
+      <section class="card"><div class="card-h"><h2>Map</h2><span class="meta">red = driven · dashed = route ahead · orange = inReach in phone gaps</span></div><div class="card-b"><div id="drvMap"></div></div></section>
+      <div>
+        <section class="card"><div class="card-h"><h2>Destination</h2></div><div class="card-b" id="drvDest"></div></section>
+        <section class="card" style="margin-top:14px"><div class="card-h"><h2>Stops</h2><span class="meta">5 min or longer</span></div><div class="card-b" id="drvStops"></div></section>
+      </div>
+    </div>
+    <section class="card" style="margin-top:14px"><div class="card-h"><h2>Speed and elevation</h2><span class="meta">blue = speed · tan = elevation · shaded = stops</span></div><div class="card-b"><div id="drvChart"></div></div></section>
+  </main>
+
   <!-- ================= WEEKLY RECORDS ================= -->
   <main id="weeksView" hidden>
     <a class="d-back" href="#">← All activities</a>
@@ -483,6 +529,7 @@ footer p { margin: 0 0 6px; }
   <!-- ================= DETAIL ================= -->
   <main id="detail" hidden>
     <a class="d-back" href="#">← All activities</a>
+    <div id="driveHint" hidden></div>
     <div class="d-head">
       <div><h2 id="tripName">—</h2><div class="sub" id="tripSub"></div><div class="sub" id="locEdit"></div>
         <div class="view-tg" id="viewTg" role="group" aria-label="Which data to show" hidden>
@@ -532,8 +579,11 @@ footer p { margin: 0 0 6px; }
     </section>
 
     <section class="card">
-      <div class="card-h"><h2>Elevation</h2><span class="meta">hover for details</span></div>
-      <div class="card-b"><div id="profile"><div class="tip" id="ptip"></div></div></div>
+      <div class="card-h"><h2>Elevation</h2><span class="meta"><span id="profAuto"></span>
+        <span class="view-tg" id="profTg" role="group" aria-label="Elevation profile" style="margin-top:0" hidden><button type="button" data-p="plan" aria-pressed="true">Planned</button><button type="button" data-p="act" aria-pressed="false">Actual</button></span>
+        <span id="profHover">hover for details</span></span></div>
+      <div class="card-b"><div class="prof-note" id="profNote" hidden></div><div id="profile"><div class="tip" id="ptip"></div></div>
+        <div class="prof-lg" id="profLg" hidden></div></div>
     </section>
 
     <section class="card" id="wxCard" style="margin-top:14px">
@@ -629,12 +679,13 @@ const fmtAge = ms => ms < MIN ? 'just now' : ms < HR ? `${Math.round(ms/MIN)} mi
 const fmtClock = ms => { ms = Math.max(0, ms); const h = Math.floor(ms/HR), m = Math.floor((ms%HR)/MIN), sec = Math.floor((ms%MIN)/1000);
   return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; };   // h:mm:ss
 const fmtPace = minPerMi => { const m = Math.floor(minPerMi), s = Math.round((minPerMi-m)*60); return `${m}:${String(s===60?0:s).padStart(2,'0')}`; };
-const n0 = x => Math.round(x).toLocaleString('en-US');
+const NB = '\u00A0';                                                  // no-break space: looks like a space, never wraps inside a number
+const n0 = x => { const v = Math.round(x), a = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, NB); return (v < 0 ? '−' : '') + a; };   // 12 300, 1 200 (v0.17)
 const KM_PER_MI = 1.609344, M_PER_FT = 0.3048;
 const km = mi => (mi * KM_PER_MI).toFixed(1);
 const mOf = ft => n0(ft * M_PER_FT);
 const fmtMi = mi => `${mi.toFixed(1)} mi · ${km(mi)} km`;            // "6.4 mi · 10.3 km"
-const fmtFt = ft => `${n0(ft)} ft · ${mOf(ft)} m`;                  // "8,034 ft · 2,449 m"
+const fmtFt = ft => `${n0(ft)} ft · ${mOf(ft)} m`;                  // "8 034 ft · 2 449 m"
 const miKm = mi => `mi ${mi.toFixed(1)} · km ${km(mi)}`;            // "mi 38.3 · km 61.6"
 const alt = t => `<div class="alt">${t}</div>`;
 const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
@@ -1092,15 +1143,42 @@ function derive(d) {
   // (handles loops and out-and-backs; detours just hold the last on-route spot). Otherwise distance traveled.
   let posMi = Math.min(curMi, totalMi);
   const arrive = {};                                                   // checkpoint mi -> first time reached (repo routes)
+  let offRoute = null, shortcut = null;                                // v0.17 (F2): { since, confirmed, routeMi, trackMi } while off the repo route
+  const skipped = new Set();                                           // checkpoint miles skipped by a shortcut
   if (!freeform && d.trip?.course_src === 'repo' && course.length > 1) {
     let k = Math.max(0, course.findIndex(c => c.mi >= (d.trip.route_start_mi || 0)));
     const cpMi = (d.checkpoints || []).map(c => c.mi).sort((a, b) => a - b); let ci = 0;
     while (ci < cpMi.length && cpMi[ci] < course[k].mi - 0.05) ci++;
-    for (const p of pts) {
-      const lim = course[k].mi + 1.0; let best = -1, bd = 0.1;           // look up to 1 mi ahead; on-route = within 160 m
-      for (let j = k; j < course.length && course[j].mi <= lim; j++) { const dd = hav(course[j], p); if (dd < bd) { bd = dd; best = j; } }
-      if (best >= 0) k = best;
-      while (ci < cpMi.length && course[k].mi >= cpMi[ci] - 0.02) { arrive[cpMi[ci]] = p.ts; ci++; }
+    // Off route = more than 160 m from the route for over 10 min AND over 0.5 mi covered. Back on route = on the route
+    // (anywhere ahead) for 10 min. Short detours and stops never count. Watch points (+ inReach gap fill) only.
+    const trk = lt.length ? pts.filter(p => p.src === 'livetrack' || p.src === 'import' || p.gap || p.est) : pts;
+    let cand = null, rejoin = null;
+    for (const p of trk) {
+      let best = -1, bd = 0.1;                                         // on-route = within 160 m
+      if (!offRoute) { const lim = course[k].mi + 1.0;                  // look up to 1 mi ahead
+        for (let j = k; j < course.length && course[j].mi <= lim; j++) { const dd = hav(course[j], p); if (dd < bd) { bd = dd; best = j; } } }
+      else for (let j = k; j < course.length; j++) { const c = course[j];   // off route: a rejoin can be anywhere ahead
+        if (Math.abs(c.lat - p.lat) > 0.0015 || Math.abs(c.lon - p.lon) > 0.0019) continue;
+        const dd = hav(c, p); if (dd < bd) { bd = dd; best = j; } }
+      if (best >= 0) {
+        cand = null;
+        if (!offRoute) k = best;
+        else { rejoin = rejoin ? { ...rejoin, j: best } : { ts: p.ts, j: best };
+          if (p.ts - rejoin.ts >= 10*MIN) {
+            // back on the route. Rejoining much further along (skipping > 1 mi more route than you covered off it) is a shortcut:
+            // the skipped part is never shown as done and its checkpoints are "skipped".
+            const rj = course[rejoin.j].mi, offMi = (p.mi ?? 0) - offRoute.trackMi;
+            if (rj - offRoute.routeMi > offMi + 1) {
+              shortcut = { ...offRoute, rejoinTs: rejoin.ts, rejoinRouteMi: rj, rejoinTrackMi: trk.find(q => q.ts >= rejoin.ts)?.mi ?? (p.mi ?? 0) };
+              for (const c of cpMi) if (c > offRoute.routeMi + 0.02 && c < rj - 0.05) skipped.add(c);
+            }
+            offRoute = null; k = rejoin.j; rejoin = null; while (ci < cpMi.length && cpMi[ci] < course[k].mi - 0.05) ci++; } }
+      } else {
+        rejoin = null;
+        if (!offRoute) { cand ??= { ts: p.ts, mi: p.mi ?? 0, routeMi: course[k].mi };
+          if (p.ts - cand.ts > 10*MIN && (p.mi ?? 0) - cand.mi > 0.5) { offRoute = { since: cand.ts, confirmed: p.ts, routeMi: cand.routeMi, trackMi: cand.mi }; cand = null; } }
+      }
+      if (!offRoute) while (ci < cpMi.length && course[k].mi >= cpMi[ci] - 0.02) { arrive[cpMi[ci]] = p.ts; ci++; }
     }
     posMi = course[k].mi;
   }
@@ -1129,7 +1207,7 @@ function derive(d) {
     delta = last ? last.ts - plannedAtCur : 0;
     let tCursor = last ? last.ts : now, miCursor = posMi;
     for (const c of cps) {
-      if (c.aa) continue;
+      if (c.aa || c.skipped) continue;
       tCursor += planMovingMin(course, miCursor, c.mi) * ratio * MIN;
       c.proj = tCursor; c.projDelta = tCursor - c.pa;
       tCursor += c.plannedDwellMin * MIN; miCursor = c.mi;
@@ -1138,6 +1216,7 @@ function derive(d) {
   // vertical: planned course -> exact; freeform track -> 10 ft hysteresis to damp GPS/baro noise
   let gainSoFar = 0;
   if (!courseEle) { let ref = trackProf[0]?.ele; for (const c of trackProf) { if (c.ele - ref >= 10) { gainSoFar += c.ele - ref; ref = c.ele; } else if (c.ele < ref) ref = c.ele; } }
+  else if (offRoute || shortcut) { let ref = trackProf[0]?.ele; for (const c of trackProf) { if (c.ele - ref >= 10) { gainSoFar += c.ele - ref; ref = c.ele; } else if (c.ele < ref) ref = c.ele; } }   // v0.17: left the route → recorded climb
   else gainSoFar = gainBetween(course, d.trip?.route_start_mi || 0, posMi);   // Day 2+: from where today started
   // Current elevation and its change over the last 30 min
   const eLast = [...pts].reverse().find(p => p.ele != null) ?? null;
@@ -1183,7 +1262,14 @@ function derive(d) {
   const eles = pts.map(p => p.ele).filter(e => e != null);
   const eleHigh = eles.length ? Math.max(...eles) : null, eleLow = eles.length ? Math.min(...eles) : null;
   const dark = darkSpans(pts, !ended && d.weather?.forecast?.length ? Date.parse(d.weather.forecast.at(-1).t) : null);
-  return { dark, ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, posMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
+  // v0.17 (F1): watch points plus inReach points that fill a LiveTrack gap (gap = fitted to the watch, est = gap still open)
+  const dist = pts.filter(p => p.src === 'livetrack' || p.src === 'import' || p.gap || p.est);
+  let estSince = null; if (last?.est) { for (let i = pts.length - 1; i >= 0 && !(pts[i].src === 'livetrack'); i--) if (pts[i].est) estSince = pts[i].ts; }
+  for (const c of cps) if (skipped.has(c.mi)) c.skipped = true;
+  const leftAt = offRoute || shortcut;                                 // where the route was (last) left, for markers and the banner
+  if (leftAt) { const near = cps.reduce((a, c) => !a || Math.abs(c.mi - leftAt.routeMi) < Math.abs(a.mi - leftAt.routeMi) ? c : a, null);
+    if (near && Math.abs(near.mi - leftAt.routeMi) <= 1) leftAt.nearCp = near; }
+  return { offRoute, shortcut, trackProf, dist, estSince, dark, ended, hr, eleHigh, eleLow, movingMs, stops, effort, lagMed, now, pts, lt, ir, last, lastLT, lastIR, start, curMi, posMi, ratio, recentPace, cps, prevCp, nextCp, delta, freeform, course,
            totalMi, gainSoFar, gainTotal: courseEle ? gainBetween(course, 0, course.at(-1).mi) : null, maxEle, fromStart,
            profile, courseEle, eleNow };
 }
@@ -1220,6 +1306,8 @@ function renderTiles(d, s) {
   const third = s.freeform
     ? { label:'From start', value: s.fromStart ? `${s.fromStart.mi.toFixed(1)}<small>mi</small>` : '—', alt: s.fromStart ? `${km(s.fromStart.mi)} km` : '',
         foot: s.fromStart ? `straight line, ${s.fromStart.dir} of start` : 'waiting for fixes' }
+    : s.offRoute ? { label:'Vs plan', value: '<span class="offroute">Off route</span>', alt: '', foot: `since ${fmtTime(s.offRoute.since)}` }   // v0.17 (F2)
+    : s.shortcut ? { label:'Vs plan', value: '<span class="offroute">Shortcut</span>', alt: '', foot: `skipped route mi ${s.shortcut.routeMi.toFixed(1)}–${s.shortcut.rejoinRouteMi.toFixed(1)}` }
     : { label:'Vs plan', value: Math.abs(s.delta) < 5*MIN ? 'On plan' : fmtDur(Math.abs(s.delta)), alt: '',
         foot: behind ? 'behind plan' : ahead ? 'ahead of plan' : 'within 5 min', footCls: behind ? 'behind' : ahead ? 'ahead' : '' };
   const liveHr = !s.ended && s.lastLT?.hr && hrAge <= 20*MIN;
@@ -1232,20 +1320,23 @@ function renderTiles(d, s) {
         foot: movAvg ? 'average, moving' : allAvg ? 'average, incl. stops' : '' };
   // Summary under the title
   $('#sumLine').innerHTML = !s.last && !imp ? '' : [
-    [`${s.curMi.toFixed(1)}<small>mi</small>`, `${km(s.curMi)} km`],
+    [`${s.curMi.toFixed(1)}<small>mi</small>`, `${km(s.curMi)} km${s.estSince ? ' · est. from inReach' : ''}`],
     [`${n0(s.gainSoFar)}<small>ft</small>`, `${mOf(s.gainSoFar)} m vert`],
     [fmtClock(elapsed), s.movingMs != null ? `${fmtClock(s.movingMs)} moving` : s.ended ? 'total' : 'elapsed'],
     [movAvg || allAvg ? `${fmtPace(movAvg || allAvg)}<small>/mi</small>` : '—', `${movAvg ? 'avg moving' : 'avg'}${!s.ended && s.recentPace ? ` · now ${fmtPace(s.recentPace)}` : movAvg || allAvg ? ' · ' + pk(movAvg || allAvg) : ''}`],
-  ].map(([v, a]) => `<div><div class="v">${v}</div><div class="a">${a}</div></div>`).join('');
+    // v0.17: heart rate — live = latest reading (≤ 20 min old), otherwise / finished = average; left out when there's no HR
+    liveHr ? [`${s.lastLT.hr}<small>bpm</small>`, `now${s.hr?.avg ? ` · avg ${s.hr.avg}` : ''}`]
+      : s.hr?.avg ? [`${s.hr.avg}<small>bpm</small>`, `avg${s.hr.max ? ` · max ${s.hr.max}` : ''}`] : null,
+  ].filter(Boolean).map(([v, a]) => `<div><div class="v">${v}</div><div class="a">${a}</div></div>`).join('');
   const tiles = [
     { label:'Distance', value:`${s.curMi.toFixed(1)}<small>mi</small>`, alt:`${km(s.curMi)} km`,
-      foot: s.freeform ? 'traveled' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.posMi/s.totalMi*100)}%` },
+      foot: s.estSince ? `estimated from inReach since ${fmtTime(s.estSince)} (no LiveTrack signal)` : s.freeform ? 'traveled' : s.offRoute || s.shortcut ? 'traveled · left the route' : `of ${s.totalMi.toFixed(1)} mi · ${Math.round(s.posMi/s.totalMi*100)}%` },
     { label: s.ended ? 'Total time' : 'Elapsed', value: s.last ? fmtClock(elapsed) : '—',
       alt: s.movingMs != null ? `moving ${fmtClock(s.movingMs)} · stopped ${fmtClock(Math.max(0, elapsed - s.movingMs))}` : '',
       foot: s.last ? `started ${fmtDT(imp ? Date.parse(d.trip.start) : s.start)}` : 'not started' },
     third,
     { label:'Vertical gain', value:`${n0(s.gainSoFar)}<small>ft</small>`, alt:`${mOf(s.gainSoFar)} m`,
-      foot: s.gainTotal != null ? `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` : s.ended ? 'total' : 'so far' },
+      foot: s.gainTotal != null && !s.offRoute && !s.shortcut ? `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` : s.ended ? 'total' : 'so far' },
     { label:'High · low', value: s.eleHigh != null ? `${n0(s.eleHigh)}<small>ft</small>` : '—', alt: s.eleHigh != null ? `${mOf(s.eleHigh)} m` : '',
       foot: s.eleLow != null ? `low ${n0(s.eleLow)} ft<br>${mOf(s.eleLow)} m` : '' },
     paceT,
@@ -1263,8 +1354,9 @@ function renderTiles(d, s) {
     <div class="foot ${t.footCls ?? ''}">${t.foot}</div></div>`;
   // Row 1: right now (or how it ended). Row 2: the effort so far.
   const [dist, el, th, gain, hl, pace, stepsT, wxT, aqT, eleT, day, sun, hr] = tiles;
+  const energy = energyTile(d, s, elapsed);
   $('#tiles').innerHTML = `<div class="tile-row-h">${s.ended ? 'The effort' : 'The effort so far'}</div>
-    <div class="tile-row" style="--n:7">${[dist, el, pace, th, gain, hl, stepsT].map(html).join('')}</div>
+    <div class="tile-row" style="--n:4">${[dist, el, pace, th, gain, hl, stepsT, energy].map(html).join('')}</div>
     <div class="tile-row-h">${s.ended ? 'At the finish' : 'Right now'}</div>
     <div class="tile-row" style="--n:6">${[wxT, aqT, eleT, day, sun, hr].map(html).join('')}</div>`;
 }
@@ -1300,7 +1392,7 @@ function weatherTile(d, s) {
   if (!s.ended && w?.now) { const n = w.now;
     return { label:'Weather now', value: `${fC(n.temp_f)}<small>°C</small>`, alt: `${Math.round(n.temp_f)} °F · feels ${fC(n.feels_f)} °C`,
       foot: `${esc(n.desc)} · wind ${n.wind_mph} mph ${windDir(n.wind_dir)}, gusts ${n.gust_mph}<br>` +
-        `${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}% · ` : ''}${n.msl_mb != null ? `${Math.round(n.msl_mb)} mbar${trendTxt(n.msl_trend_3h)}` : ''}<br>as of ${fmtTime(n.t)}` }; }
+        `${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}% · ` : ''}${n.msl_mb != null ? `${n0(n.msl_mb)} mbar${trendTxt(n.msl_trend_3h)}` : ''}<br>as of ${fmtTime(n.t)}` }; }
   const a = w?.along || [];
   if (a.length) { let lo = Infinity, hi = -Infinity, sum = 0; for (const x of a) { lo = Math.min(lo, x.temp_f); hi = Math.max(hi, x.temp_f); sum += x.temp_f; }
     const same = Math.round(lo) === Math.round(hi);
@@ -1308,6 +1400,16 @@ function weatherTile(d, s) {
     return { label:'Weather', value: sameC ? `${fC(lo)}<small>°C</small>` : `${fC(lo)} to ${fC(hi)}<small>°C</small>`, alt: same ? `${Math.round(lo)} °F` : `${Math.round(lo)}–${Math.round(hi)} °F`,
       foot: `avg ${fC(sum / a.length)} °C${prevailing(a) ? ` · wind mostly ${prevailing(a)}` : ''}<br>hourly, modeled` }; }
   return { label: s.ended ? 'Weather' : 'Weather now', value:'—', foot:'not available yet' };
+}
+// v0.17 (F5): calories are a post-activity number from the watch file (LiveTrack doesn't send them)
+function energyTile(d, s, elapsed) {
+  const kcal = d.trip?.kcal ?? DATA?.trip?.kcal ?? null;
+  if (kcal == null) return s.ended
+    ? { label:'Energy', value:'—', foot: d.trip?.kind === 'livetrack' && !DATA?.trip?.final ? 'comes with the watch file' : 'no calories in this file' }
+    : { label:'Energy', value:'<span class="offroute" style="font-size:.7em">After the run</span>', foot:'calories come from the watch file' };
+  const hrs = elapsed / HR, mi = d.trip?.dist_mi || s.curMi;
+  return { label:'Energy', value:`${n0(kcal)}<small>kcal</small>`,
+    alt: [hrs > 0.05 ? `${n0(kcal / hrs)} kcal/h` : '', mi > 0.1 ? `${n0(kcal / mi)} kcal/mi` : ''].filter(Boolean).join(' · '), foot:'from the watch file' };
 }
 function stepsTile(s) {
   const st = s.effort.steps;
@@ -1403,7 +1505,7 @@ function renderWx(d, s) {
       <div class="muted" style="font-size:.88rem">${n.rh != null ? `RH ${n.rh}% · ` : ''}${n.cloud != null ? `cloud ${n.cloud}%` : ''}</div>
       ${(() => { const dp = dewF(n.temp_f, n.rh), wc = chillF(n.temp_f, n.wind_mph), hx = heatF(n.temp_f, n.rh);
         return `${n.aq?.aqi != null ? `<div style="font-size:.88rem;margin:3px 0">${aqiChip(n.aq.aqi)} <span class="muted">PM2.5 ${n.aq.pm25 ?? '—'} µg/m³${n.aq.main ? ' · main: ' + n.aq.main : ''}</span></div>` : ''}<div class="muted" style="font-size:.88rem">${dp != null ? `dew point ${cfPair(dp)} (${dewFeel(dp)})` : ''}${wc != null ? ` · wind chill ${cfPair(wc)}` : ''}${hx != null ? ` · heat index ${cfPair(hx)}${heatRisk(hx) ? ' (' + heatRisk(hx) + ')' : ''}` : ''}</div>`; })()}
-      <div class="muted" style="font-size:.88rem">${n.msl_mb != null ? `${Math.round(n.msl_mb)} mbar sea level${trendTxt(n.msl_trend_3h)} in 3 h` : ''}${n.sfc_mb != null ? ` · ${Math.round(n.sfc_mb)} local` : ''}</div>
+      <div class="muted" style="font-size:.88rem">${n.msl_mb != null ? `${n0(n.msl_mb)} mbar sea level${trendTxt(n.msl_trend_3h)} in 3 h` : ''}${n.sfc_mb != null ? ` · ${n0(n.sfc_mb)} local` : ''}</div>
       ${flNote(n, s)}</div>
       <div class="wx-hours">${fc.filter((_, i) => i % 2 === 1).slice(0, 7).map(h => `<div><div class="t">${fmtTime(h.ts)}</div>
         <div class="v">${fC(h.temp_f)}°C</div><div class="t">${Math.round(h.temp_f)}°F</div><div>${h.pop}% ${h.precip_in > 0 || h.type ? (PRECIP_ICON[h.type] || '💧') : ''}</div>
@@ -1420,7 +1522,7 @@ function renderWx(d, s) {
     const rainT = along.reduce((a, x) => a + (x.rain_in ?? (x.type === 'snow' ? 0 : x.precip_in)), 0), snowT = along.reduce((a, x) => a + (x.snow_in || 0), 0);
     const rng = k => { const v = along.map(x => x[k]).filter(x => x != null); return v.length ? [Math.min(...v), Math.max(...v), v.reduce((a, b) => a + b, 0) / v.length] : null; };
     const rh = rng('rh'), cl = rng('cloud'), msl = rng('msl_mb'), sfc = rng('sfc_mb'), fl = rng('fl_ft'), pw = prevailing(along);
-    const span = (r, f = Math.round) => f(r[0]) === f(r[1]) ? `${f(r[0])}` : `${f(r[0])}–${f(r[1])}`;
+    const span = (r, f = n0) => f(r[0]) === f(r[1]) ? `${f(r[0])}` : `${f(r[0])}–${f(r[1])}`;
     top = `<div class="wx-stats" style="grid-column:1/-1">
       ${stat('Temperature', fC(lo) === fC(hi) ? `${fC(lo)}<small>°C</small>` : `${fC(lo)} to ${fC(hi)}<small>°C</small>`, Math.round(lo) === Math.round(hi) ? `${Math.round(lo)} °F` : `${Math.round(lo)}–${Math.round(hi)} °F`)}
       ${stat('Precipitation', `${pr.toFixed(2)}<small>in</small>`, `${Math.round(pr * 25.4)} mm${snowT > 0 ? ` · rain ${rainT.toFixed(2)} in · snow ${snowT.toFixed(1)} in` : ''}`)}
@@ -1521,7 +1623,7 @@ function drawWxChart(s, along, fc) {
     if (!P.fixed) { const pad = Math.max((hi - lo) * 0.12, P.k === 'press' ? 2 : P.k === 'fl' ? 300 : 2); lo -= pad; hi += pad; if (P.k === 'wind' || P.k === 'aqi') lo = 0; if (P.k === 'aqi') hi = Math.max(hi, 60); }
     const Yv = v => bot - (v - lo) / Math.max(hi - lo, 1e-9) * (P.h - 16);
     for (const g of [lo, (lo + hi) / 2, hi]) {
-      const lab = P.k === 'fl' ? n0(g) : P.k === 'temp' ? fC(g) : Math.round(g);
+      const lab = P.k === 'temp' ? fC(g) : n0(g);
       const altLab = P.k === 'temp' ? `${Math.round(g)}°F` : P.k === 'wind' ? `${Math.round(g * KM_PER_MI)} km/h` : P.k === 'fl' ? `${n0(g / 3.28084)} m` : '';
       out += `<line x1="${m.l}" x2="${W - m.r}" y1="${Yv(g)}" y2="${Yv(g)}" stroke="var(--grid)"/>
         <text x="${m.l - 6}" y="${Yv(g) + 4}" text-anchor="end" font-size="10.5" fill="var(--text-muted)">${lab}</text>
@@ -1554,7 +1656,7 @@ function drawWxChart(s, along, fc) {
     const dk = s.dark.some(z => x.ts >= z.start && x.ts <= z.end), me = eleAtT(x.ts);
     tip.innerHTML = `<b>${fmtDT(x.ts)}</b>${x.fc ? ' · forecast' : ''}<div class="row">${fC(x.temp_f)} °C · ${Math.round(x.temp_f)} °F${x.feels_f != null ? ` · feels ${fC(x.feels_f)} °C` : ''} · ${esc(x.desc || '')}</div>
       <div class="row">${x.pop != null ? x.pop + '% chance · ' : ''}${x.precip_in > 0 ? `${PRECIP_ICON[x.type] || ''} ${x.precip_in.toFixed(2)} in` + (x.snow_in > 0 ? ` (snow ${x.snow_in.toFixed(1)} in)` : '') + ' · ' : ''}wind ${x.wind_mph} mph ${windDir(x.wind_dir)}, gusts ${x.gust_mph}</div>
-      <div class="row">${x.rh != null ? `RH ${x.rh}% · ` : ''}${x.cloud != null ? `cloud ${x.cloud}% · ` : ''}${x.msl_mb != null ? `${Math.round(x.msl_mb)} mbar sea level` : ''}${x.sfc_mb != null ? ` · ${Math.round(x.sfc_mb)} local` : ''}</div>
+      <div class="row">${x.rh != null ? `RH ${x.rh}% · ` : ''}${x.cloud != null ? `cloud ${x.cloud}% · ` : ''}${x.msl_mb != null ? `${n0(x.msl_mb)} mbar sea level` : ''}${x.sfc_mb != null ? ` · ${n0(x.sfc_mb)} local` : ''}</div>
       ${x.aqi != null ? `<div class="row">air quality ${aqiChip(x.aqi, { short: true })}${x.pm25 != null ? ` · PM2.5 ${x.pm25} µg/m³` : ''}${x.aqi_main ? ` · main: ${x.aqi_main}` : ''}</div>` : ''}
       <div class="row">${me != null ? `you ${n0(me)} ft · ` : ''}${x.fl_ft != null ? `freezing level ${n0(x.fl_ft)} ft · ` : ''}${dk ? 'dark' : 'daylight'}</div>`;
     tip.style.display = 'block';
@@ -1636,6 +1738,12 @@ function renderNext(d, s) {
     return;
   }
   h2.textContent = 'Next checkpoint';
+  if (s.offRoute) {                                                     // v0.17 (F2): no "next checkpoint" while off the route
+    $('#nextMeta').textContent = 'off route';
+    $('#next').innerHTML = `<div class="next-name offroute">Off route</div>
+      <div class="src-sub">Left the route at mi ${s.offRoute.routeMi.toFixed(1)}${s.offRoute.nearCp ? ` near ${esc(s.offRoute.nearCp.name)}` : ''} at ${fmtTime(s.offRoute.since)}. Checkpoint times come back if ${s.ended ? 'the activity rejoined' : 'you rejoin'} the route.</div>`;
+    return;
+  }
   const c = s.nextCp;
   if (!c) { $('#next').innerHTML = '<div class="next-name">Finished 🎉</div>'; $('#nextMeta').textContent=''; return; }
   const distTo = c.mi - s.posMi, gainTo = gainBetween(s.course, s.posMi, c.mi);
@@ -1806,14 +1914,48 @@ document.addEventListener('click', async e => {
 });
 
 /* ---- Elevation profile ---- */
-function renderProfile(d, s) {
+/* v0.17 (F2): a repo route draws the Planned profile; after you leave the route it switches to Actual (your recorded
+   elevation along the distance you covered) with the planned route faint up to where you left it. Toggle overrides. */
+const PROF = { id: null, mode: null };                                   // mode: null = automatic, 'plan' | 'act' = chosen
+function profileMode(d, s) {
+  if (d.trip?.course_src !== 'repo' || !s.courseEle) return null;      // only repo routes have a planned profile to switch from
+  if (PROF.id !== d.trip.id) { PROF.id = d.trip.id; PROF.mode = null; }
+  return PROF.mode || (s.offRoute || s.shortcut ? 'act' : 'plan');
+}
+$('#profTg').addEventListener('click', e => { const b = e.target.closest('button[data-p]'); if (!b || !DATA) return;
+  PROF.mode = b.dataset.p; const D = viewOf(DATA); renderProfile(D, derive(D)); });
+function renderProfile(d, s0) {
   const host = $('#profile'), W = host.clientWidth, H = 230;
   if (W < 160) return;                       // not laid out yet (hidden tab): the resize handler redraws
+  const pm = profileMode(d, s0), off = s0.offRoute || s0.shortcut, sc = s0.shortcut && !s0.offRoute ? s0.shortcut : null, routeName = (d.trip?.subtitle || '').replace(/^Route:\s*/, '').split(' · ')[0] || 'the route';
+  let s = s0, ghost = [], mark = null, mark2 = null, skipSeg = null;
+  if (pm === 'act') {                                                   // Actual: your own elevation along the distance covered
+    const kf = off ? off.trackMi / Math.max(off.routeMi, 0.01) : 1;     // route miles → your miles (up to where you left)
+    s = { ...s0, freeform: true, courseEle: false, profile: s0.trackProf, course: s0.trackProf, totalMi: Math.max(s0.curMi, 0.1), posMi: s0.curMi,
+      cps: off ? s0.cps.filter(c => c.mi <= off.routeMi + 0.02).map(c => ({ ...c, mi: c.mi * kf })) : [] };
+    if (off) { ghost = s0.course.filter(c => c.mi <= off.routeMi && c.ele != null).map(c => ({ mi: c.mi * kf, ele: c.ele }));
+      mark = { mi: off.trackMi, label: `Left route · ${fmtTime(off.since)}` };
+      if (sc) mark2 = { mi: sc.rejoinTrackMi, label: `Rejoined · ${fmtTime(sc.rejoinTs)}` }; }
+  } else if (off) { mark = { mi: off.routeMi, label: `Left route here · ${fmtTime(off.since)}` };
+    if (sc) { mark2 = { mi: sc.rejoinRouteMi, label: `Rejoined · ${fmtTime(sc.rejoinTs)}` }; skipSeg = [sc.routeMi, sc.rejoinRouteMi]; } }
+  $('#profTg').hidden = !pm; $('#profTg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === pm)));
+  $('#profAuto').textContent = pm ? (PROF.mode ? '' : 'auto · ') : '';
+  const note = $('#profNote'), near = off?.nearCp ? `, near ${esc(off.nearCp.name)}` : '';
+  note.hidden = !off;
+  if (sc) note.innerHTML = `<b>Shortcut:</b> left ${esc(routeName)} at route mi ${sc.routeMi.toFixed(1)}${near} at ${fmtTime(sc.since)} and rejoined at route mi ${sc.rejoinRouteMi.toFixed(1)} at ${fmtTime(sc.rejoinTs)}. ` +
+    (pm === 'act' ? `Showing ${s0.ended ? 'the elevation actually covered' : 'your actual elevation'}.` : `Route mi ${sc.routeMi.toFixed(1)}–${sc.rejoinRouteMi.toFixed(1)} was skipped (not filled in). Tap <b>Actual</b> for the elevation actually covered.`);
+  else if (off) note.innerHTML = pm === 'act'
+    ? `<b>Off route since ${fmtTime(off.since)}.</b> Left ${esc(routeName)} at route mi ${off.routeMi.toFixed(1)}${near}. Showing ${s0.ended ? 'the elevation you actually covered' : 'your actual elevation'}.`
+    : `<b>${s0.ended ? 'Left this route' : 'You’re off this route'}</b> since ${fmtTime(off.since)} (route mi ${off.routeMi.toFixed(1)}${near}). Tap <b>Actual</b> to see where ${s0.ended ? 'the activity went' : 'you went'}.`;
+  const lg = $('#profLg'); lg.hidden = !off;
+  if (off) lg.innerHTML = `<span><i style="border-top:3px solid var(--series-lt)"></i>Recorded elevation</span>` +
+    (pm === 'act' ? `<span><i style="border-top:2px dashed var(--plan)"></i>Planned route, up to where you left it</span>` : `<span><i style="border-top:2px solid var(--plan)"></i>Planned route</span>`) +
+    `<span><i style="border-top:2px dashed var(--series-ir)"></i>${sc ? 'Where you left and rejoined the route' : 'Where you left the route'}</span>`;
   const P = s.profile, ahead = s.freeform || s.courseEle;   // ahead = projected elevation exists for the route ahead
   if (P.length < 2) { host.querySelector('svg')?.remove(); host.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 ${W} 60"><text x="10" y="34" font-size="12" fill="var(--text-muted)">Elevation profile appears once there are a few positions.</text></svg>`); return; }
   const m = { l: 46, r: 46, t: 44, b: 26 };   // right margin holds the meters axis
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  let eMin = Infinity, eMax = -Infinity; for (const c of P) { if (c.ele < eMin) eMin = c.ele; if (c.ele > eMax) eMax = c.ele; }
+  let eMin = Infinity, eMax = -Infinity; for (const c of P.concat(ghost)) { if (c.ele < eMin) eMin = c.ele; if (c.ele > eMax) eMax = c.ele; }
   { const lo = eMin - 2000, hi = eMax + 2000;    // widen to show a nearby freezing level
     for (const x of d.weather?.along || []) if (x.fl_ft != null && x.fl_ft >= lo && x.fl_ft <= hi) { eMin = Math.min(eMin, x.fl_ft); eMax = Math.max(eMax, x.fl_ft); } }
   const step = eMax - eMin < 150 ? 50 : eMax - eMin < 1500 ? 200 : 1000;
@@ -1822,9 +1964,11 @@ function renderProfile(d, s) {
   const line = arr => arr.map((c,i) => `${i?'L':'M'}${X(c.mi).toFixed(1)},${Y(c.ele).toFixed(1)}`).join('');
   const area = arr => line(arr) + `L${X(arr.at(-1).mi).toFixed(1)},${Y(e0)}L${X(arr[0].mi).toFixed(1)},${Y(e0)}Z`;
   const done = P.filter(c => c.mi <= s.posMi + 1e-9);
+  // shortcut (Planned view): the skipped part of the route is not drawn as done
+  const doneSegs = skipSeg ? [done.filter(c => c.mi <= skipSeg[0]), done.filter(c => c.mi >= skipSeg[1])].filter(g => g.length > 1) : [done];
   let grid = '';
   for (let e = e0; e <= e1; e += step) grid += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(e)}" y2="${Y(e)}" stroke="var(--grid)"/>
-    <text x="${m.l-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${step === 1000 ? (e/1000).toFixed(0) + 'k' : step === 50 ? n0(e) : (e/1000).toFixed(1) + 'k'}</text>`;
+    <text x="${m.l-6}" y="${Y(e)+4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${n0(e)}</text>`;
   const miStep = s.totalMi > 40 ? 10 : s.totalMi > 15 ? 5 : s.totalMi > 4 ? 1 : 0.5;
   for (let mi = 0; mi <= s.totalMi + 1e-9; mi += miStep) grid += `<text x="${X(mi)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${+mi.toFixed(1)}</text>`;
   if (W >= 600) grid += `<text x="${W-4}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--text-muted)">mi</text>`;
@@ -1835,7 +1979,7 @@ function renderProfile(d, s) {
   for (let mv = Math.ceil(m0 / mStep) * mStep; mv <= m1 + 1e-9; mv += mStep) {
     const y = Y(mv / M_PER_FT);
     grid += `<line x1="${W-m.r}" x2="${W-m.r+4}" y1="${y}" y2="${y}" stroke="var(--text-muted)"/>
-      <text x="${W-m.r+7}" y="${y+4}" font-size="11" fill="var(--text-muted)">${mv >= 1000 ? (mv/1000).toFixed(mStep >= 1000 ? 0 : mStep >= 100 ? 1 : 2).replace(/\.?0+$/, '') + 'k' : mv}</text>`;
+      <text x="${W-m.r+7}" y="${y+4}" font-size="11" fill="var(--text-muted)">${n0(mv)}</text>`;
   }
   grid += `<line x1="${W-m.r}" x2="${W-m.r}" y1="${m.t}" y2="${Y(e0)}" stroke="var(--grid)"/>
     <text x="${W-m.r+7}" y="${m.t-12}" font-size="11" fill="var(--text-muted)">m</text>`;
@@ -1878,7 +2022,12 @@ function renderProfile(d, s) {
     ${s.dark.map(z => `<rect x="${X(z.mi0)}" y="${m.t}" width="${Math.max(1, X(z.mi1) - X(z.mi0))}" height="${Y(e0) - m.t}" fill="var(--night)"/>`).join('')}
     ${grid}${cpSvg}
     ${aheadSvg}
-    ${done.length > 1 ? `<path d="${area(done)}" fill="var(--done-fill)" opacity=".85"/><path d="${line(done)}" fill="none" stroke="var(--series-lt)" stroke-width="2"/>` : ''}
+    ${doneSegs.filter(g => g.length > 1).map(g => `<path d="${area(g)}" fill="var(--done-fill)" opacity=".85"/><path d="${line(g)}" fill="none" stroke="var(--series-lt)" stroke-width="2"/>`).join('')}
+    ${ghost.length > 1 ? `<path d="${line(ghost)}" fill="none" stroke="var(--plan)" stroke-width="1.5" stroke-dasharray="5 4"/>` : ''}
+    ${mark ? `<line x1="${X(mark.mi)}" x2="${X(mark.mi)}" y1="${m.t}" y2="${Y(e0)}" stroke="var(--series-ir)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="${X(mark.mi) + (X(mark.mi) > W - 190 ? -5 : 5)}" y="${m.t + 12}" text-anchor="${X(mark.mi) > W - 190 ? 'end' : 'start'}" font-size="11" fill="var(--series-ir)">${mark.label}</text>` : ''}
+    ${mark2 ? `<line x1="${X(mark2.mi)}" x2="${X(mark2.mi)}" y1="${m.t}" y2="${Y(e0)}" stroke="var(--series-ir)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="${X(mark2.mi) + (X(mark2.mi) > W - 150 ? -5 : 5)}" y="${m.t + 26}" text-anchor="${X(mark2.mi) > W - 150 ? 'end' : 'start'}" font-size="11" fill="var(--series-ir)">${mark2.label}</text>` : ''}
     ${flSvg}
     <line x1="${cx}" x2="${cx}" y1="${m.t}" y2="${Y(e0)}" stroke="var(--series-ir)" stroke-width="1.5"/>
     <circle cx="${cx}" cy="${cy}" r="6" fill="var(--series-ir)" stroke="var(--surface-1)" stroke-width="2"/>
@@ -1918,7 +2067,7 @@ let SPLIT_U = (() => { try { return localStorage.getItem('aclive.splitU') || 'mi
 $('#splitTg').addEventListener('click', e => { const b = e.target.closest('button[data-u]'); if (!b || b.dataset.u === SPLIT_U) return;
   SPLIT_U = b.dataset.u; try { localStorage.setItem('aclive.splitU', SPLIT_U); } catch {} if (DATA) { const D = viewOf(DATA); renderSplits(D, derive(D)); } });
 function renderSplits(d, s) {
-  const card = $('#splitsCard'), P = s.lt.filter(p => p.mi != null);
+  const card = $('#splitsCard'), P = s.dist.filter(p => p.mi != null);   // v0.17: includes inReach points filling a LiveTrack gap
   $('#splitTg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.u === SPLIT_U)));
   if (P.length < 2) { card.hidden = true; return; }
   card.hidden = false;
@@ -2040,10 +2189,12 @@ function renderCpTable(d, s) {
   const icon = { trailhead:'⌂', pass:'▲', road:'═', camp:'⛺', water:'≈', view:'◉' };
   const dcell = ms => ms == null ? '' : `<span class="${ms > 5*MIN ? 'delta-pos' : ms < -5*MIN ? 'delta-neg' : ''}">${ms > 0 ? '+' : ''}${fmtDur(ms)}</span>`;
   const rows = s.cps.map(c => {
-    const isNext = c === s.nextCp, future = !c.aa;
-    const actual = c.aa ? `${fmtDT(c.aa)}` : `<span class="proj">~${fmtDT(c.proj)}</span>`;
+    const isNext = c === s.nextCp && !s.offRoute, future = !c.aa;
+    const nearLeave = (s.offRoute || s.shortcut) && c === (s.offRoute || s.shortcut).nearCp && !c.aa;    // v0.17 (F2): route-based times greyed while off route
+    const actual = c.aa ? `${fmtDT(c.aa)}` : nearLeave ? '<span style="color:var(--series-ir)">left route near here</span>' : c.skipped ? '<span class="offroute">skipped</span>'
+      : s.offRoute ? '<span class="offroute">Off route</span>' : `<span class="proj">~${fmtDT(c.proj)}</span>`;
     const dwell = c.ad ? `${fmtDur(c.ad - c.aa)} <span style="color:var(--text-muted)">/ ${fmtDur(c.plannedDwellMin*MIN)}</span>` : c.aa ? 'here' : (c.plannedDwellMin ? fmtDur(c.plannedDwellMin*MIN) : '');
-    const dl = c.aa ? c.aa - c.pa : c.projDelta;
+    const dl = c.aa ? c.aa - c.pa : s.offRoute || c.skipped ? null : c.projDelta;
     return `<tr class="${future ? 'future' : ''} ${isNext ? 'current' : ''}">
       <td><span class="type-ic">${icon[c.type] ?? '·'}</span>${c.name}</td>
       <td class="num">${c.mi.toFixed(1)}${alt(km(c.mi) + ' km')}</td>
@@ -2112,6 +2263,12 @@ function renderDebug(d, s) {
     livetrack_gaps_over_2min: gaps.length, longest_gap: gaps.length ? fmtDur(Math.max(...gaps)) : null,
     sessions: (d.sessions || []).map(x => `${x.id.slice(0,8)}… ${x.status ?? ''}`),
     current_mi: +s.curMi.toFixed(2),
+    // v0.17 (F1): inReach points that add no distance because their clock looked off (seconds vs the watch track),
+    // points skipped in a LiveTrack gap for implying > 15 mph on foot, and inReach points filling a LiveTrack gap
+    inreach_clock_off: s.ir.filter(p => p.clk != null).map(p => `${fmtTime(p.t, { second: '2-digit' })} · clock off ${p.clk > 0 ? '+' : ''}${p.clk} s`),
+    inreach_skipped_too_fast: s.ir.filter(p => p.fast).map(p => fmtTime(p.t, { second: '2-digit' })),
+    inreach_gap_fill_points: s.ir.filter(p => p.gap || p.est).length,
+    distance_estimated_since: s.estSince ? fmtTime(s.estSince) : null,
   }, null, 2);
   const base = CONFIG.api;
   $('#debugLinks').innerHTML = CONFIG.dataSource === 'api'
@@ -2294,12 +2451,13 @@ const hm = sec => `${Math.floor(sec / 3600)}:${String(Math.floor(sec % 3600 / 60
 const timesLine = ts => ['run', 'walk', 'hike', 'other'].filter(k => ts[k] >= 60).map(k => `${k} ${hm(ts[k])}`).join(' · ');
 function weekStats(acts, k) {
   const w = { n: acts.length, mi: 0, ft: 0, steps: 0, est: 0, noSteps: 0, hi: null, lo: null, types: { run: 0, walk: 0, hike: 0, other: 0 },
-    sec: 0, mov: 0, movN: 0, tsec: { run: 0, walk: 0, hike: 0, other: 0 }, acts };
+    sec: 0, mov: 0, movN: 0, tsec: { run: 0, walk: 0, hike: 0, other: 0 }, kcal: 0, kcalN: 0, acts };
   for (const a of acts) {
     w.mi += a.dist_mi || 0; w.ft += a.gain_ft || 0; w.types[actClass(a.type)]++;
     const sec = actSec(a); w.sec += sec; w.tsec[actClass(a.type)] += sec;               // elapsed, start to finish
     if (a.moving_s != null) { w.mov += a.moving_s; w.movN++; } else w.mov += sec;
     const st = actSteps(a); if (st) { w.steps += st.n; if (st.est) w.est++; } else w.noSteps++;
+    if (a.kcal != null) { w.kcal += a.kcal; w.kcalN++; }                 // v0.17 (F5): activities only (drives never count)
     if (a.ele_max_ft != null) w.hi = w.hi == null ? a.ele_max_ft : Math.max(w.hi, a.ele_max_ft);
     if (a.ele_min_ft != null) w.lo = w.lo == null ? a.ele_min_ft : Math.min(w.lo, a.ele_min_ft);
   }
@@ -2331,10 +2489,11 @@ function renderWeek(now) {
       <div title="Elapsed, start to finish. Moving ${hm(w.mov)}${w.movN < w.n ? ' (some activities have no moving time; elapsed used)' : ''}"><div class="k">Time</div><div class="v">${w.sec ? hm(w.sec) + '<small>h</small>' : '—'}</div>${alt(timesLine(w.tsec) || (w.sec ? 'moving ' + hm(w.mov) : ''))}</div>
       ${fig('Activities', w.n, typesLine(w.types) || '')}
       ${fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m')}
+      ${fig('Calories', w.kcalN ? `${n0(w.kcal)}<small>kcal</small>` : '—', w.kcalN ? `activities only${w.kcalN < w.n ? ` · ${w.n - w.kcalN} without` : ''}` : (w.n ? 'after the watch files' : ''))}
       ${fig('High point', w.hi != null ? `${n0(w.hi)}<small>ft</small>` : '—', w.hi != null ? mOf(w.hi) + ' m' : '')}
       ${fig('Low point', w.lo != null ? `${n0(w.lo)}<small>ft</small>` : '—', w.lo != null ? mOf(w.lo) + ' m' : '')}
     </div>
-    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${hm(p.sec)} h · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}</div>`;
+    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${hm(p.sec)} h · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.kcalN ? ` · ${n0(p.kcal)} kcal` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}</div>`;
 }
 
 /* ---- Daily weather record (Worker /api/met): location per day = pinned day > that day's activity finish > newer of last
@@ -2406,7 +2565,7 @@ function metarDecoded(m) {
   const cl = (m.clouds || []).map(c => `${CLOUD[c.cover] || c.cover}${c.base_ft ? ' ' + n0(c.base_ft) + ' ft' : ''}`).join(', ');
   const cF2 = c => Math.round(c * 9 / 5 + 32);
   return [wind, m.visib != null ? `visibility ${m.visib} mi` : '', cl, m.temp_c != null ? `${Math.round(m.temp_c)} °C (${cF2(m.temp_c)} °F)` : '',
-    m.dew_c != null ? `dew point ${Math.round(m.dew_c)} °C` : '', m.altim_mb != null ? `altimeter ${(m.altim_mb * 0.02953).toFixed(2)} inHg (${Math.round(m.altim_mb)} mbar)` : ''].filter(Boolean).join(' · ');
+    m.dew_c != null ? `dew point ${Math.round(m.dew_c)} °C` : '', m.altim_mb != null ? `altimeter ${(m.altim_mb * 0.02953).toFixed(2)} inHg (${n0(m.altim_mb)} mbar)` : ''].filter(Boolean).join(' · ');
 }
 function nowBarHtml() {
   const D = NOWX.d, own = isOwner(), ov = nowOv();
@@ -2421,7 +2580,7 @@ function nowBarHtml() {
       ${D.aq?.aqi != null ? `<div><div class="k">Air quality</div><div style="margin-top:3px">${aqiChip(D.aq.aqi)}</div><div class="a">PM2.5 ${D.aq.pm25 ?? '—'} µg/m³${D.aq.main ? ` · main: ${D.aq.main}` : ''}${D.aq.day_max != null ? `<br>today's max ${D.aq.day_max}` : ''}</div></div>` : ''}
       ${fig('Wind', `${n.wind_mph}<small> mph</small>`, `${n.wind_dir != null ? dirName(n.wind_dir) + ' · ' : ''}gusts ${n.gust_mph} · ${Math.round(n.wind_mph * KM_PER_MI)} km/h`)}
       ${fig('Humidity', `${n.rh ?? '—'}<small>%</small>`, n.dew_f != null ? `dew point ${fC(n.dew_f)} °C · ${Math.round(n.dew_f)} °F` : '')}
-      ${fig('Pressure', n.msl_mb != null ? `${Math.round(n.msl_mb)}<small> mbar</small>` : '—', n.msl_mb != null ? `${n.msl_trend_3h != null ? (n.msl_trend_3h > 0.4 ? '↑' : n.msl_trend_3h < -0.4 ? '↓' : '→') + ' ' + Math.abs(n.msl_trend_3h).toFixed(1) + ' in 3 h · ' : ''}${(n.msl_mb * 0.02953).toFixed(2)} inHg` : '')}
+      ${fig('Pressure', n.msl_mb != null ? `${n0(n.msl_mb)}<small> mbar</small>` : '—', n.msl_mb != null ? `${n.msl_trend_3h != null ? (n.msl_trend_3h > 0.4 ? '↑' : n.msl_trend_3h < -0.4 ? '↓' : '→') + ' ' + Math.abs(n.msl_trend_3h).toFixed(1) + ' in 3 h · ' : ''}${(n.msl_mb * 0.02953).toFixed(2)} inHg` : '')}
       ${fig('Today', n.tmax_f != null ? `${fC(n.tmax_f)}° / ${fC(n.tmin_f)}°C` : '—', n.tmax_f != null ? `${Math.round(n.tmax_f)}/${Math.round(n.tmin_f)} °F${n.pop != null ? ` · ${n.pop}% rain` : ''}` : '')}
       ${(() => { const r0 = Date.parse(n.sunrise), s0 = Date.parse(n.sunset), now = Date.now(), cd = ms => { const mn = Math.max(0, Math.round(ms / 60e3)); return `${Math.floor(mn / 60)}:${String(mn % 60).padStart(2, '0')}`; };
         if (!r0 || !s0) return fig('Sun', '—', '');
@@ -2579,7 +2738,7 @@ function renderMetTable() {
       <td>${(v.precip_in ?? 0).toFixed(2)} in${v.type && v.precip_in ? ' ' + v.type : ''}<small>${mmOf(v.precip_in ?? 0)} mm</small></td>
       <td>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} / ${v.gust_mph ?? '—'} mph<small>${v.wind_mph != null ? Math.round(v.wind_mph * KM_PER_MI) : '—'} / ${v.gust_mph != null ? Math.round(v.gust_mph * KM_PER_MI) : '—'} km/h</small></td>
       <td>${v.rh ?? '—'}%</td>
-      <td>${v.msl_mb != null ? Math.round(v.msl_mb) + ' mbar' + arrow : '—'}<small>${v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) + ' inHg' : ''}</small></td>
+      <td>${v.msl_mb != null ? n0(v.msl_mb) + ' mbar' + arrow : '—'}<small>${v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) + ' inHg' : ''}</small></td>
       <td>${v.cloud ?? '—'}%</td>
       <td>${x.model.aqi_max != null ? aqiChip(x.model.aqi_max, { bare: true, cat: false }) : '—'}<small>${x.model.pm25_max != null ? `PM2.5 ${x.model.pm25_max} µg/m³` : ''}</small></td>
       <td>${sk ? `${sk.rise}–${sk.set}<small>${sk.len}</small>` : '—'}</td>
@@ -2664,28 +2823,28 @@ function renderWeeks() {
   const all = weekStats(rows.flatMap(r => r.w.acts)), allSteps = rows.reduce((t, r) => t + (r.w.all || 0), 0);
   for (const r of rows) { if (r.w.hi != null) all.hi = all.hi == null ? r.w.hi : Math.max(all.hi, r.w.hi); if (r.w.lo != null) all.lo = all.lo == null ? r.w.lo : Math.min(all.lo, r.w.lo); }
   const big = n => n >= 1e6 ? (n / 1e6).toFixed(2) + ' M' : n0(n);
-  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Time</th><th>Activities</th><th>Activity steps</th><th>All-day steps</th><th>High</th><th>Low</th></tr></thead>`;
+  const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Time</th><th>Activities</th><th>Activity steps</th><th>All-day steps</th><th>Calories</th><th>High</th><th>Low</th></tr></thead>`;
   const body = rows.map(({ k, w }) => {
     const open = WK_OPEN.has(k), c = k === cur ? ' cur' : '';
     const allD = w.all != null ? n0(w.all) : '—';
-    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="5">no activities</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
+    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="5">no activities</td><td>${allD}</td><td>—</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
     const main = `<tr class="wk${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td>
       <td>${w.mi.toFixed(1)} mi</td><td>${n0(w.ft)} ft</td><td title="moving ${hm(w.mov)}">${hm(w.sec)}</td><td>${w.n}<span class="ty">${typesLine(w.types, true)}</span></td>
-      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${allD}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
+      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${allD}</td><td>${w.kcalN ? n0(w.kcal) + ' kcal' : '—'}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
     if (!open) return main;
     const subs = [...w.acts].sort((a, b) => a.start.localeCompare(b.start));
-    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="9"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${hm(actSec(a))}${a.moving_s != null ? ` (${hm(a.moving_s)} moving)` : ''}</td></tr>`).join('');
+    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="10"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${hm(actSec(a))}${a.moving_s != null ? ` (${hm(a.moving_s)} moving)` : ''}${a.kcal != null ? ` · ${n0(a.kcal)} kcal` : ''}</td></tr>`).join('');
   }).join('');
   const tot = `<tr class="tot"><td>${WK_YEAR === 'all' ? 'All' : WK_YEAR} total · ${rows.length} weeks</td><td>${n0(all.mi)} mi</td><td>${n0(all.ft)} ft</td><td>${n0(all.sec / 3600)} h</td><td>${all.n}</td>
-    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : big(all.steps)}</td><td>${allSteps ? big(allSteps) : '—'}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
+    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : big(all.steps)}</td><td>${allSteps ? big(allSteps) : '—'}</td><td>${all.kcalN ? big(all.kcal) + ' kcal' : '—'}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
   $('#wkTable').innerHTML = head + '<tbody>' + body + tot + '</tbody>';
   $('#wkTable').onclick = e => { if (e.target.closest('a')) return; const r = e.target.closest('tr.wk'); if (!r) return;
     const k = r.dataset.k; WK_OPEN.has(k) ? WK_OPEN.delete(k) : WK_OPEN.add(k); renderWeeks(); };
   $('#wkCsv').hidden = !isOwner();                         // your weekly records download only for you
   $('#wkCsv').onclick = () => {
-    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'time_h', 'moving_h', 'high_ft', 'low_ft'].join(',')];
+    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'time_h', 'moving_h', 'high_ft', 'low_ft', 'kcal'].join(',')];
     for (const { k, w } of rows) lines.push([k, addDays(k, 6), w.mi.toFixed(2), (w.mi * KM_PER_MI).toFixed(2), Math.round(w.ft), Math.round(w.ft * M_PER_FT), w.n,
-      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', (w.sec / 3600).toFixed(2), (w.mov / 3600).toFixed(2), w.hi ?? '', w.lo ?? ''].join(','));
+      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', (w.sec / 3600).toFixed(2), (w.mov / 3600).toFixed(2), w.hi ?? '', w.lo ?? '', w.kcalN ? Math.round(w.kcal) : ''].join(','));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     a.download = `ACLive_weeks_${WK_YEAR}_${mtDayKey(Date.now()).replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
@@ -2733,7 +2892,7 @@ function renderLanding() {
   let month = '', rows = '';
   for (const a of past) {
     const mo = fmtMonth(a.start);
-    if (mo !== month) { month = mo; rows += `<tr class="group-row"><th colspan="9">${mo}</th></tr>`; }
+    if (mo !== month) { month = mo; rows += `<tr class="group-row"><th colspan="10">${mo}</th></tr>`; }
     const dur = a.end ? Date.parse(a.end) - Date.parse(a.start) : null;
     const srcs = a.kind === 'import' ? `<span class="chip" title="${esc(a.source || '')}">${a.fmt ? esc(a.fmt.toUpperCase()) : 'File'}</span>`
       : [a.n_lt ? '<i class="sw lt" title="LiveTrack"></i>' : '', a.n_ir ? '<i class="sw ir" title="inReach"></i>' : '',
@@ -2746,10 +2905,11 @@ function renderLanding() {
       <td class="num hide-narrow">${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${alt(mOf(a.ele_max_ft) + ' m')}` : '—'}</td>
       <td class="num hide-narrow">${a.ele_min_ft != null ? `${n0(a.ele_min_ft)} <small>ft</small>${alt(mOf(a.ele_min_ft) + ' m')}` : '—'}</td>
       <td class="num hide-narrow">${a.hr_avg ? `${a.hr_avg} <small>bpm</small>` : '—'}</td>
+      <td class="num hide-narrow">${a.kcal != null ? `${n0(a.kcal)} <small>kcal</small>` : '—'}</td>
       <td class="num hide-narrow">${dur != null ? fmtClock(dur) : '—'}${a.moving_s ? alt('moving ' + fmtClock(a.moving_s * 1000)) : ''}</td>
       <td class="srcs hide-narrow">${srcs}</td></tr>`;
   }
-  $('#actBody').innerHTML = rows || `<tr><td colspan="9" class="muted" style="padding:18px 14px">Nothing here yet.</td></tr>`;
+  $('#actBody').innerHTML = rows || `<tr><td colspan="10" class="muted" style="padding:18px 14px">Nothing here yet.</td></tr>`;
 }
 $('#actBody').addEventListener('click', e => { if (e.target.closest('a')) return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
 $('#actBody').addEventListener('keydown', e => { if (e.key !== 'Enter') return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
@@ -2766,7 +2926,7 @@ function renderAll() {
   if (ng) {                                                  // rowing machine, treadmill …: no map, charts or splits
     renderHeader(D, s); renderTitleEdit(D); renderLocEdit(D); renderNotes(D); renderNoGps(D); return;
   }
-  renderLocEdit(D);
+  renderLocEdit(D); renderDriveHint(D, s);
   loadOsm(D, s);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
@@ -2780,7 +2940,11 @@ function setStatus(state, text) { const el = $('#siteStatus'); el.dataset.state 
 async function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks', wx = h === 'weather', irv = h === 'inreach';
-  $('#landing').hidden = !!id || weeks || wx || irv; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx; $('#inreachView').hidden = !irv;
+  const drives = h === 'drives', drv = h.startsWith('d/') ? h.slice(2) : null;                              // v0.17
+  $('#landing').hidden = !!id || weeks || wx || irv || drives || !!drv; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx; $('#inreachView').hidden = !irv;
+  $('#drivesView').hidden = !drives; $('#driveView').hidden = !drv; if (!drv) DRV.cur = null;
+  if (drives) { document.title = 'Drives · ACLive'; CURRENT = null; window.scrollTo(0, 0); await renderDrivesView(); setStatus('live', `Updated ${fmtTime(Date.now())}`); return; }
+  if (drv) { CURRENT = null; if (DRV.cur !== drv) { DRV.cur = drv; window.scrollTo(0, 0); } await refreshDrive(); return; }
   if (irv) { document.title = 'inReach feed · ACLive'; CURRENT = null; window.scrollTo(0, 0); renderIrView(); return; }
   if (weeks) { document.title = 'Weekly records · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); return; }
   if (wx) { document.title = 'Daily weather · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); renderMetView(); return; }
@@ -2790,7 +2954,7 @@ async function route() {
 }
 async function refreshLanding() {
   setStatus('loading', 'Loading activities…');
-  try { ACTS = await loadActivities(); renderLanding(); if (!$('#weeksView').hidden) renderWeeks(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
+  try { ACTS = await loadActivities(); renderLanding(); if (!$('#weeksView').hidden) renderWeeks(); if (!$('#landing').hidden) renderDriveCard(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
 /* ---- Route events from OpenStreetMap: which named trails/streets you were on, turns, and landmarks passed ----
@@ -2950,7 +3114,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.16.2';
+const VERSION = 'v0.17.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -3099,21 +3263,42 @@ function mockOsm(s) {
   return { elements: el };
 }
 
-/* ---- Owner mode: only someone with the owner key can rename activities and write notes. The key stays in this browser;
-   the Worker checks it on every save, so hidden controls alone can't change anything. ---- */
-let OWNER = (() => { try { return localStorage.getItem('aclive.ownerKey') || ''; } catch { return ''; } })();
+/* ---- Owner mode: only the owner can rename activities, write notes, manage drives. v0.17: the owner key is traded once
+   for a signed token that expires after 7 days (renewed while you use the page); the raw key is never stored here.
+   The Worker checks the token on every save, so hidden controls alone can't change anything. ---- */
+const OWN_TOK = 'aclive.ownerTok';
+let OWNER_EXP = 0;
+let OWNER = (() => { try { const o = JSON.parse(localStorage.getItem(OWN_TOK) || 'null');
+  if (o && Date.parse(o.exp) > Date.now()) { OWNER_EXP = Date.parse(o.exp); return o.t; } localStorage.removeItem(OWN_TOK); } catch {} return ''; })();
 const isOwner = () => !!OWNER;
+function setOwnerToken(o) { OWNER = o ? o.token : ''; OWNER_EXP = o ? Date.parse(o.exp) : 0;
+  try { if (o) localStorage.setItem(OWN_TOK, JSON.stringify({ t: o.token, exp: o.exp })); else localStorage.removeItem(OWN_TOK); localStorage.removeItem('aclive.ownerKey'); } catch {} }
+async function ownerTokenFrom(key) {                                     // owner key (or a token, to renew) → fresh token
+  if (CONFIG.dataSource === 'mock') return { token: 'mock', exp: new Date(Date.now() + 7 * 864e5).toISOString() };
+  const r = await fetch(`${CONFIG.api}/admin/login`, { method: 'POST', headers: { authorization: 'Bearer ' + key } });
+  return r.ok ? r.json() : null;
+}
+(async () => {                                                            // one-time move from the old stored key; renew when < 3 days left
+  try {
+    const old = localStorage.getItem('aclive.ownerKey');
+    if (old && !OWNER) { const t = await ownerTokenFrom(old); localStorage.removeItem('aclive.ownerKey'); if (t?.token) { setOwnerToken(t); renderOwnerBox(); ownerChanged(); } return; }
+    if (old) localStorage.removeItem('aclive.ownerKey');
+    if (OWNER && OWNER_EXP - Date.now() < 3 * 864e5) { const t = await ownerTokenFrom(OWNER); if (t?.token) { setOwnerToken(t); renderOwnerBox(); } }
+  } catch {}
+})();
 async function ownerPost(path, body) {
   if (CONFIG.dataSource === 'mock') return { ok: true };                       // demo: change only this page
   const r = await fetch(`${CONFIG.api}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + OWNER }, body: JSON.stringify(body) });
-  if (r.status === 401) throw new Error('Owner key not accepted. Sign in again.');
+  if (r.status === 401) { setOwnerToken(null); renderOwnerBox(); throw new Error('Owner sign-in expired. Sign in again.'); }
   if (!r.ok) throw new Error('Save failed (HTTP ' + r.status + ')');
   return r.json();
 }
 function renderOwnerBox() {
   const box = $('#ownerBox');
-  if (isOwner()) { box.innerHTML = `Signed in as owner on this browser · <a href="#" id="ownerOut">Sign out</a>`;
-    $('#ownerOut').onclick = e => { e.preventDefault(); OWNER = ''; try { localStorage.removeItem('aclive.ownerKey'); } catch {} renderOwnerBox(); ownerChanged(); }; return; }
+  if (isOwner()) { box.innerHTML = `Signed in as owner on this browser${OWNER_EXP ? ` until ${fmtDate(OWNER_EXP).replace(/ \d{4}$/, '')}` : ''} · <a href="#" id="ownerOut">Sign out</a> · <a href="#" id="ownerOutAll">Sign out everywhere</a>`;
+    $('#ownerOut').onclick = e => { e.preventDefault(); setOwnerToken(null); renderOwnerBox(); ownerChanged(); };
+    $('#ownerOutAll').onclick = async e => { e.preventDefault(); if (!confirm('Sign out on every browser and phone?')) return;
+      try { await ownerPost('/admin/signout-all', {}); } catch {} setOwnerToken(null); renderOwnerBox(); ownerChanged(); }; return; }
   box.innerHTML = `<a href="#" id="ownerIn">Owner sign-in</a>`;
   $('#ownerIn').onclick = e => { e.preventDefault();
     box.innerHTML = `<span class="owner-form">Owner key: <input type="password" id="ownerKey" autocomplete="current-password" size="24">
@@ -3122,15 +3307,16 @@ function renderOwnerBox() {
     $('#ownerKey').focus();
     $('#ownerCancel').onclick = renderOwnerBox;
     const go = async () => { const k = $('#ownerKey').value.trim(); if (!k) return;
-      try { const r = CONFIG.dataSource === 'mock' ? { ok: true } : await fetch(`${CONFIG.api}/admin/ping`, { headers: { authorization: 'Bearer ' + k } });
-        if (!r.ok) { $('#ownerMsg').textContent = ' Key not accepted.'; return; }
-        OWNER = k; try { localStorage.setItem('aclive.ownerKey', k); } catch {} renderOwnerBox(); ownerChanged();
+      try { const t = await ownerTokenFrom(k);                          // the key itself is not kept
+        if (!t?.token) { $('#ownerMsg').textContent = ' Key not accepted.'; return; }
+        setOwnerToken(t); renderOwnerBox(); ownerChanged();
       } catch { $('#ownerMsg').textContent = ' Could not reach the server.'; } };
     $('#ownerGo').onclick = go; $('#ownerKey').onkeydown = e => { if (e.key === 'Enter') go(); };
   };
 }
 function ownerChanged() {
   if (!$('#detail').hidden && DATA) renderAll();
+  DRV.plan = undefined; if (!$('#drivesView').hidden) renderDrivesView(); if (DRV.cur && DRV.data) renderDriveView(DRV.data);
   if (!$('#weeksView').hidden) renderWeeks();
   IR.at = 0; if (!$('#inreachView').hidden) renderIrView();
   NOWX.ui = null; NOWX.msg = ''; if (!$('#landing').hidden) loadNow(true);
@@ -3342,9 +3528,236 @@ $('#mockBadge').hidden = CONFIG.dataSource !== 'mock';
 let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && CURRENT) { const D = viewOf(DATA), s = derive(D); renderProfile(D, s); renderEffort(D, s); renderWx(D, s); } }, 150); });
 setInterval(() => {
   if (document.hidden) return;
-  if (!CURRENT) refreshLanding();
+  if (DRV.cur) { if (DRV.data?.status === 'live') refreshDrive(); }
+  else if (!$('#drivesView').hidden) renderDrivesView();
+  else if (!CURRENT) refreshLanding();
   else if (DATA && DATA.trip?.status !== 'ended') refreshDetail();
 }, CONFIG.refreshSec * 1000);
+/* =========================================================================
+   DRIVES (v0.17) — never activities: own list (#drives), own page (#d/<id>), own totals.
+   Front-page Drive card only while a drive is live. Owner: plan / start / end a drive, change destination,
+   label stops, rename, "This is an activity". Units: mph first (km/h second), feet first, °C first.
+   ========================================================================= */
+const DRV = { list: null, at: 0, cur: null, data: null, map: null, layers: null, plan: undefined };
+const mphKmh = mph => `${Math.round(mph * KM_PER_MI)} km/h`;
+const cOfF = f => Math.round((f - 32) * 5 / 9);
+const drvTitle = r => r.name || `${r.from_label || 'Start'} → ${r.status === 'live' ? (r.mode === 'dest' && r.dest ? r.dest.label : 'freeform') : (r.to_label || '…')}`;
+const srcTxt = r => r.src === 'both' ? '📱 phone + 📡 inReach' : r.src === 'inreach' ? '📡 inReach' : r.src === 'phone' ? '📱 phone' : '—';
+async function loadDrives(fresh = false) {
+  if (CONFIG.dataSource === 'mock') { DRV.list = { drives: [], live: null }; return DRV.list; }
+  if (!fresh && DRV.list && Date.now() - DRV.at < 20e3) return DRV.list;
+  DRV.list = await getJson('/api/drives' + (fresh ? '?nocache=1' : '')); DRV.at = Date.now(); return DRV.list;
+}
+const etaLine = r => {
+  if (r.mode !== 'dest' || !r.ahead) return '';
+  return r.moving ? fmtTime(Date.parse(r.ahead.eta)) : `when you continue: ${hm(r.ahead.drive_s + r.ahead.plan_stop_min * 60)} driving`;
+};
+const destWxTxt = w => w ? `${cOfF(w.temp_f)}°C · ${Math.round(w.temp_f)} °F · ${esc(w.desc.toLowerCase())}${w.pop ? ` ${w.pop}%` : ''} · ${dirName(w.wind_dir)} ${w.wind_mph} mph` : '—';
+const signalTxt = r => {
+  const ph = r.last_phone ? Date.now() - Date.parse(r.last_phone) : null, ir = r.last_inreach ? Date.now() - Date.parse(r.last_inreach) : null;
+  return ph != null && ph < 5 * MIN ? `phone signal ✓ (${fmtAge(ph)})${ir != null ? ' · inReach backup on' : ''}`
+    : ir != null && (ph == null || ir < ph) ? `no phone signal · inReach ${fmtAge(ir)}` : ph != null ? `last phone point ${fmtAge(ph)}` : 'waiting for the first position';
+};
+const alertsTxt = r => (r.alerts || []).length ? `⚠ ${r.alerts.map(a => `<b style="color:#ffcf7a">${esc(a.event)}</b>`).join(' · ')} ${r.mode === 'dest' ? 'on your route' : 'here'}` : '';
+
+// ---- Front page: Drive card (only while a drive is live)
+async function renderDriveCard() {
+  const el = $('#driveCard');
+  try {
+    const L = (await loadDrives()).live;
+    if (!L) { el.hidden = true; el.innerHTML = ''; return; }
+    const r = await getJson('/api/drive?id=' + encodeURIComponent(L.id));
+    const fig = (k, v, a) => `<div><div class="k">${k}</div><div class="v">${v}</div>${a ? alt(a) : ''}</div>`;
+    const dst = r.mode === 'dest' && r.ahead;
+    el.hidden = false;
+    el.innerHTML = `<div class="drv-h"><h2>🚗 Driving · ${esc(drvTitle(r))}</h2>
+        <span class="muted"><span class="pill">${r.moving ? 'live' : 'stopped'} · ${r.last ? (r.last.src === 'ir' ? 'inReach' : 'phone') + ' ' + fmtAge(Date.now() - Date.parse(r.last.t)) : 'waiting'}</span> <a href="#d/${encodeURIComponent(r.id)}">Open drive →</a></span></div>
+      <div class="now-stats drv-stats">
+        ${fig('Now', `<span style="font-size:.62em">${esc(r.place || '—')}</span>`, `${r.road ? esc(r.road) + ' · ' : ''}${r.ele_ft != null ? n0(r.ele_ft) + ' ft' : ''}`)}
+        ${fig('Speed', `${r.now_mph ?? 0}<small>mph</small>`, `${mphKmh(r.now_mph ?? 0)}${r.avg_mph ? ` · avg moving ${Math.round(r.avg_mph)}` : ''}`)}
+        ${fig('Driven', `${Math.round(r.mi)}<small>mi</small>`, dst ? `of ≈ ${n0(r.ahead.total_mi)} mi · ${r.ahead.pct}%` : `${km(r.mi)} km · ${hm(r.driving_s)} driving`)}
+        ${dst ? fig('To go', `${Math.round(r.ahead.mi)}<small>mi</small>`, `≈ ${hm(r.ahead.drive_s)} driving`) : ''}
+        ${dst ? fig(r.moving ? `ETA ${esc(r.dest.label.split(',')[0])}` : 'Stopped', r.moving ? fmtTime(Date.parse(r.ahead.eta)) : `${hm((Date.now() - Date.parse(r.stopped_since)) / 1000)}`,
+          r.moving ? (r.ahead.plan_stop_min ? `incl. ${r.plan_stop.name} ${hm(r.ahead.plan_stop_min * 60)}` : 'from your recent pace') : `ETA ${etaLine(r)}`) : ''}
+        ${dst ? fig(`At ${esc(r.dest.label.split(',')[0])} then`, r.dest_wx ? `${cOfF(r.dest_wx.temp_f)}<small>°C</small>` : '—', destWxTxt(r.dest_wx).replace(/^[^·]*· /, '')) : ''}
+      </div>
+      <div class="muted drv-foot">${alertsTxt(r)}${alertsTxt(r) ? ' · ' : ''}${signalTxt(r)}</div>`;
+  } catch (e) { console.error(e); el.hidden = true; }
+}
+
+// ---- #drives: list with its own totals (never mixed with activity weeks)
+async function renderDrivesView() {
+  $('#drvTable').innerHTML = '<tbody><tr><td class="muted">Loading drives…</td></tr></tbody>';
+  let L; try { L = await loadDrives(true); } catch (e) { $('#drvTable').innerHTML = '<tbody><tr><td class="muted">Couldn’t load drives.</td></tr></tbody>'; return; }
+  const rows = L.drives, now = Date.now(), mo = fmtMonth(now), yr = mtDayKey(now).slice(0, 4);
+  const tot = f => { const x = rows.filter(f); return { mi: x.reduce((t, r) => t + (r.mi || 0), 0), s: x.reduce((t, r) => t + (r.driving_s || 0), 0), n: x.length }; };
+  const m = tot(r => fmtMonth(Date.parse(r.start)) === mo), y = tot(r => mtDayKey(Date.parse(r.start)).slice(0, 4) === yr);
+  $('#drvTotals').innerHTML = `${esc(mo)}: <b>${n0(m.mi)} mi</b> · ${hm(m.s)} h driving · ${m.n} drive${m.n === 1 ? '' : 's'} &nbsp;|&nbsp; ${yr}: <b>${n0(y.mi)} mi</b> · ${hm(y.s)} h · ${y.n}`;
+  $('#drvTable').innerHTML = `<thead><tr><th></th><th>Date</th><th>Drive</th><th class="num">Distance</th><th class="num">Driving</th><th class="num hide-narrow">Avg</th><th class="hide-narrow">Source</th></tr></thead><tbody>` +
+    (rows.length ? rows.map(r => { const slow = r.avg_mph != null && r.avg_mph < 15;
+      return `<tr data-drv="${esc(r.id)}" tabindex="0"><td class="t-thumb">${thumbSvg(r.thumb, 56, 40, { sw: 1.6, color: 'var(--drive)' })}</td>
+      <td>${fmtDate(Date.parse(r.start)).replace(/ \d{4}$/, '')}<div class="act-sub">${fmtTime(Date.parse(r.start))}</div></td>
+      <td><a href="#d/${encodeURIComponent(r.id)}" class="act-name">${esc(drvTitle(r))}</a>${r.status === 'live' ? ' <span class="pill">live</span>' : ''}<div class="act-sub">${r.mode === 'dest' && r.dest ? 'to ' + esc(r.dest.label) : 'freeform'}${slow ? ` · backcountry · ${Math.round(r.avg_mph)} mph` : ''}${r.stops.some(s => s.act) ? ' · with ' + r.stops.filter(s => s.act).map(s => esc(s.act.title)).join(', ') : ''}</div></td>
+      <td class="num">${n0(r.mi)} <small>mi</small>${alt(n0(r.mi * KM_PER_MI) + ' km')}</td><td class="num">${hm(r.driving_s)}${alt('elapsed ' + hm(r.elapsed_s))}</td>
+      <td class="num hide-narrow">${r.avg_mph != null ? Math.round(r.avg_mph) + ' <small>mph</small>' : '—'}</td><td class="hide-narrow">${srcTxt(r)}</td></tr>`; }).join('')
+      : '<tr><td colspan="7" class="muted" style="padding:16px">No drives yet. A drive starts when OwnTracks is set to Move, an inReach “Drive start” message is sent, or with Start drive below.</td></tr>') + '</tbody>';
+  $('#drvTable').onclick = e => { if (e.target.closest('a')) return; const tr = e.target.closest('tr[data-drv]'); if (tr) location.hash = 'd/' + encodeURIComponent(tr.dataset.drv); };
+  renderDrivePlan(L);
+}
+// Owner: plan the next drive (destination or freeform, optional planned stop), or start one now
+async function renderDrivePlan(L) {
+  const box = $('#drvPlan');
+  if (!isOwner() || CONFIG.dataSource === 'mock') { box.innerHTML = ''; return; }
+  if (L.live) { box.innerHTML = `<p class="muted">A drive is live: <a href="#d/${encodeURIComponent(L.live.id)}">${esc(drvTitle(L.live))}</a>. Change its destination on its page.</p>`; return; }
+  if (DRV.plan === undefined) { try { DRV.plan = (await ownerGet('/admin/drive/planned')).plan; } catch { DRV.plan = null; } }
+  const p = DRV.plan;
+  box.innerHTML = `<div class="drv-plan"><b>Next drive</b> · ${p ? (p.mode === 'free' ? 'freeform' : 'to ' + esc(p.dest?.label || '?')) + (p.stop ? ` · planned stop ${esc(p.stop.name)} ${hm(p.stop.min * 60)}` : '') + ' · <a href="#" id="drvPlanClear">clear</a>'
+      : 'not planned (default: away from home → to Durango; from home → freeform)'}
+    ${destForm('plan')}
+    <span class="btn-row" style="margin-top:8px"><button class="primary" id="drvStart">Start drive now</button></span>
+    <p class="muted" style="font-size:.8rem;margin:6px 0 0">Normally you don’t need Start: setting OwnTracks to <b>Move</b> starts a drive by itself.</p></div>`;
+  bindDestForm('plan', async v => { await ownerPost('/admin/drive/plan', v); DRV.plan = v.mode === 'free' ? { mode: 'free', stop: v.stop } : v; renderDrivePlan(L); });
+  const c = $('#drvPlanClear'); if (c) c.onclick = async e => { e.preventDefault(); await ownerPost('/admin/drive/plan', { clear: true }); DRV.plan = null; renderDrivePlan(L); };
+  $('#drvStart').onclick = async () => { const r = await ownerPost('/admin/drive/start', {}); DRV.at = 0; if (r.id) location.hash = 'd/' + encodeURIComponent(r.id); };
+}
+async function ownerGet(path) {
+  const r = await fetch(`${CONFIG.api}${path}`, { headers: { authorization: 'Bearer ' + OWNER } });
+  if (!r.ok) throw new Error('HTTP ' + r.status); return r.json();
+}
+// Destination form (same place lookup as the weather log): search → pick → save; or Freeform. Optional planned stop.
+function destForm(k) {
+  return `<div class="drv-dest-form" id="df-${k}">
+    <label>Destination <input id="df-${k}-q" placeholder="town or place, e.g. Durango, CO" size="26"></label>
+    <span class="btn-row" style="display:inline-flex"><button id="df-${k}-find">Find</button><button id="df-${k}-free">Freeform (no destination)</button></span>
+    <div id="df-${k}-res" class="muted"></div>
+    <label style="font-size:.85rem">Planned stop (optional) <input id="df-${k}-sn" placeholder="e.g. McDowell trailhead" size="20"> <input id="df-${k}-sm" type="number" min="0" step="5" placeholder="min" style="width:70px"> min</label></div>`;
+}
+function bindDestForm(k, save) {
+  const stop = () => { const m = +$(`#df-${k}-sm`).value; return m > 0 ? { name: $(`#df-${k}-sn`).value.trim() || 'Planned stop', min: m } : null; };
+  $(`#df-${k}-free`).onclick = () => save({ mode: 'free', stop: null });
+  $(`#df-${k}-find`).onclick = async () => {
+    const q = $(`#df-${k}-q`).value.trim(); if (!q) return;
+    $(`#df-${k}-res`).textContent = 'Looking up…';
+    try { const r = await ownerGet('/admin/met/geocode?q=' + encodeURIComponent(q));
+      if (!r.ok || r.lat == null) { $(`#df-${k}-res`).textContent = 'Not found. Try "Town, ST".'; return; }
+      $(`#df-${k}-res`).innerHTML = `${esc(r.label || q)} <button id="df-${k}-use">Use this destination</button>`;
+      $(`#df-${k}-use`).onclick = () => save({ mode: 'dest', dest: { lat: r.lat, lon: r.lon, label: r.label || q }, stop: stop() });
+    } catch (e) { $(`#df-${k}-res`).textContent = 'Lookup failed: ' + e.message; }
+  };
+}
+
+// ---- #d/<id>: one drive
+async function refreshDrive() {
+  try { DRV.data = await getJson('/api/drive?id=' + encodeURIComponent(DRV.cur)); if (DRV.data.error) throw new Error(DRV.data.error);
+    renderDriveView(DRV.data); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
+  catch (e) { console.error(e); $('#drvTitle').textContent = 'Drive not found'; setStatus('error', 'Couldn’t load this drive.'); }
+}
+function renderDriveView(r) {
+  document.title = `${drvTitle(r)} · ACLive`;
+  $('#drvTitle').textContent = drvTitle(r);
+  $('#drvSub').innerHTML = `${r.status === 'live' ? `<span class="pill">${r.moving ? 'live' : 'stopped'}</span> ` : ''}${fmtDate(Date.parse(r.start))} · started ${fmtTime(Date.parse(r.start))}${r.end ? ` · ended ${fmtTime(Date.parse(r.end))}${r.ended_by === 'arrived' ? ' (arrived)' : r.ended_by === 'quiet' ? ' (phone quiet 6 h)' : ''}` : ''} · ${r.mode === 'dest' && r.dest ? '🎯 to ' + esc(r.dest.label) : '🌀 freeform'}`;
+  const T = (k, v, a, f) => `<div class="card tile"><div class="label">${k}</div><div class="value">${v}</div>${a ? alt(a) : ''}<div class="foot">${f || ''}</div></div>`;
+  const dst = r.mode === 'dest' && r.ahead;
+  $('#drvTiles').innerHTML = `<div class="tile-row" style="--n:6">
+    ${T('Driven', `${n0(r.mi)}<small>mi</small>`, `${n0(r.mi * KM_PER_MI)} km${dst ? ` · ${r.ahead.pct}%` : ''}`, dst ? `of ≈ ${n0(r.ahead.total_mi)} mi` : 'freeform')}
+    ${T('Elapsed', hm(r.elapsed_s), `driving ${hm(r.driving_s)} · stopped ${hm(r.stopped_s)}`, r.act_s ? `plus ${hm(r.act_s)} on activities (not counted)` : '')}
+    ${T('Speed', r.status === 'live' ? `${r.now_mph ?? 0}<small>mph</small>` : `${r.avg_mph != null ? Math.round(r.avg_mph) : '—'}<small>mph</small>`,
+      r.status === 'live' ? `${mphKmh(r.now_mph ?? 0)} · avg moving ${r.avg_mph != null ? Math.round(r.avg_mph) : '—'}` : `avg moving · ${r.avg_mph != null ? mphKmh(r.avg_mph) : ''}`, r.max_mph ? `max ${r.max_mph} mph` : '')}
+    ${dst ? T(r.moving ? 'ETA' : 'Stopped', r.moving ? fmtTime(Date.parse(r.ahead.eta)) : hm((Date.now() - Date.parse(r.stopped_since)) / 1000),
+        r.moving ? `${Math.round(r.ahead.mi)} mi to go · ${hm(r.ahead.drive_s)} driving` : `ETA ${etaLine(r)}`,
+        `${r.ahead.plan_stop_min ? `incl. planned stop ${hm(r.ahead.plan_stop_min * 60)} · ` : ''}from your last hour (${Math.round(r.ahead.speed_mph)} mph)${r.ahead.src === 'line' ? ' · route estimated (straight line × 1.3)' : ''}`)
+      : T(r.status === 'live' ? 'Now' : 'Finished', r.status === 'live' ? `<span style="font-size:.6em">${esc(r.place || '—')}</span>` : `<span style="font-size:.6em">${esc(r.to_label || '—')}</span>`, r.road ? esc(r.road) : '', r.last ? fmtDT(Date.parse(r.last.t)) : '')}
+    ${T('Elevation', r.ele_ft != null ? `${n0(r.ele_ft)}<small>ft</small>` : '—', r.ele_ft != null ? mOf(r.ele_ft) + ' m' : '', r.ele_hi_ft != null ? `high ${n0(r.ele_hi_ft)} · low ${n0(r.ele_lo_ft)} ft` : '')}
+    ${T('Signal', `${r.phone_pct}<small>%</small>`, 'phone coverage', r.status === 'live' ? signalTxt(r) : srcTxt(r))}
+  </div>${alertsTxt(r) ? `<p class="drv-alert">${alertsTxt(r)}</p>` : ''}`;
+  renderDriveMap(r); renderDriveStops(r); renderDriveDest(r); renderDriveChart(r); renderDriveOwner(r);
+}
+function renderDriveMap(r) {
+  const el = $('#drvMap'), trk = r.track || [];
+  const pts = trk.map(p => [p[1], p[2]]), line = r.ahead?.line || [];
+  if (!window.L) { el.innerHTML = thumbSvg(pts.concat(line.length ? [] : []), el.clientWidth || 600, 320, { sw: 3, color: 'var(--drive)' }); return; }
+  if (!DRV.map || DRV.map._id !== r.id) {
+    if (DRV.map) DRV.map.remove(); el.innerHTML = '';
+    DRV.map = L.map(el, { zoomControl: true }); DRV.map._id = r.id;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: 'Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(DRV.map);
+    L.control.scale({ imperial: true, metric: false }).addTo(DRV.map);
+    const all = pts.concat(line); if (all.length) DRV.map.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 14 }); else DRV.map.setView([37.2753, -107.8801], 8);
+  }
+  if (DRV.layers) DRV.layers.remove(); DRV.layers = L.layerGroup().addTo(DRV.map);
+  if (line.length > 1) L.polyline(line, { color: cssv('--plan'), weight: 4, dashArray: '8 7', opacity: .9 }).addTo(DRV.layers);
+  let seg = []; const flush = () => { if (seg.length > 1) L.polyline(seg, { color: cssv('--drive'), weight: 4 }).addTo(DRV.layers); seg = []; };
+  trk.forEach((p, i) => { if (i && p[0] - trk[i - 1][0] > 15 * 60) flush(); seg.push([p[1], p[2]]); }); flush();
+  trk.filter(p => p[5] === 1).forEach(p => L.circleMarker([p[1], p[2]], { radius: 4, color: cssv('--series-ir'), fillOpacity: .9 }).bindTooltip(`inReach · ${fmtTime(p[0] * 1000)}`).addTo(DRV.layers));
+  (r.stops || []).forEach(s => s.lat != null && L.circleMarker([s.lat, s.lon], { radius: 6, color: '#fff', weight: 2, fillColor: s.act ? cssv('--series-lt') : '#999', fillOpacity: 1 })
+    .bindTooltip(`${s.act ? esc(s.act.title) : esc(s.label || 'Stop')} · ${fmtTime(Date.parse(s.t0))}–${fmtTime(Date.parse(s.t1))}`).addTo(DRV.layers));
+  const last = trk.at(-1); if (last && r.status === 'live') L.circleMarker([last[1], last[2]], { radius: 8, color: '#fff', weight: 2, fillColor: cssv('--drive'), fillOpacity: 1 }).addTo(DRV.layers);
+}
+function renderDriveStops(r) {
+  const own = isOwner() && CONFIG.dataSource !== 'mock';
+  $('#drvStops').innerHTML = (r.stops || []).length ? `<ul class="drv-stops">${r.stops.map(s => {
+    const dur = Date.parse(s.t1) - Date.parse(s.t0);
+    return `<li>${s.act ? `🏃 <a href="#a/${encodeURIComponent(s.act.id)}">${esc(s.act.title)}</a> · ${hm(dur / 1000)}${s.act.dist_mi ? ` · ${s.act.dist_mi.toFixed(1)} mi` : ''} <span class="muted">→ activity (not in the drive’s totals)</span>`
+      : `${esc(s.label || 'Stop')} · ${hm(dur / 1000)}`} <span class="muted">· ${fmtTime(Date.parse(s.t0))}–${fmtTime(Date.parse(s.t1))} · mi ${s.mi}</span>
+      ${own && !s.act ? ` <a href="#" data-lab="${esc(s.t0)}" data-cur="${esc(s.label || '')}" style="font-size:.8rem">${s.label ? 'edit label' : 'label'}</a>` : ''}</li>`; }).join('')}</ul>`
+    : '<p class="muted">No stops of 5 minutes or longer.</p>';
+  if (own) $('#drvStops').onclick = async e => { const a = e.target.closest('a[data-lab]'); if (!a) return; e.preventDefault();
+    const v = prompt('Label for this stop (e.g. "Plot LC-07"; blank removes it):', a.dataset.cur); if (v === null) return;
+    await ownerPost('/admin/drive/label', { id: r.id, t: a.dataset.lab, label: v.trim() }); refreshDrive(); };
+}
+function renderDriveDest(r) {
+  const own = isOwner() && CONFIG.dataSource !== 'mock' && r.status === 'live';
+  $('#drvDest').innerHTML = `${r.mode === 'dest' && r.dest ? `<b>${esc(r.dest.label)}</b>${r.ahead ? ` · ${Math.round(r.ahead.mi)} mi to go · ${r.ahead.src === 'osrm' ? 'road route from OpenStreetMap (OSRM)' : 'straight line × 1.3 (routing unavailable)'}` : ''}
+      ${r.dest_wx ? `<div class="muted" style="margin-top:4px">At ${fmtTime(Date.parse(r.dest_wx.t))}: ${destWxTxt(r.dest_wx)}</div>` : ''}
+      ${r.plan_stop ? `<div class="muted">Planned stop: ${esc(r.plan_stop.name)} · ${hm(r.plan_stop.min * 60)}${r.ahead && !r.ahead.plan_stop_min ? ' (done)' : ''}</div>` : ''}`
+    : '🌀 Freeform: no destination, so no route or ETA.'}
+    ${own ? `<details class="drv-change"><summary>Change destination</summary>${destForm('drv')}</details>` : ''}`;
+  if (own) bindDestForm('drv', async v => { await ownerPost('/admin/drive/dest', { id: r.id, ...v }); refreshDrive(); });
+}
+function renderDriveChart(r) {
+  const host = $('#drvChart'), trk = (r.track || []).filter(p => p[0]);
+  if (trk.length < 2 || host.clientWidth < 160) { host.innerHTML = '<p class="muted">The speed and elevation chart appears once there are a few positions.</p>'; return; }
+  const W = host.clientWidth, H = 214, m = { l: 46, r: 52, t: 26, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const t0 = trk[0][0], t1 = trk.at(-1)[0], X = t => m.l + (t - t0) / Math.max(t1 - t0, 1) * iw;
+  const sp = trk.map(p => p[4] ?? 0), el = trk.filter(p => p[3] != null);
+  const sMax = Math.max(30, Math.ceil(Math.max(...sp) / 10) * 10), Ys = v => m.t + (1 - v / sMax) * ih;
+  const eMin = el.length ? Math.min(...el.map(p => p[3])) : 0, eMax = el.length ? Math.max(...el.map(p => p[3])) : 1;
+  const step = eMax - eMin < 1500 ? 200 : 1000, e0 = Math.floor(eMin / step) * step, e1 = Math.max(e0 + step, Math.ceil(eMax / step) * step), Ye = v => m.t + (1 - (v - e0) / (e1 - e0)) * ih;
+  let sPath = '', ePath = '';
+  trk.forEach((p, i) => { const gap = i && p[0] - trk[i - 1][0] > 15 * 60; sPath += `${!i || gap ? 'M' : 'L'}${X(p[0]).toFixed(1)},${Ys(p[4] ?? 0).toFixed(1)}`; });
+  el.forEach((p, i) => { const gap = i && p[0] - el[i - 1][0] > 15 * 60; ePath += `${!i || gap ? 'M' : 'L'}${X(p[0]).toFixed(1)},${Ye(p[3]).toFixed(1)}`; });
+  let grid = '';
+  for (let v = 0; v <= sMax; v += sMax > 60 ? 20 : 10) grid += `<line x1="${m.l}" x2="${W - m.r}" y1="${Ys(v)}" y2="${Ys(v)}" stroke="var(--grid)"/><text x="${m.l - 6}" y="${Ys(v) + 4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${v}</text>`;
+  for (let e = e0; e <= e1; e += step) grid += `<text x="${W - m.r + 6}" y="${Ye(e) + 4}" font-size="11" fill="#C9A66B">${n0(e)}</text>`;
+  grid += `<text x="${m.l - 6}" y="12" text-anchor="end" font-size="11" fill="var(--text-muted)">mph</text><text x="${W - m.r + 6}" y="12" font-size="11" fill="#C9A66B">ft</text>`;
+  const tk = timeTicks(t0 * 1000, t1 * 1000); grid += tickSvg(tk, t => X(t / 1000), H - 6);
+  const stops = (r.stops || []).map(s => `<rect x="${X(Date.parse(s.t0) / 1000)}" y="${m.t}" width="${Math.max(2, X(Date.parse(s.t1) / 1000) - X(Date.parse(s.t0) / 1000))}" height="${ih}" fill="${s.act ? 'var(--done-fill)' : 'var(--panel-2)'}"/>`).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Speed and elevation over time">${stops}${grid}
+    <path d="${ePath}" fill="none" stroke="#C9A66B" stroke-width="1.6"/><path d="${sPath}" fill="none" stroke="var(--series-lt)" stroke-width="2"/></svg>`;
+}
+function renderDriveOwner(r) {
+  const box = $('#drvOwn');
+  if (!isOwner() || CONFIG.dataSource === 'mock') { box.innerHTML = ''; return; }
+  box.innerHTML = `<span class="btn-row">${r.status === 'live' ? '<button class="primary" id="drvEnd">End drive</button>' : ''}<button id="drvRename">Rename</button>
+    <button id="drvNot">This is an activity</button><button id="drvHide">Hide</button></span>`;
+  const done = () => { DRV.at = 0; refreshDrive(); };
+  const e = $('#drvEnd'); if (e) e.onclick = async () => { if (confirm('End this drive now?')) { await ownerPost('/admin/drive/end', { id: r.id }); done(); } };
+  $('#drvRename').onclick = async () => { const n = prompt('Drive name (blank = automatic):', r.name || ''); if (n === null) return; await ownerPost('/admin/drive/name', { id: r.id, name: n.trim() }); done(); };
+  $('#drvNot').onclick = async () => { if (!confirm('Not a drive? It is removed from drives' + (r.ir_id ? ' and goes back to activities.' : '. Phone points stay stored but are not shown.'))) return;
+    await ownerPost('/admin/drive/not', { id: r.id }); DRV.at = 0; location.hash = 'drives'; };
+  $('#drvHide').onclick = async () => { if (!confirm('Hide this drive from the drives list?')) return; await ownerPost('/admin/drive/hide', { id: r.id }); DRV.at = 0; location.hash = 'drives'; };
+}
+// Activity page (owner): an inReach outing that averaged > 20 mph → "Looks like a drive — move it?"
+function renderDriveHint(d, s) {
+  const el = $('#driveHint'), id = d.trip?.id;
+  if (!el) return;
+  if (!isOwner() || d.trip?.kind !== 'inreach' || !String(id || '').startsWith('ir-') || CONFIG.dataSource === 'mock' || !s.pts.length) { el.hidden = true; return; }
+  const a = { id }, mph = s.curMi / Math.max((s.last.ts - s.pts[0].ts) / 3600e3, 0.01);
+  el.hidden = false;
+  el.innerHTML = `${mph > 20 ? `🚗 <b>Looks like a drive</b> (averaged ${Math.round(mph)} mph).` : 'Was this a drive?'}
+    <button id="driveHintGo">This is a drive</button> <span class="muted">Moves it to drives; the weekly numbers recalculate.</span>`;
+  $('#driveHintGo').onclick = async () => { const r = await ownerPost('/admin/drive/from-ir', { ir_id: a.id }); if (r.ok) { DRV.at = 0; location.hash = 'd/' + encodeURIComponent(r.id); } };
+}
+
 renderOwnerBox();
 route();
 
