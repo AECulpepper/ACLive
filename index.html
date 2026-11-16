@@ -113,7 +113,23 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .tide-ev { white-space: nowrap; color: var(--muted); } .tide-ev b { color: var(--ink); font-weight: 600; }
 .tide-w { margin-top: 5px; }
 .tide-note { font-size: .76rem; margin-top: 6px; } .tide-soon { font-size: .82rem; margin: 0 0 10px; }
-.tide-dl { font-size: .7rem; color: #8fc3e6; overflow-wrap: anywhere; }
+.tide-dl { font-size: .7rem; color: #8fc3e6; overflow-wrap: anywhere; line-height: 1.35; } .tide-dl .l { padding-left: 1.2em; }
+/* v0.19 day page */
+a.met-d { display: block; text-decoration: none; color: var(--muted); } a.met-d:hover, a.met-d:focus-visible { outline: 1.5px solid #4299CC; outline-offset: -1px; }
+.day-h { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px; margin: 6px 0 14px; }
+.day-h h1 { margin: 0; font-size: 1.6rem; } .day-h h1 span { font-weight: 400; color: var(--muted); font-size: 1rem; } .day-h .muted { margin-top: 4px; font-size: .88rem; }
+.day-btns { display: flex; flex-wrap: wrap; gap: 6px; } .day-btns .btn, .day-btns button { font: inherit; font-size: .84rem; padding: 7px 12px; min-height: 36px; border-radius: 6px; border: 1px solid var(--line); color: var(--ink); background: transparent; text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; }
+.day-sec { margin-bottom: 14px; }
+.day-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; } @media (max-width: 420px) { .day-tiles { grid-template-columns: 1fr 1fr; gap: 8px; } .day-tiles .tile { padding: 9px 10px; } } .day-tiles .tile { background: var(--panel-2); border-radius: 10px; } .day-tiles .tile .value { font-size: 1.35rem; }
+.day-svg { width: 100%; height: auto; display: block; font-size: 11px; margin-top: 6px; } .day-svg text { fill: var(--muted); } .day-svg .g { stroke: var(--line); } .day-svg .b { fill: #4299CC; opacity: .45; }
+.day-leg { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .78rem; color: var(--muted); margin: 4px 0 8px; } .day-leg i { display: inline-block; width: 16px; vertical-align: middle; margin-right: 5px; }
+.day-leg i.bx { height: 9px; background: #4299CC; opacity: .6; border: 0; width: 10px; }
+.day-chips .chip { font: inherit; font-size: .8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; margin: 0 6px 4px 0; }
+.day-chips .chip.on { background: #4299CC; border-color: #4299CC; color: #fff; }
+.day-table table { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; } .day-table th { color: var(--muted); font-weight: 600; font-size: .76rem; text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.day-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; } .day-table .l { text-align: left; } .day-table td small { color: var(--muted); margin-left: 4px; font-size: .74rem; }
+.day-nws { margin-bottom: 10px; font-size: .9rem; line-height: 1.5; } .day-nws .muted { font-size: .8rem; } .day-nws-f { font-size: .78rem; }
+.day-alert { border: 1px solid #a3462a; background: rgba(163, 70, 42, .18); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: .88rem; }
 .tide-pick { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; font-size: .84rem; }
 .tide-grp { font-size: .76rem; color: var(--muted); margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
 .tide-row { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 4px; border-top: 1px solid var(--line); }
@@ -481,6 +497,11 @@ footer p { margin: 0 0 6px; }
   </main>
 
   <!-- ================= DAILY WEATHER RECORD ================= -->
+  <main id="dayView" hidden>
+    <a class="d-back" href="#weather">← Daily weather</a>
+    <div id="dayBody"></div>
+  </main>
+
   <main id="weatherView" hidden>
     <a class="d-back" href="#">← All activities</a>
     <section class="card">
@@ -2676,9 +2697,9 @@ function renderMetWeek() {
   for (let i = 0; i < 14; i++) {
     if (i === 7) cards.push('</div><div class="met-wk">Next week · forecast</div><div class="met-days">');
     const d = addDays(mon, i), x = MET.days[d], dn = new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' }) + ' ' + d.slice(8);
-    if (!x || !x.model) { cards.push(`<div class="met-d${d === today ? ' today' : ''}${d > today ? ' fc' : ''}"><div class="dn">${dn}</div><div class="ic">·</div><div>${x?.pending ? 'loading…' : 'no record'}</div></div>`); continue; }
+    if (!x || !x.model) { cards.push(`<a href="#day/${d}" class="met-d${d === today ? ' today' : ''}${d > today ? ' fc' : ''}"><div class="dn">${dn}</div><div class="ic">·</div><div>${x?.pending ? 'loading…' : 'no record'}</div></a>`); continue; }
     const v = metVals(x), sk = metSky(x), fc = x.forecast;
-    cards.push(`<div class="met-d${d === today ? ' today' : ''}${fc ? ' fc' : ''}" title="${esc(v.desc || '')}">
+    cards.push(`<a href="#day/${d}" aria-label="${dn}: open the day" class="met-d${d === today ? ' today' : ''}${fc ? ' fc' : ''}" title="${esc(v.desc || '')} · open the day">
       <div class="dn">${dn}</div><div class="ic">${wxIcon(v.code, v.type)}</div>
       <div class="tt">${Math.round(v.tmax_c)}° <small>${Math.round(v.tmin_c)}°</small></div>
       <div>${cF(v.tmax_c)}°F / ${cF(v.tmin_c)}°F</div>
@@ -2686,7 +2707,7 @@ function renderMetWeek() {
       <div>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} mph</div>
       ${x.model.aqi_max != null ? `<div>${aqiChip(x.model.aqi_max, { cat: false })}</div>` : ''}
       ${sk ? `<div>☀ ${sk.rise}–${sk.set}</div><div title="${sk.moon.name}">${moonIc(sk.moon)} ${Math.round(sk.moon.fraction * 100)}%</div>` : ''}
-      ${tideDayLine(d)}<div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></div>`);
+      ${tideDayLine(d)}<div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></a>`);
   }
   $('#metCard').innerHTML = `<div class="week-h"><h2>Weather</h2><span class="muted">${weekLabel(mon).split(' – ')[0]} – ${weekLabel(addDays(mon, 7)).split(' – ')[1]} · <a href="#weather">All days →</a></span></div>
     <div class="now-bar" id="nowBar">${nowBarHtml()}</div>
@@ -2744,7 +2765,7 @@ function renderMetComing() {
     const g = set?.grp ? set.grp.split('..') : null;
     const src = x ? (SRC_TXT[x.src] || '') + (g ? `: ${g[0].slice(8)}–${g[1].slice(8)} ${MON[+g[1].slice(5, 7) - 1]}` : '') : '';
     const v = x?.model ? metVals(x) : null;
-    rows.push(`<tr><td>${dLab(d)}</td><td>${x ? srcIcon(x.src) + esc(x.place || '') : '<span class="muted">loading…</span>'}</td><td class="s">${src}</td>
+    rows.push(`<tr><td><a href="#day/${d}">${dLab(d)}</a></td><td>${x ? srcIcon(x.src) + esc(x.place || '') : '<span class="muted">loading…</span>'}</td><td class="s">${src}</td>
       <td class="s">${v ? `${wxIcon(v.code, v.type)} ${Math.round(v.tmax_c)}° / ${Math.round(v.tmin_c)}°C` : ''}</td>
       <td class="s">${tideDayLine(d)}</td>
       <td class="a">${own ? `<a href="#" data-met-edit="${d}">${set?.mode === 'day' ? 'Change' : 'Set location'}</a>` : ''}</td></tr>`);
@@ -2769,7 +2790,7 @@ function renderMetTable() {
     const v = metVals(x), sk = metSky(x), prev = MET.days[addDays(d, -1)], pv = prev?.model ? metVals(prev).msl_mb : null;
     const arrow = v.msl_mb != null && pv != null ? (v.msl_mb - pv >= 3 ? ' ↑' : pv - v.msl_mb >= 3 ? ' ↓' : '') : '';
     const setHere = MET.settings.find(r => r.day === d);
-    rows.push(`<tr${d === MET.today ? ' class="cur"' : ''}><td>${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })}, ${d.slice(8)} ${MON[+d.slice(5, 7) - 1]}${x.partial ? '<small>so far</small>' : ''}</td>
+    rows.push(`<tr${d === MET.today ? ' class="cur"' : ''}><td><a href="#day/${d}">${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })}, ${d.slice(8)} ${MON[+d.slice(5, 7) - 1]}</a>${x.partial ? '<small>so far</small>' : ''}</td>
       <td class="loc">${srcIcon(x.src)}${esc(x.place || '—')}<span class="src${x.station ? ' st' : ''}">${x.station ? 'station · ' + esc(x.station.station_name) : 'model'}</span>${own ? ` <a href="#" data-met-edit="${d}" style="font-size:.75rem">edit</a>` : ''}${setHere ? `<small>${setHere.mode !== 'day' ? 'set from this day on' : x.src === 'plan' ? 'planned' : x.src === 'set' ? 'set for this day' : 'plan replaced by real data'}</small>` : x.src === 'last' ? '<small>last known</small>' : ''}</td>
       <td>${wxIcon(v.code, v.type)} ${Math.round(v.tmax_c)}° / ${Math.round(v.tmin_c)}° C<small>${cF(v.tmax_c)} / ${cF(v.tmin_c)} °F · ${esc(v.desc || '')}</small></td>
       <td>${(v.precip_in ?? 0).toFixed(2)} in${v.type && v.precip_in ? ' ' + v.type : ''}<small>${mmOf(v.precip_in ?? 0)} mm</small></td>
@@ -2845,7 +2866,7 @@ function tzMidnight(d, tz) {
     .formatToParts(ms).map(x => [x.type, x.value])); return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - ms; };
   let t = g - off(g); t = g - off(t); return t;
 }
-const sg1 = x => (x < 0 ? '−' : '') + Math.abs(x).toFixed(1);
+const sg1 = x => (x <= -0.05 ? '−' : '') + Math.abs(x).toFixed(1);
 const ftM = ft => `${sg1(ft)} ft · ${sg1(ft * 0.3048)} m`;
 const wC = c => `${c.toFixed(0)} °C · ${Math.round(c * 9 / 5 + 32)} °F`;
 const TIDE_TYPE = { R: 'full curve', S: 'highs and lows only (curve drawn between them)' };
@@ -2907,8 +2928,8 @@ async function loadTides(dayKeys, after) {
 const tideStationsFor = d => (TIDE.days[d]?.st || []).map(id => TIDE.st[id]).filter(Boolean);
 function tideDayLine(d) {                 // compact line for a weather day card / coming-days row: the day's high tides at the first station
   const st = tideStationsFor(d)[0]; if (!st) return '';
-  const hs = dayEvs(st, d).filter(e => e[2] === 'H').map(e => tFmt(e[0], st.tz));
-  return hs.length ? `<div class="tide-dl" title="High tides at ${esc(st.name)} (${tzLab(st.tz)})">🌊 H ${hs.join(' · ')}</div>` : '';
+  const ev = dayEvs(st, d), hs = ev.filter(e => e[2] === 'H').map(e => tFmt(e[0], st.tz)), ls = ev.filter(e => e[2] === 'L').map(e => tFmt(e[0], st.tz));
+  return hs.length || ls.length ? `<div class="tide-dl" title="Tides at ${esc(st.name)} (${tzLab(st.tz)})"><div>🌊 <b>H</b> ${hs.join(' · ') || '—'}</div><div class="l"><b>L</b> ${ls.join(' · ') || '—'}</div></div>` : '';
 }
 function tideWhy(x) {
   if (!x) return '';
@@ -3082,6 +3103,153 @@ async function renderTideAct(D, s) {
 }
 
 
+/* ---- v0.19 Day page (#day/YYYY-MM-DD): one day at that day's weather location. The day (model values, station where it has one),
+   hour by hour (Worker /api/metday, the place's local time), tides, NWS forecast text + alerts (US, today to 7 days ahead). ---- */
+const DAYV = { j: {}, busy: {}, mode: 'temp' };
+const dayLong = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const hh = t => String(t).slice(11, 16);
+function daySvg(H, mode, W, Ht) {
+  const n = H.time.length; if (n < 2) return '';
+  const ml = 40, mr = 40, mt = 14, mb = 24, iw = W - ml - mr, ih = Ht - mt - mb, X = i => ml + i / (n - 1) * iw;
+  const S = mode === 'wind' ? [{ v: H.wind_mph, c: '#4299CC', w: 2.2, lab: 'wind mph' }, { v: H.gust_mph, c: '#CF7D40', w: 1.6, dash: '4 3', lab: 'gusts mph' }]
+    : mode === 'cloud' ? [{ v: H.cloud, c: '#cfd3d6', w: 2, area: true, lab: 'cloud %', fix: [0, 100] }, { v: H.rh, c: '#8fc3e6', w: 1.6, dash: '4 3', lab: 'humidity %', fix: [0, 100] }]
+    : mode === 'pres' ? [{ v: H.msl_mb, c: '#b9a2e8', w: 2.2, lab: 'pressure mbar' }]
+    : [{ v: H.temp_c, c: '#f2c14e', w: 2.4, lab: 'temperature °C' }, { v: H.feels_c, c: '#CF7D40', w: 1.6, dash: '4 3', lab: 'feels like °C' }];
+  const all = S.flatMap(s => s.v.filter(v => v != null));
+  let lo = S[0].fix ? S[0].fix[0] : Math.floor(Math.min(...all) - 1), hi = S[0].fix ? S[0].fix[1] : Math.ceil(Math.max(...all) + 1);
+  if (mode === 'pres') { lo = Math.floor(Math.min(...all) - 2); hi = Math.ceil(Math.max(...all) + 2); }
+  if (mode === 'wind') lo = 0;
+  const Y = v => mt + (1 - (v - lo) / Math.max(1, hi - lo)) * ih, step = Math.max(1, Math.round((hi - lo) / 5));
+  const s = [`<svg class="day-svg" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Hour by hour: ${S.map(x => x.lab).join(', ')}">`];
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) s.push(`<line x1="${ml}" x2="${W - mr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="g"/><text x="${ml - 5}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${n0(v)}</text>`);
+  if (mode === 'temp') {                                         // rain chance (or amount when there is no chance) as bars, right axis
+    const pop = H.pop?.some(v => v != null), bw = iw / n * 0.6, YP = p => mt + (1 - p / 100) * ih;
+    if (pop) { for (const p of [0, 50, 100]) s.push(`<text x="${W - mr + 5}" y="${(YP(p) + 4).toFixed(1)}">${p}%</text>`);
+      H.pop.forEach((p, i) => { if (p) s.push(`<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${YP(p).toFixed(1)}" width="${bw.toFixed(1)}" height="${(YP(0) - YP(p)).toFixed(1)}" class="b"/>`); }); }
+    else { const mx = Math.max(0.1, ...H.precip_in.map(v => v || 0)), YQ = q => mt + (1 - q / mx) * ih;
+      s.push(`<text x="${W - mr + 5}" y="${(YQ(mx) + 4).toFixed(1)}">${mx.toFixed(2)} in</text>`);
+      H.precip_in.forEach((q, i) => { if (q) s.push(`<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${YQ(q).toFixed(1)}" width="${bw.toFixed(1)}" height="${(YQ(0) - YQ(q)).toFixed(1)}" class="b"/>`); }); }
+  }
+  for (const sr of S) {
+    const pts = sr.v.map((v, i) => v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).filter(Boolean);
+    if (pts.length < 2) continue;
+    if (sr.area) s.push(`<path d="M${pts.join(' L')} L${X(n - 1).toFixed(1)},${Y(lo).toFixed(1)} L${X(0).toFixed(1)},${Y(lo).toFixed(1)} Z" fill="${sr.c}" opacity=".15"/>`);
+    s.push(`<path d="M${pts.join(' L')}" fill="none" stroke="${sr.c}" stroke-width="${sr.w}"${sr.dash ? ` stroke-dasharray="${sr.dash}"` : ''}/>`);
+  }
+  const every = W < 500 ? 6 : 3;
+  H.time.forEach((t, i) => { if (+hh(t).slice(0, 2) % every === 0) s.push(`<text x="${X(i).toFixed(1)}" y="${Ht - 6}" text-anchor="middle">${hh(t)}</text>`); });
+  return s.join('') + '</svg><div class="day-leg">' + S.map(x => `<span><i style="border-top:${x.w > 2 ? 3 : 2}px ${x.dash ? 'dashed' : 'solid'} ${x.c}"></i>${x.lab}</span>`).join('') +
+    (mode === 'temp' ? `<span><i class="bx"></i>${H.pop?.some(v => v != null) ? 'rain chance' : 'rain amount'}</span>` : '') + '</div>';
+}
+function dayTideCard(st, d, today) {
+  const tz = st.tz, evs = dayEvs(st, d), now = Date.now(), nx = d === today ? (st.hilo || []).find(e => e[0] > now) : null;
+  return `<div class="tide-st">
+    <div class="tide-sn"><b>${esc(st.name)}</b><span class="muted"> · ${st.mi} mi ${st.dir} · ${TIDE_TYPE[st.type] || ''}</span>${st.far ? '<div class="tide-far">5–15 mi away: times may differ from where you are</div>' : ''}</div>
+    ${nx ? `<div class="tide-next">Next <b>${nx[2] === 'H' ? 'High' : 'Low'} ${tFmt(nx[0], tz)}</b> · ${ftM(nx[1])} <span class="muted">· in ${inMin(nx[0] - now)}</span></div>` : ''}
+    ${tideSvg(st, tzMidnight(d, tz), tzMidnight(addDays(d, 1), tz), { now: d === today ? now : null, w: innerWidth < 600 ? 340 : 520, h: innerWidth < 600 ? 140 : 150 })}
+    <div class="tide-evs"><span class="muted">${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })} ${d.slice(8)}</span><div>${evs.map(e => evRow(e, tz)).join('') || '<span class="muted">—</span>'}</div></div>
+    <div class="tide-w">${d === today ? (st.water ? `Water <b>${wC(st.water.c)}</b>` : '<span class="muted">No water temperature at this station</span>') : '<span class="muted">Water temperature shows on today\'s page only (live reading)</span>'}</div></div>`;
+}
+async function renderDayView(d) {
+  const box = $('#dayBody'); if (!box) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { box.innerHTML = '<p class="muted">Not a day.</p>'; return; }
+  const today = MET.today || mtDayKey(Date.now()), max = addDays(today, 14), x = MET.days[d];
+  if (d > max) { box.innerHTML = `<p class="muted">The forecast goes ${14} days ahead (to ${dLab(max)}).</p>`; return; }
+  if (!x?.model) {
+    box.innerHTML = `<p class="muted">${x && !x.pending ? 'No weather record for this day.' : 'Loading the day…'}</p>`;
+    if (!x || x.pending) { const k = 'met:' + d; if (!DAYV.busy[k]) { DAYV.busy[k] = 1; await loadMet(d, d, () => { if (location.hash === '#day/' + d) renderDayView(d); }); DAYV.busy[k] = 0; } }
+    return;
+  }
+  const v = metVals(x), sk = metSky(x), fc = x.forecast, own = isOwner();
+  const jk = `${d}|${x.lat},${x.lon}`, J = DAYV.j[jk];
+  if (!J && !DAYV.busy[jk] && CONFIG.dataSource !== 'mock') {
+    DAYV.busy[jk] = 1;
+    fetch(`${CONFIG.api}/api/metday?day=${d}&lat=${x.lat}&lon=${x.lon}`, { cache: 'no-store' }).then(r => r.json()).then(j => { DAYV.j[jk] = j; })
+      .catch(e => { DAYV.j[jk] = { ok: false, errors: { fetch: String(e) } }; }).finally(() => { DAYV.busy[jk] = 0; if (location.hash === '#day/' + d) renderDayView(d); });
+  }
+  loadTides([d], () => { if (location.hash === '#day/' + d) renderDayView(d); });
+  const H = J?.hourly, tz = H?.tz || x.model.tz || 'America/Denver';
+  const set = MET.settings.find(r => r.day === d), g = set?.grp ? set.grp.split('..') : null;
+  const where = (SRC_TXT[x.src] || '') + (g ? ` ${g[0].slice(8)}–${g[1].slice(8)} ${MON[+g[1].slice(5, 7) - 1]}` : '');
+  const prev = addDays(d, -1), next = addDays(d, 1);
+  const prevV = MET.days[prev]?.model ? metVals(MET.days[prev]) : null;
+  const trend = v.msl_mb != null && prevV?.msl_mb != null ? (v.msl_mb - prevV.msl_mb >= 3 ? 'rising' : prevV.msl_mb - v.msl_mb >= 3 ? 'falling' : 'steady') : '';
+  const dew = H?.dew_c?.filter(z => z != null) || [], dewAvg = dew.length ? dew.reduce((a, b) => a + b, 0) / dew.length : null;
+  const sts = tideStationsFor(d), water = d === today ? sts.find(s => s.water)?.water : null;
+  const tile = (k, val, sub) => `<div class="tile"><div class="label">${k}</div><div class="value">${val}</div><div class="foot">${sub}</div></div>`;
+  const tiles = [
+    tile('High · low', `${Math.round(v.tmax_c)}° / ${Math.round(v.tmin_c)}°<small>C</small>`, `${cF(v.tmax_c)} / ${cF(v.tmin_c)} °F · ${esc(v.desc || '')}`),
+    tile(fc ? 'Rain chance' : 'Precipitation', fc ? `${v.pop ?? 0}%` : `${(v.precip_in ?? 0).toFixed(2)}<small>in</small>`, `${(v.precip_in ?? 0).toFixed(2)} in · ${mmOf(v.precip_in ?? 0)} mm${v.type && v.precip_in ? ' · ' + v.type : ''}`),
+    tile('Wind · gusts', `${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} / ${v.gust_mph ?? '—'}<small>mph</small>`, `${v.wind_mph != null ? Math.round(v.wind_mph * KM_PER_MI) : '—'} / ${v.gust_mph != null ? Math.round(v.gust_mph * KM_PER_MI) : '—'} km/h`),
+    tile('Humidity', `${v.rh ?? '—'}<small>%</small>`, dewAvg != null ? `dew point ${Math.round(dewAvg)} °C · ${cF(dewAvg)} °F` : 'daily mean'),
+    tile('Pressure', v.msl_mb != null ? `${n0(v.msl_mb)}<small>mbar</small>` : '—', v.msl_mb != null ? `${(v.msl_mb / 33.8639).toFixed(2)} inHg${trend ? ' · ' + trend : ''}` : ''),
+    tile('Cloud', `${v.cloud ?? '—'}<small>%</small>`, 'daily mean'),
+    tile('Air quality', x.model.aqi_max != null ? aqiChip(x.model.aqi_max, { cat: false }) : '—', x.model.pm25_max != null ? `PM2.5 ${x.model.pm25_max} µg/m³ · daily max` : 'no air quality model this day'),
+    tile('Sun', sk ? `${sk.rise}–${sk.set}` : '—', sk ? `${sk.len} daylight` : ''),
+    tile('Moon', sk ? `${moonIc(sk.moon, 18)} ${Math.round(sk.moon.fraction * 100)}<small>%</small>` : '—', sk ? `${sk.moon.name} · ↑ ${sk.mrise} ↓ ${sk.mset}` : ''),
+    ...(sts.length ? [tile('Water', water ? `${water.c.toFixed(0)}<small>°C</small>` : '—', water ? `${Math.round(water.c * 9 / 5 + 32)} °F · ${esc(sts.find(s => s.water).name)}` : d === today ? 'no sensor at these stations' : 'live reading: today only')] : [])];
+  // hour by hour
+  let hourly = '';
+  if (!H) hourly = `<p class="muted">${J ? 'Hour-by-hour data unavailable' + (J.errors?.hourly ? ` (${esc(J.errors.hourly).slice(0, 120)})` : '') : 'Loading hour by hour…'}</p>`;
+  else {
+    const W = innerWidth < 600 ? 360 : 1100, Ht = innerWidth < 600 ? 190 : 240;
+    const chips = [['temp', 'Temp · rain'], ['wind', 'Wind'], ['cloud', 'Cloud · humidity'], ['pres', 'Pressure']].map(([k, l]) => `<button type="button" class="chip${DAYV.mode === k ? ' on' : ''}" data-dmode="${k}" aria-pressed="${DAYV.mode === k}">${l}</button>`).join('');
+    const rows = H.time.map((t, i) => `<tr><td>${hh(t)}</td><td class="l">${wxIcon(H.code[i], (H.snow_in[i] || 0) > 0 ? 'snow' : (H.rain_in[i] || 0) > 0 ? 'rain' : null)} ${esc(H.desc[i] || '')}</td>
+      <td>${H.temp_c[i] != null ? Math.round(H.temp_c[i]) + '°' : '—'}<small>${H.temp_c[i] != null ? cF(H.temp_c[i]) + '°F' : ''}</small></td><td>${H.feels_c[i] != null ? Math.round(H.feels_c[i]) + '°' : '—'}</td>
+      <td>${H.pop[i] != null ? H.pop[i] + '%' : ''}${H.pop[i] != null ? ' · ' : ''}${(H.precip_in[i] ?? 0).toFixed(2)} in</td><td>${dirName(H.wind_dir[i])} ${H.wind_mph[i] ?? '—'} / ${H.gust_mph[i] ?? '—'}</td>
+      <td>${H.rh[i] ?? '—'}%</td><td>${H.cloud[i] ?? '—'}%</td><td>${H.msl_mb[i] != null ? n0(Math.round(H.msl_mb[i])) : '—'}</td></tr>`).join('');
+    hourly = `<div class="wx-chips day-chips" role="group" aria-label="Chart">${chips}</div>${daySvg(H, DAYV.mode, W, Ht)}
+      <div class="table-wrap day-table"><table><thead><tr><th>Time</th><th class="l">Sky</th><th>Temp</th><th>Feels</th><th>Rain</th><th>Wind / gust mph</th><th>RH</th><th>Cloud</th><th>mbar</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  // tides
+  let tides = '';
+  if (sts.length) {
+    const tx = TIDE.days[d];
+    let lag = ''; if (sts.length === 2) { const m = tideLag(sts[0], sts[1], d); if (m != null && Math.abs(m) >= 10) lag = `${esc(sts[1].name.split(',')[0])} runs about ${Math.abs(m)} min ${m > 0 ? 'behind' : 'ahead of'} ${esc(sts[0].name.split(',')[0])}. `; }
+    tides = `<section class="card day-sec"><div class="card-h"><h2>Tides</h2><span class="meta">${tideWhy(tx)} · ${tzLab(sts[0].tz)}</span></div><div class="card-b">
+      <div class="tide-grid n${sts.length}">${sts.map(st => dayTideCard(st, d, today)).join('')}</div>
+      <div class="muted tide-note">${lag}Heights above mean lower low water (MLLW). Source: <a href="https://tidesandcurrents.noaa.gov/" target="_blank" rel="noopener">NOAA tide predictions</a>.</div></div></section>`;
+  }
+  // NWS
+  let nws;
+  if (d < today) nws = '<p class="muted">No NWS forecast for past days.</p>';
+  else if (d > addDays(today, 7)) nws = '<p class="muted">The NWS forecast covers the next 7 days.</p>';
+  else if (!J) nws = '<p class="muted">Loading…</p>';
+  else if (!J.nws) nws = `<p class="muted">${J.errors?.nws ? 'NWS didn\'t answer: ' + esc(J.errors.nws).slice(0, 120) : 'No NWS forecast here (US only).'}</p>`;
+  else {
+    const P = J.nws.periods;
+    nws = (P.length ? P.map(p => `<div class="day-nws"><b>${esc(p.name)}</b> <span class="muted">· ${p.temp_f != null ? `${p.day ? 'high' : 'low'} ${fC(p.temp_f)} °C · ${p.temp_f} °F · ` : ''}${esc(p.wind)}${p.pop != null ? ` · ${p.pop}% rain` : ''}</span><div>${esc(p.text || p.short)}</div></div>`).join('')
+      : '<p class="muted">This day isn\'t in the NWS forecast yet.</p>') +
+      `<div class="muted day-nws-f">NWS ${esc(J.nws.office || '')} office${J.nws.updated ? ` · updated ${fmtDT(Date.parse(J.nws.updated))}` : ''}${J.nws.afd_url ? ` · <a href="${esc(J.nws.afd_url)}" target="_blank" rel="noopener">Forecast discussion →</a>` : ''}</div>`;
+  }
+  const alerts = (J?.alerts || []).map(a => `<div class="day-alert">⚠ <b>${esc(a.event)}</b>${a.ends ? ` · until ${fmtDT(Date.parse(a.ends))}` : ''}<div>${esc(a.headline || '')}</div></div>`).join('');
+  // today: airport report and fire weather from the Now bar when it is for this place
+  let nowx = '';
+  const N = NOWX.d;
+  if (d === today && N?.ok && Math.abs(N.lat - (x.loc_lat ?? x.lat)) < 0.3 && Math.abs(N.lon - (x.loc_lon ?? x.lon)) < 0.3) {
+    if (N.metar) nowx += `<div class="day-nws"><b>Airport report</b> <span class="muted">· ${esc(N.metar.id)} ${esc(N.metar.name || '')} · ${N.metar.dist_mi} mi · ${fmtTime(Date.parse(N.metar.obs))}</span><div class="metar">${esc(N.metar.raw)}</div></div>`;
+    if (N.fire) nowx += `<div class="day-nws"><b>Fire weather</b> <span class="muted">· zone ${esc(N.fire.zone)}${N.fire.alerts?.length ? ' · ' + N.fire.alerts.map(a => esc(a.event)).join(', ') : ''}</span> · <a href="${esc(N.fire.url)}" target="_blank" rel="noopener">Fire weather forecast →</a></div>`;
+  }
+  const lab = x.partial ? 'today, so far' : fc ? 'forecast' : '';
+  box.innerHTML = `<div class="day-h">
+      <div><h1>${dayLong(d)}${lab ? ` <span>· ${lab}</span>` : ''}</h1>
+      <div class="muted">${srcIcon(x.src)}${esc(x.place || '')}${where ? ' · ' + esc(where) : ''} · ${tzLab(tz)}${x.station ? ` · station ${esc(x.station.station_name)}` : ''}</div></div>
+      <div class="day-btns"><a class="btn" href="#day/${prev}">‹ ${dLab(prev).replace(/ \w+$/, '')}</a>${next <= max ? `<a class="btn" href="#day/${next}">${dLab(next).replace(/ \w+$/, '')} ›</a>` : ''}${own ? '<button type="button" id="daySet">Set location · tide stations</button>' : ''}</div></div>
+    ${alerts}
+    <section class="card day-sec"><div class="card-h"><h2>The day</h2><span class="meta">${x.station ? 'station where it has values, model for the rest' : 'model · Open-Meteo'}</span></div><div class="card-b"><div class="day-tiles">${tiles.join('')}</div></div></section>
+    <section class="card day-sec"><div class="card-h"><h2>Hour by hour</h2><span class="meta">${H ? `${tzLab(tz)} · Open-Meteo ${H.src === 'forecast' ? 'forecast' : 'history'}` : ''}${H && own ? ' · <a href="#" id="dayCsv">CSV</a>' : ''}</span></div><div class="card-b">${hourly}</div></section>
+    ${tides}
+    <section class="card day-sec"><div class="card-h"><h2>NWS forecast</h2><span class="meta">US · today to 7 days ahead</span></div><div class="card-b">${nws}${nowx}</div></section>`;
+  box.querySelectorAll('[data-dmode]').forEach(b => b.onclick = () => { DAYV.mode = b.dataset.dmode; renderDayView(d); });
+  const ds = $('#daySet'); if (ds) ds.onclick = () => { MET_EDIT = d; location.hash = 'weather'; setTimeout(() => $('#metEdit')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600); };
+  const cv = $('#dayCsv'); if (cv) cv.onclick = e => { e.preventDefault();
+    const L = [['time_local', 'sky', 'temp_c', 'temp_f', 'feels_c', 'rain_chance_pct', 'precip_in', 'precip_mm', 'wind_mph', 'gust_mph', 'wind_dir', 'rh_pct', 'dew_c', 'cloud_pct', 'pressure_mbar'].join(',')];
+    H.time.forEach((t, i) => L.push([t, `"${H.desc[i] || ''}"`, H.temp_c[i] ?? '', H.temp_c[i] != null ? cF(H.temp_c[i]) : '', H.feels_c[i] ?? '', H.pop[i] ?? '', H.precip_in[i] ?? '', H.precip_in[i] != null ? mmOf(H.precip_in[i]) : '',
+      H.wind_mph[i] ?? '', H.gust_mph[i] ?? '', H.wind_dir[i] ?? '', H.rh[i] ?? '', H.dew_c[i] ?? '', H.cloud[i] ?? '', H.msl_mb[i] ?? ''].join(',')));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv' })); a.download = `ACLive_hourly_${d.replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+}
+
+
 /* ---- Weekly records view (#weeks) ---- */
 let WK_OPEN = new Set(), WK_YEAR = null;
 function weeksRows(year) {
@@ -3234,10 +3402,12 @@ async function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const id = h === 'live' ? 'live' : h.startsWith('a/') ? h.slice(2) : null, weeks = h === 'weeks', wx = h === 'weather', irv = h === 'inreach';
   const drives = h === 'drives', drv = h.startsWith('d/') ? h.slice(2) : null;                              // v0.17
-  $('#landing').hidden = !!id || weeks || wx || irv || drives || !!drv; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx; $('#inreachView').hidden = !irv;
+  const dayv = h.startsWith('day/') ? h.slice(4) : null; $('#dayView').hidden = !dayv;                    // v0.19
+  $('#landing').hidden = !!id || weeks || wx || irv || drives || !!drv || !!dayv; $('#detail').hidden = !id; $('#weeksView').hidden = !weeks; $('#weatherView').hidden = !wx; $('#inreachView').hidden = !irv;
   $('#drivesView').hidden = !drives; $('#driveView').hidden = !drv; if (!drv) DRV.cur = null;
   if (drives) { document.title = 'Drives · ACLive'; CURRENT = null; window.scrollTo(0, 0); await renderDrivesView(); setStatus('live', `Updated ${fmtTime(Date.now())}`); return; }
   if (drv) { CURRENT = null; if (DRV.cur !== drv) { DRV.cur = drv; window.scrollTo(0, 0); } await refreshDrive(); return; }
+  if (dayv) { document.title = `${dayv} weather · ACLive`; CURRENT = null; window.scrollTo(0, 0); renderDayView(dayv); return; }
   if (irv) { document.title = 'inReach feed · ACLive'; CURRENT = null; window.scrollTo(0, 0); renderIrView(); return; }
   if (weeks) { document.title = 'Weekly records · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); return; }
   if (wx) { document.title = 'Daily weather · ACLive'; CURRENT = null; window.scrollTo(0, 0); await refreshLanding(); renderMetView(); return; }
@@ -3407,7 +3577,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.18.0';
+const VERSION = 'v0.19.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
