@@ -96,6 +96,32 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .met-d .tt { font-size: 1rem; font-weight: 600; color: var(--text); } .met-d .tt small { font-weight: 400; color: var(--muted); }
 .met-d .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; }
 .met-leg { font-size: .76rem; color: var(--muted); margin-top: 8px; }
+/* v0.18 tides */
+.tide-box { border: 1px solid #3f6f86; border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+.tide-h { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 8px; font-size: .86rem; } .tide-h .muted { font-size: .78rem; }
+.tide-grid { display: grid; gap: 12px; } .tide-grid.n2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 760px) { .tide-grid.n2 { grid-template-columns: minmax(0, 1fr); } }
+.tide-st { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; font-size: .82rem; min-width: 0; }
+.tide-sn .muted { font-size: .76rem; } .tide-far, .tide-far-i { color: #ffcf7a; font-size: .76rem; }
+.tide-next { margin: 4px 0 2px; } .tide-next .muted { font-size: .76rem; }
+.tide-svg { width: 100%; height: auto; display: block; margin: 4px 0; font-size: 11px; }
+.tide-svg text { fill: var(--muted); } .tide-svg .g { stroke: var(--line); } .tide-svg .a { fill: #4299CC; opacity: .18; } .tide-svg .l { fill: none; stroke: #4299CC; stroke-width: 2.2; }
+.tide-svg .d { fill: #4299CC; stroke: var(--panel-2); } .tide-svg text.e { fill: var(--ink); font-size: 10px; } .tide-svg .n { stroke: #CF7D40; fill: #CF7D40; stroke-dasharray: 3 3; }
+.tide-svg .sh { fill: #2F4B5E; opacity: .9; } .tide-svg .m { stroke: #CF7D40; fill: #CF7D40; font-size: 10px; }
+.tide-evs { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 2px 8px; margin-top: 3px; align-items: baseline; } .tide-evs > .muted { font-size: .76rem; }
+.tide-evs > div { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.tide-ev { white-space: nowrap; color: var(--muted); } .tide-ev b { color: var(--ink); font-weight: 600; }
+.tide-w { margin-top: 5px; }
+.tide-note { font-size: .76rem; margin-top: 6px; } .tide-soon { font-size: .82rem; margin: 0 0 10px; }
+.tide-dl { font-size: .7rem; color: #8fc3e6; overflow-wrap: anywhere; }
+.tide-pick { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; font-size: .84rem; }
+.tide-grp { font-size: .76rem; color: var(--muted); margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+.tide-row { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 4px; border-top: 1px solid var(--line); }
+.tide-row.on { background: rgba(66, 153, 204, .14); } .tide-row .mi { color: var(--muted); font-size: .78rem; } .tide-row small { display: block; color: var(--muted); font-size: .74rem; }
+.tide-row button { font-size: .76rem; padding: 2px 8px; } .tide-more { font-size: .78rem; padding: 6px 4px; border-top: 1px solid var(--line); }
+.tide-keep, .tide-fav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 8px 0 4px; font-size: .8rem; } .tide-fav { display: block; }
+.tide-pick .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.tide-chart { margin-top: 10px; } .tide-chart .tide-svg { max-width: 760px; }
 .moon-ic { vertical-align: -2px; }
 .aqi { display: inline-block; border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: .9em; white-space: nowrap; }
 .aqi small { font-weight: 500; font-size: .78em; opacity: .92; }
@@ -596,6 +622,11 @@ footer p { margin: 0 0 6px; }
         <div style="overflow-x:auto"><table class="sky-table" id="skyTable"></table></div>
         <div class="credit" id="wxCredit"></div>
       </div>
+    </section>
+
+    <section class="card" id="tideCard" style="margin-top:14px" hidden>
+      <div class="card-h"><h2>Tides</h2><span class="meta" id="tideMeta"></span></div>
+      <div class="card-b"><div id="tideTiles"></div><div id="tideChart" class="tide-chart"></div><div class="credit" id="tideFoot"></div><div id="tideActPick"></div></div>
     </section>
 
     <section class="card" id="effortCard" style="margin-top:14px">
@@ -2655,13 +2686,16 @@ function renderMetWeek() {
       <div>${dirName(v.wind_dir)} ${v.wind_mph ?? '—'} mph</div>
       ${x.model.aqi_max != null ? `<div>${aqiChip(x.model.aqi_max, { cat: false })}</div>` : ''}
       ${sk ? `<div>☀ ${sk.rise}–${sk.set}</div><div title="${sk.moon.name}">${moonIc(sk.moon)} ${Math.round(sk.moon.fraction * 100)}%</div>` : ''}
-      <div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></div>`);
+      ${tideDayLine(d)}<div class="pl">${srcIcon(x.src)}${esc(x.place || '')}${x.partial ? ' · so far' : ''}</div></div>`);
   }
   $('#metCard').innerHTML = `<div class="week-h"><h2>Weather</h2><span class="muted">${weekLabel(mon).split(' – ')[0]} – ${weekLabel(addDays(mon, 7)).split(' – ')[1]} · <a href="#weather">All days →</a></span></div>
     <div class="now-bar" id="nowBar">${nowBarHtml()}</div>
+    <div id="tideBox"></div>
     <div class="met-wk">This week</div><div class="met-days">${cards.join('')}</div>
     <div class="met-leg">🏃 activity finish · 📡 inReach check-in · 📍 location you set or planned · plain = last known · dashed = forecast, less reliable after 7 days</div>`;
-  bindNowBar(); loadNow();
+  bindNowBar(); loadNow(); renderTides();
+  const tk = []; for (let i = 0; i < 14; i++) tk.push(addDays(mon, i));
+  loadTides(tk, renderMetWeek);
 }
 // #weather view
 let MET_MONTH = null, MET_EDIT = null;
@@ -2712,9 +2746,12 @@ function renderMetComing() {
     const v = x?.model ? metVals(x) : null;
     rows.push(`<tr><td>${dLab(d)}</td><td>${x ? srcIcon(x.src) + esc(x.place || '') : '<span class="muted">loading…</span>'}</td><td class="s">${src}</td>
       <td class="s">${v ? `${wxIcon(v.code, v.type)} ${Math.round(v.tmax_c)}° / ${Math.round(v.tmin_c)}°C` : ''}</td>
+      <td class="s">${tideDayLine(d)}</td>
       <td class="a">${own ? `<a href="#" data-met-edit="${d}">${set?.mode === 'day' ? 'Change' : 'Set location'}</a>` : ''}</td></tr>`);
   }
   box.innerHTML = `<div class="met-coming"><h3>Coming days · forecast</h3><div class="table-wrap"><table>${rows.join('')}</table></div></div>`;
+  const tk = []; for (let i = 0; i < 14; i++) tk.push(addDays(c0, i));
+  loadTides(tk, renderMetComing);
   box.onclick = e => { const a = e.target.closest('[data-met-edit]'); if (!a) return; e.preventDefault(); MET_EDIT = a.dataset.metEdit; renderMetEdit(); $('#metEdit').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
 }
 function renderMetTable() {
@@ -2758,6 +2795,7 @@ function renderMetTable() {
 function renderMetEdit() {
   const box = $('#metEdit');
   if (!MET_EDIT || !isOwner()) { box.innerHTML = ''; return; }
+  METTIDE.day = null;
   const d = MET_EDIT, cur = MET.settings.find(r => r.day === d), lab = `${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })}, ${d.slice(8)} ${MON[+d.slice(5, 7) - 1]}`;
   const fut = d > mtDayKey(Date.now()), g = cur?.grp ? cur.grp.split('..') : null, mode0 = g ? 'range' : cur?.mode || (fut ? 'day' : 'from');
   box.innerHTML = `<div class="met-edit"><b>📍 Set location for ${lab}</b>
@@ -2765,16 +2803,19 @@ function renderMetEdit() {
       <select id="metMode"><option value="day"${mode0 === 'day' ? ' selected' : ''}>Only this day</option><option value="range"${mode0 === 'range' ? ' selected' : ''}>Through…</option><option value="from"${mode0 === 'from' ? ' selected' : ''}>From this day onward</option></select>
       <input type="date" id="metTo" min="${addDays(d, 1)}" max="${addDays(d, 30)}" value="${g ? g[1] : addDays(d, 2)}"${mode0 === 'range' ? '' : ' hidden'}>
       <button id="metFind">Check</button><button class="primary" id="metSave">Save</button>${cur ? `<button id="metClear">${g ? `Clear ${g[0].slice(8)}–${g[1].slice(8)} ${MON[+g[1].slice(5, 7) - 1]}` : 'Clear'}</button>` : ''}<button id="metCancel">Cancel</button></div>
+    <div id="metTide" style="margin-top:8px"></div>
     <div class="muted" id="metMsg" style="margin-top:6px;font-size:.8rem">${fut ? 'Set ahead, this is a plan: a real activity or inReach check-in on that day replaces it.' : 'Set on or after the day, "Only this day" always wins. "From this day onward" gives way to activities.'}</div></div>`;
   $('#metMode').onchange = () => { $('#metTo').hidden = $('#metMode').value !== 'range'; };
   const msg = t => { $('#metMsg').textContent = t; };
   $('#metCancel').onclick = () => { MET_EDIT = null; renderMetEdit(); };
   $('#metFind').onclick = async () => { try { const r = CONFIG.dataSource === 'mock' ? { ok: true, label: $('#metQ').value, lat: 0, lon: 0 }
       : await (await fetch(`${CONFIG.api}/admin/met/geocode?q=${encodeURIComponent($('#metQ').value)}`, { headers: { authorization: 'Bearer ' + OWNER } })).json();
-    msg(r.ok ? `Matched: ${r.label} (${(+r.lat).toFixed(2)}, ${(+r.lon).toFixed(2)})` : 'No match. Try "Town, ST" or "lat, lon".'); } catch { msg('Could not reach the server.'); } };
+    msg(r.ok ? `Matched: ${r.label} (${(+r.lat).toFixed(2)}, ${(+r.lon).toFixed(2)})` : 'No match. Try "Town, ST" or "lat, lon".');
+    if (r.ok) metTideStep(d, r.lat, r.lon, cur); } catch { msg('Could not reach the server.'); } };
   const after = async () => { MET_EDIT = null; MET.at = {}; renderMetEdit(); renderMetView(); };
   $('#metSave').onclick = async () => { try { const m = $('#metMode').value;
-      const r = await ownerPost('/admin/met/loc', { day: d, mode: m, to: m === 'range' ? $('#metTo').value : undefined, q: $('#metQ').value });
+      const tideSt = METTIDE.day === d && METTIDE.j?.stations?.length ? METTIDE.sel : undefined;      // v0.18: only when the Tide stations step was shown
+      const r = await ownerPost('/admin/met/loc', { day: d, mode: m, to: m === 'range' ? $('#metTo').value : undefined, q: $('#metQ').value, tide_st: tideSt });
       if (r.ok === false) { msg(r.error === 'place not found' ? 'Place not found. Try "Town, ST" or "lat, lon".' : r.error); return; }
       msg('Saved. Updating…'); await after(); } catch (e) { msg(e.message); } };
   if (cur) $('#metClear').onclick = async () => { try { await ownerPost('/admin/met/loc', { day: d, clear: true, mode: cur.mode, grp: cur.grp || undefined }); await after(); } catch (e) { msg(e.message); } };
@@ -2788,6 +2829,258 @@ function mockMet(from, to) {
         pop: 20, tz: az ? 'America/Phoenix' : 'America/Denver', utc_offset_s: -25200 }, station: !az && i === 9 ? { tmax_c: 10, tmin_c: -10, rh: 40, msl_mb: 1020, wind_mph: 11, gust_mph: 20, wind_dir: 240, precip_in: 0, station: 'home', station_name: 'Home' } : null }); }
   return { from, to, today, continuous_from: '2026-11-01', days, settings: [{ day: from.slice(0, 8) + '10', mode: 'day', label: 'Scottsdale, AZ' }], pending: 0 };
 }
+
+/* ---- v0.18 Tides (Worker /api/tides, NOAA predictions). Each day follows that day's weather location; times in the
+   station's own time zone (24 h), heights ft first (MLLW), water °C first. Owner: Change station, favourites, per activity. ---- */
+const TIDE = { days: {}, st: {}, at: {}, ready: null, ui: null, near: null, sel: [], msg: '', act: {}, actUi: null };
+const TZ_NAME = { 'America/New_York': 'Eastern', 'America/Chicago': 'Central', 'America/Denver': 'Mountain', 'America/Phoenix': 'Arizona', 'America/Los_Angeles': 'Pacific',
+  'America/Anchorage': 'Alaska', 'Pacific/Honolulu': 'Hawaii', 'America/Puerto_Rico': 'Atlantic', 'Pacific/Guam': 'Chamorro', 'Pacific/Pago_Pago': 'Samoa' };
+const tzLab = tz => (TZ_NAME[tz] || String(tz || '').split('/').pop().replace(/_/g, ' ')) + ' time';
+const tFmt = (ms, tz) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ms);
+const tDay = (ms, tz) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(ms);
+// UTC ms of local midnight starting day d in zone tz
+function tzMidnight(d, tz) {
+  const g = Date.parse(d + 'T00:00:00Z');
+  const off = ms => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    .formatToParts(ms).map(x => [x.type, x.value])); return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - ms; };
+  let t = g - off(g); t = g - off(t); return t;
+}
+const sg1 = x => (x < 0 ? '−' : '') + Math.abs(x).toFixed(1);
+const ftM = ft => `${sg1(ft)} ft · ${sg1(ft * 0.3048)} m`;
+const wC = c => `${c.toFixed(0)} °C · ${Math.round(c * 9 / 5 + 32)} °F`;
+const TIDE_TYPE = { R: 'full curve', S: 'highs and lows only (curve drawn between them)' };
+const inMin = ms => { const m = Math.round(ms / 60e3); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
+// Height at time t: the station's 30-min curve where we have it, else a cosine between the highs and lows around t
+function tideAt(st, t) {
+  const c = st.curve;
+  if (c?.length > 1 && t >= c[0][0] && t <= c.at(-1)[0]) {
+    let i = 1; while (i < c.length - 1 && c[i][0] < t) i++;
+    const a = c[i - 1], b = c[i], f = (t - a[0]) / Math.max(1, b[0] - a[0]);
+    return { ft: a[1] + (b[1] - a[1]) * f, rising: b[1] > a[1] };
+  }
+  const h = st.hilo || [];
+  let i = h.findIndex(e => e[0] > t); if (i <= 0) return null;
+  const a = h[i - 1], b = h[i], u = (t - a[0]) / (b[0] - a[0]);
+  return { ft: a[1] + (b[1] - a[1]) * (1 - Math.cos(Math.PI * u)) / 2, rising: b[1] > a[1] };
+}
+function tideSvg(st, t0, t1, o = {}) {
+  const W = o.w || 520, H = o.h || 150, ml = 34, mr = 10, mt = 20, mb = 22, iw = W - ml - mr, ih = H - mt - mb, tz = st.tz;
+  const pts = []; for (let t = t0; t <= t1; t += 10 * 60e3) { const v = tideAt(st, t); if (v) pts.push([t, v.ft]); }
+  if (pts.length < 2) return '';
+  const evs = (st.hilo || []).filter(e => e[0] >= t0 && e[0] <= t1);
+  const lo = Math.floor(Math.min(0, ...pts.map(p => p[1])) - 0.5), hi = Math.ceil(Math.max(...pts.map(p => p[1])) + 0.5);
+  const X = t => ml + (t - t0) / (t1 - t0) * iw, Y = f => mt + (1 - (f - lo) / (hi - lo)) * ih;
+  const path = 'M' + pts.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' L');
+  const s = [`<svg class="tide-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tide curve, ${esc(st.name)}">`];
+  const step = hi - lo > 10 ? 4 : 2;
+  for (let f = Math.ceil(lo / step) * step; f <= hi; f += step) s.push(`<line x1="${ml}" x2="${W - mr}" y1="${Y(f).toFixed(1)}" y2="${Y(f).toFixed(1)}" class="g"/><text x="${ml - 5}" y="${(Y(f) + 4).toFixed(1)}" text-anchor="end">${f}</text>`);
+  s.push(`<text x="${ml - 5}" y="9" text-anchor="end">ft</text>`);
+  if (o.shade) s.push(`<rect x="${X(Math.max(t0, o.shade[0])).toFixed(1)}" y="${mt}" width="${Math.max(1, X(Math.min(t1, o.shade[1])) - X(Math.max(t0, o.shade[0]))).toFixed(1)}" height="${ih}" class="sh"/>`);
+  s.push(`<path d="${path} L${X(pts.at(-1)[0]).toFixed(1)},${Y(lo).toFixed(1)} L${X(pts[0][0]).toFixed(1)},${Y(lo).toFixed(1)} Z" class="a"/><path d="${path}" class="l"/>`);
+  const hr = 3600e3, step3 = (t1 - t0) > 30 * hr || W < 400 ? 6 : 3;
+  for (let t = Math.ceil(t0 / hr) * hr; t <= t1; t += hr) { const hh = +tFmt(t, tz).slice(0, 2); if (hh % step3) continue;
+    if (X(t) < ml + 12 || X(t) > W - mr - 14) continue;
+    s.push(`<text x="${X(t).toFixed(1)}" y="${H - 6}" text-anchor="middle">${tFmt(t, tz)}</text>`); }
+  const lines = [...(o.marks || []).map(m => m[0]), ...(o.now ? [o.now] : [])];
+  for (const e of evs) s.push(`<circle cx="${X(e[0]).toFixed(1)}" cy="${Y(e[1]).toFixed(1)}" r="3" class="d"/>` + (e[2] === 'L' && lines.some(t => Math.abs(X(t) - X(e[0])) < 34) ? '' : `<text x="${X(e[0]).toFixed(1)}" y="${(Y(e[1]) + (e[2] === 'H' ? -6 : 13)).toFixed(1)}" text-anchor="middle" class="e">${tFmt(e[0], tz)}</text>`));
+  if (o.now && o.now >= t0 && o.now <= t1) s.push(`<line x1="${X(o.now).toFixed(1)}" x2="${X(o.now).toFixed(1)}" y1="${mt}" y2="${mt + ih}" class="n"/><text x="${(X(o.now) + 3).toFixed(1)}" y="${mt + ih - 4}" class="n">now</text>`);
+  for (const [t, lab] of o.marks || []) if (t >= t0 && t <= t1) s.push(`<line x1="${X(t).toFixed(1)}" x2="${X(t).toFixed(1)}" y1="${mt}" y2="${mt + ih}" class="m"/><text x="${(X(t) + 3).toFixed(1)}" y="${mt + ih - 4}" class="m">${lab}</text>`);
+  return s.join('') + '</svg>';
+}
+const evRow = (e, tz) => `<span class="tide-ev ${e[2] === 'H' ? 'h' : 'l'}"><b>${e[2] === 'H' ? 'High' : 'Low'} ${tFmt(e[0], tz)}</b> ${ftM(e[1])}</span>`;
+const dayEvs = (st, d) => (st.hilo || []).filter(e => tDay(e[0], st.tz) === d);
+async function loadTides(dayKeys, after) {
+  if (CONFIG.dataSource === 'mock') return;
+  const list = dayKeys.map(d => MET.days[d]).filter(x => x && x.lat != null && x.model);
+  if (!list.length) return;
+  const q = list.map(x => `${x.day}:${(+(x.loc_lat ?? x.lat)).toFixed(3)},${(+(x.loc_lon ?? x.lon)).toFixed(3)}`).join('|');      // the day's own location, not the town's weather point
+  if (TIDE.at[q] && Date.now() - TIDE.at[q] < 10 * 60e3) return;          // fresh (or on its way): the caller already drew it
+  TIDE.at[q] = Date.now();
+  try {
+    const j = await (await fetch(`${CONFIG.api}/api/tides?days=${encodeURIComponent(q)}`, { cache: 'no-store' })).json();
+    TIDE.ready = j.ready !== false;
+    for (const d of j.days || []) TIDE.days[d.day] = d;
+    Object.assign(TIDE.st, j.stations || {});
+  } catch (e) { console.warn('tides unavailable', e); delete TIDE.at[q]; }
+  after?.();
+}
+const tideStationsFor = d => (TIDE.days[d]?.st || []).map(id => TIDE.st[id]).filter(Boolean);
+function tideDayLine(d) {                 // compact line for a weather day card / coming-days row: the day's high tides at the first station
+  const st = tideStationsFor(d)[0]; if (!st) return '';
+  const hs = dayEvs(st, d).filter(e => e[2] === 'H').map(e => tFmt(e[0], st.tz));
+  return hs.length ? `<div class="tide-dl" title="High tides at ${esc(st.name)} (${tzLab(st.tz)})">🌊 H ${hs.join(' · ')}</div>` : '';
+}
+function tideWhy(x) {
+  if (!x) return '';
+  if (x.why === 'fav') return `${esc(x.fav || 'favourites')} · favourites`;
+  if (x.why === 'pin') return x.pin_mode === 'from' ? 'your choice · until you change it' : x.pin_grp ? `your choice · through ${x.pin_grp.slice(-2)} ${MON[+x.pin_grp.slice(-5, -3) - 1]}` : 'your choice · today';
+  return 'nearest station';
+}
+function tideStationCard(st, d, now) {
+  const tz = st.tz, nx = (st.hilo || []).find(e => e[0] > now), today = dayEvs(st, d), tom = dayEvs(st, addDays(d, 1));
+  const s0 = tzMidnight(d, tz), s1 = tzMidnight(addDays(d, 1), tz);
+  return `<div class="tide-st">
+    <div class="tide-sn"><b>${esc(st.name)}</b><span class="muted"> · ${st.mi} mi ${st.dir} · ${TIDE_TYPE[st.type] || ''}</span>${st.far ? '<div class="tide-far">5–15 mi away: times may differ from where you are</div>' : ''}</div>
+    ${nx ? `<div class="tide-next">Next <b>${nx[2] === 'H' ? 'High' : 'Low'} ${tFmt(nx[0], tz)}</b> · ${ftM(nx[1])} <span class="muted">· in ${inMin(nx[0] - now)}</span></div>` : ''}
+    ${tideSvg(st, s0, s1, { now, w: innerWidth < 600 ? 340 : 520, h: innerWidth < 600 ? 140 : 150 })}
+    <div class="tide-evs"><span class="muted">Today</span><div>${today.map(e => evRow(e, tz)).join('') || '<span class="muted">—</span>'}</div></div>
+    <div class="tide-evs"><span class="muted">Tomorrow</span><div>${tom.map(e => evRow(e, tz)).join('') || '<span class="muted">—</span>'}</div></div>
+    <div class="tide-w">${st.water ? `Water <b>${wC(st.water.c)}</b>${now - st.water.t > 3600e3 ? ` <span class="muted">· at ${tFmt(st.water.t, tz)}</span>` : ''}` : '<span class="muted">No water temperature at this station</span>'}</div></div>`;
+}
+function tideLag(a, b, d) {               // average minutes b is behind a for the same highs/lows that day
+  const ea = dayEvs(a, d), eb = b.hilo || [], diffs = [];
+  for (const e of ea) { const m = eb.filter(x => x[2] === e[2]).map(x => x[0] - e[0]).filter(x => Math.abs(x) < 3 * 3600e3).sort((p, q) => Math.abs(p) - Math.abs(q))[0]; if (m != null) diffs.push(m); }
+  return diffs.length ? Math.round(diffs.reduce((p, q) => p + q, 0) / diffs.length / 60e3) : null;
+}
+function renderTides() {
+  const box = $('#tideBox'); if (!box) return;
+  const today = MET.today || mtDayKey(Date.now()), x = TIDE.days[today], sts = tideStationsFor(today), own = isOwner(), now = Date.now();
+  if (TIDE.ready === false) { box.innerHTML = own ? '<div class="tide-box muted" style="font-size:.8rem">Tides: the NOAA station list is not loaded yet. In Apps Script, run <b>refreshTideStationsNow</b> once.</div>' : ''; return; }
+  if (!sts.length) {
+    const nx = Object.keys(TIDE.days).filter(d => d > today && TIDE.days[d].st?.length).sort()[0];
+    box.innerHTML = nx ? `<div class="tide-soon">🌊 Tides from <b>${dLab(nx)}</b>${MET.days[nx]?.place ? ` · ${esc(MET.days[nx].place)}` : ''}</div>` : '';
+    return;
+  }
+  let lag = '';
+  if (sts.length === 2) { const m = tideLag(sts[0], sts[1], today);
+    if (m != null && Math.abs(m) >= 10) lag = `<div class="muted tide-note">${esc(sts[1].name.split(',')[0])} runs about ${Math.abs(m)} min ${m > 0 ? 'behind' : 'ahead of'} ${esc(sts[0].name.split(',')[0])} today.</div>`; }
+  box.innerHTML = `<div class="tide-box"><div class="tide-h"><span><b>Tides</b> · ${esc(MET.days[today]?.place || '')} · ${tideWhy(x)} · ${tzLab(sts[0].tz)}</span>${own ? '<a href="#" id="tideChg">Change station</a>' : ''}</div>
+    <div class="tide-grid n${sts.length}">${sts.map(s => tideStationCard(s, today, now)).join('')}</div>
+    ${lag}<div class="muted tide-note">Heights above mean lower low water (MLLW). Source: <a href="https://tidesandcurrents.noaa.gov/" target="_blank" rel="noopener">NOAA tide predictions</a>.</div>
+    <div id="tidePick"></div></div>`;
+  const a = $('#tideChg'); if (a) a.onclick = e => { e.preventDefault(); openTidePick(); };
+  if (TIDE.ui === 'pick') renderTidePick();
+}
+// Owner: Change station for today (stations within 15 mi of today's location, with today's high and low)
+async function fetchTideNear(lat, lon, day) {
+  const j = await (await fetch(`${CONFIG.api}/api/tides/near?lat=${(+lat).toFixed(4)}&lon=${(+lon).toFixed(4)}&day=${day}`, { cache: 'no-store' })).json();
+  return j;
+}
+const firstHL = (s, d) => { const ev = dayEvs(s, d); const h = ev.find(e => e[2] === 'H'), l = ev.find(e => e[2] === 'L');
+  return [h && `High ${tFmt(h[0], s.tz)}`, l && `Low ${tFmt(l[0], s.tz)}`].filter(Boolean).join(' · '); };
+function tideListHtml(stations, d, sel, all) {
+  const rows = (s, i) => `<div class="tide-row${sel.includes(s.id) ? ' on' : ''}"><span class="mi">${s.mi} mi ${s.dir}</span><span class="nm"><b>${esc(s.name)}</b><small>${s.type === 'R' ? 'full curve' : 'highs/lows only'} · ${firstHL(s, d) || '—'}</small></span>
+    <span class="bt">${sel.indexOf(s.id) === 0 ? '<button class="primary" data-ts="' + s.id + '">1st ✓</button>' : sel.indexOf(s.id) === 1 ? '<button class="primary" data-ts="' + s.id + '">2nd ✓</button>' : `<button data-ts="${s.id}">${sel.length ? 'Add 2nd' : 'Use'}</button>`}</span></div>`;
+  const near = stations.filter(s => !s.far), far = stations.filter(s => s.far);
+  const farShown = all ? far : far.slice(0, Math.max(0, 8 - near.length));
+  return (near.length ? `<div class="tide-grp">Within 5 mi</div>${near.map(rows).join('')}` : '') +
+    (far.length ? `<div class="tide-grp">5–15 mi · times may differ from where you are</div>${farShown.map(rows).join('')}` : '') +
+    (farShown.length < far.length ? `<div class="tide-more"><a href="#" data-tall="1">+ ${far.length - farShown.length} more between ${far[farShown.length].mi} and ${far.at(-1).mi} mi · show all</a></div>` : '');
+}
+function bindTideList(box, redraw) {
+  box.onclick = e => {
+    const b = e.target.closest('[data-ts]'), m = e.target.closest('[data-tall]');
+    if (m) { e.preventDefault(); TIDE.all = true; redraw(); return; }
+    if (!b) return; e.preventDefault();
+    const id = b.dataset.ts, i = TIDE.sel.indexOf(id);
+    if (i >= 0) TIDE.sel.splice(i, 1); else { if (TIDE.sel.length >= 2) TIDE.sel.pop(); TIDE.sel.push(id); }
+    redraw();
+  };
+}
+async function openTidePick() {
+  const today = MET.today || mtDayKey(Date.now()), m = MET.days[today];
+  TIDE.ui = 'pick'; TIDE.all = false; TIDE.sel = [...(TIDE.days[today]?.st || [])]; TIDE.near = null; TIDE.msg = 'Loading stations…'; renderTidePick();
+  try { TIDE.near = await fetchTideNear(m.loc_lat ?? m.lat, m.loc_lon ?? m.lon, today); TIDE.msg = ''; } catch { TIDE.msg = 'Could not reach the server.'; }
+  renderTidePick();
+}
+function renderTidePick() {
+  const box = $('#tidePick'); if (!box) return;
+  if (TIDE.ui !== 'pick') { box.innerHTML = ''; return; }
+  const today = MET.today || mtDayKey(Date.now()), j = TIDE.near, place = MET.days[today]?.place || 'here';
+  const sts = j?.stations || [];
+  box.innerHTML = `<div class="tide-pick"><div class="tide-h"><b>Change tide station</b><span class="muted">near ${esc(place)} · ${sts.length} station${sts.length === 1 ? '' : 's'} within 15 mi</span></div>
+    ${TIDE.msg ? `<div class="muted">${esc(TIDE.msg)}</div>` : ''}
+    <div id="tideList">${tideListHtml(sts, today, TIDE.sel, TIDE.all)}</div>
+    <div class="row tide-keep"><span>Keep this choice</span>
+      <label><input type="radio" name="tkeep" value="day" checked> Just today</label>
+      <label><input type="radio" name="tkeep" value="range"> Through <input type="date" id="tTo" min="${addDays(today, 1)}" max="${addDays(today, 30)}" value="${addDays(today, 3)}"></label>
+      <label><input type="radio" name="tkeep" value="from"> Until I change it</label></div>
+    <label class="tide-fav"><input type="checkbox" id="tFav"${j?.fav ? '' : ''}> Save ${TIDE.sel.length ? TIDE.sel.map(id => esc((sts.find(s => s.id === id)?.name || id).split(',')[0])).join(' + ') : 'the picked stations'} as favourites for this area (within 15 mi)${j?.fav ? ` · replaces “${esc(j.fav.label)}”` : ''}</label>
+    <div class="row"><button class="primary" id="tSave"${TIDE.sel.length ? '' : ' disabled'}>Save</button><button id="tAuto">Back to automatic</button><button id="tCancel">Cancel</button><span class="muted" id="tMsg"></span></div></div>`;
+  bindTideList($('#tideList'), renderTidePick);
+  const msg = t => { $('#tMsg').textContent = t; };
+  const done = async () => { TIDE.ui = null; TIDE.at = {}; MET.at = {}; loadMetWeek(); };
+  $('#tCancel').onclick = () => { TIDE.ui = null; renderTidePick(); };
+  $('#tAuto').onclick = async () => { try { msg('Saving…'); const mode = box.querySelector('[name=tkeep]:checked').value;
+    await ownerPost('/admin/tides/pin', { day: today, mode, to: $('#tTo').value, st: [] }); await done(); } catch (e) { msg(e.message); } };
+  $('#tSave').onclick = async () => { try { msg('Saving…'); const mode = box.querySelector('[name=tkeep]:checked').value, m = MET.days[today];
+    const r = await ownerPost('/admin/tides/pin', { day: today, mode, to: $('#tTo').value, st: TIDE.sel });
+    if (r.ok === false) { msg(r.error); return; }
+    if ($('#tFav').checked) await ownerPost('/admin/tides/fav', { lat: m.loc_lat ?? m.lat, lon: m.loc_lon ?? m.lon, label: j?.fav?.label || place, st: TIDE.sel });
+    await done(); } catch (e) { msg(e.message); } };
+}
+// Weather-location form: optional Tide stations step once the place is matched
+const METTIDE = { lat: null, lon: null, j: null, sel: null, day: null };
+async function metTideStep(d, lat, lon, cur) {
+  const box = $('#metTide'); if (!box || CONFIG.dataSource === 'mock') return;
+  METTIDE.lat = lat; METTIDE.lon = lon; METTIDE.day = d; METTIDE.j = null;
+  METTIDE.sel = cur?.tide_st ? String(cur.tide_st).split(',').filter(Boolean) : [];
+  box.innerHTML = '<div class="muted">Looking for tide stations…</div>';
+  try { METTIDE.j = await fetchTideNear(lat, lon, d); } catch { box.innerHTML = ''; return; }
+  const draw = () => {
+    const sts = METTIDE.j.stations || [];
+    if (METTIDE.j.ready === false) { box.innerHTML = '<div class="muted">Tide station list not loaded yet (Apps Script: refreshTideStationsNow).</div>'; return; }
+    if (!sts.length) { box.innerHTML = '<div class="muted">🌊 No NOAA tide stations within 15 mi: no tides for these days.</div>'; return; }
+    TIDE.sel = METTIDE.sel;
+    box.innerHTML = `<div class="tide-pick"><div class="tide-h"><b>🌊 Tide stations</b><span class="muted">optional · ${sts.length} within 15 mi · none picked = ${METTIDE.j.fav ? `your favourites (${esc(METTIDE.j.fav.label)})` : 'nearest station'}</span></div>
+      <div id="metTideList">${tideListHtml(sts, d, METTIDE.sel, TIDE.all)}</div></div>`;
+    bindTideList($('#metTideList'), () => { METTIDE.sel = TIDE.sel; draw(); });
+  };
+  TIDE.all = false; draw();
+}
+// Activity page: Tides card (nearest station to the track, or the owner's choice), only when part of the track is below ~100 ft
+async function renderTideAct(D, s) {
+  const card = $('#tideCard'); if (!card) return;
+  const id = D.trip?.id, pts = s.pts || [];
+  const low = pts.length && (pts.every(p => p.ele == null) || pts.some(p => p.ele != null && p.ele <= 100));
+  if (!id || !low || CONFIG.dataSource === 'mock') { card.hidden = true; return; }
+  const t0 = pts[0].ts, t1 = s.ended ? pts.at(-1).ts : Math.max(s.now || Date.now(), pts.at(-1).ts);
+  const c = TIDE.act[id];
+  if (!c || (!s.ended && Date.now() - c.at > 10 * 60e3) || c.t0 !== t0) {
+    if (c?.busy) return;
+    TIDE.act[id] = { ...(c || {}), busy: true, at: Date.now(), t0 };
+    const k = Math.max(1, Math.floor(pts.length / 60)), sm = pts.filter((p, i) => i % k === 0 && p.lat != null).slice(0, 80).map(p => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join(';');
+    try { const j = await (await fetch(`${CONFIG.api}/api/tides?act=${encodeURIComponent(id)}&pts=${sm}&t0=${new Date(t0).toISOString()}&t1=${new Date(t1).toISOString()}`, { cache: 'no-store' })).json();
+      TIDE.act[id] = { j, at: Date.now(), t0, busy: false }; }
+    catch (e) { TIDE.act[id] = { at: Date.now(), t0, busy: false }; }
+    if (CURRENT !== id && DATA?.trip?.id !== id) return;
+  }
+  const j = TIDE.act[id]?.j, st = j?.station;
+  if (!st) { card.hidden = true; return; }
+  card.hidden = false;
+  const tz = st.tz, a = tideAt(st, t0), b = tideAt(st, t1), live = !s.ended;
+  const during = (st.hilo || []).filter(e => e[0] >= t0 && e[0] <= t1);
+  const nxt = (st.hilo || []).find(e => e[0] > t1);
+  const nxtFrom = e => e ? `${e[2] === 'H' ? 'high' : 'low'} in ${inMin(e[0] - t0)}` : '';
+  const first = (st.hilo || []).find(e => e[0] > t0);
+  const tile = (k, v, sub) => `<div class="tile"><div class="label">${k}</div><div class="value">${v}</div><div class="foot">${sub}</div></div>`;
+  $('#tideMeta').innerHTML = `${esc(st.name)} · ${st.mi} mi from your track · ${tzLab(tz)}${st.far ? ' · <span class="tide-far-i">times may differ from where you were</span>' : ''}${isOwner() ? ' · <a href="#" id="tideActChg">Change station</a>' : ''}`;
+  const ht = v => v ? `${sg1(v.ft)} ft<small>${sg1(v.ft * 0.3048)} m</small>` : '—';
+  $('#tideTiles').innerHTML = `<div class="tile-row" style="--n:${st.water ? 4 : 3}">
+    ${tile(`At the start · ${tFmt(t0, tz)}`, ht(a), a ? `${a.rising ? 'rising' : 'falling'}${first ? ', ' + nxtFrom(first) : ''}` : '')}
+    ${tile(during.length === 1 ? `${during[0][2] === 'H' ? 'High' : 'Low'} during the activity` : during.length ? 'Highs and lows during' : 'During the activity',
+      during.length ? during.map(e => tFmt(e[0], tz)).join(' · ') : 'no high or low', during.map(e => `${e[2] === 'H' ? 'High' : 'Low'} ${ftM(e[1])}`).join(' · ') || 'between tides the whole time')}
+    ${tile(live ? `Now · ${tFmt(t1, tz)}` : `At the finish · ${tFmt(t1, tz)}`, ht(b), b ? (b.rising ? 'rising' : 'falling') : '')}
+    ${st.water ? tile('Water', `${st.water.c.toFixed(0)} °C<small>${Math.round(st.water.c * 9 / 5 + 32)} °F</small>`, live ? 'at the station, latest' : `at the station, ${tFmt(st.water.t, tz)}`) : ''}</div>`;
+  const w0 = t0 - 5 * 3600e3, w1 = t1 + 5 * 3600e3;
+  $('#tideChart').innerHTML = tideSvg(st, w0, w1, { shade: [t0, t1], marks: [[t0, 'start'], [t1, live ? 'now' : 'finish']], w: innerWidth < 600 ? 360 : 640, h: innerWidth < 600 ? 160 : 170 });
+  $('#tideFoot').innerHTML = `Shaded = your activity.${nxt ? ` Next ${nxt[2] === 'H' ? 'high' : 'low'} after it: ${tFmt(nxt[0], tz)} · ${ftM(nxt[1])}.` : ''} Heights above MLLW. ${TIDE_TYPE[st.type] ? `Station: ${TIDE_TYPE[st.type]}.` : ''} Source: <a href="https://tidesandcurrents.noaa.gov/stationhome.html?id=${st.id}" target="_blank" rel="noopener">NOAA</a>.`;
+  const ch = $('#tideActChg');
+  if (ch) ch.onclick = e => { e.preventDefault(); TIDE.actUi = TIDE.actUi === id ? null : id; TIDE.sel = [st.id]; drawActPick(); };
+  const drawActPick = () => {
+    const box = $('#tideActPick'); if (TIDE.actUi !== id) { box.innerHTML = ''; return; }
+    const near = j.near || [];
+    box.innerHTML = `<div class="tide-pick"><div class="tide-h"><b>Tide station for this activity</b><span class="muted">${near.length} within 15 mi of the track</span></div>
+      ${near.map(n => `<div class="tide-row${n.id === st.id ? ' on' : ''}"><span class="mi">${n.mi} mi ${n.dir}</span><span class="nm"><b>${esc(n.name)}</b><small>${n.type === 'R' ? 'full curve' : 'highs/lows only'}</small></span><span class="bt"><button data-tact="${n.id}"${n.id === st.id ? ' class="primary"' : ''}>${n.id === st.id ? 'In use' : 'Use'}</button></span></div>`).join('')}
+      <div class="row"><button id="tActAuto">Back to automatic</button><button id="tActCancel">Close</button><span class="muted" id="tActMsg"></span></div></div>`;
+    const set = async stId => { try { $('#tActMsg').textContent = 'Saving…'; await ownerPost('/admin/tides/act', { act: id, st: stId }); TIDE.actUi = null; delete TIDE.act[id]; renderTideAct(D, s); } catch (e) { $('#tActMsg').textContent = e.message; } };
+    box.onclick = e => { const bt = e.target.closest('[data-tact]'); if (bt) set(bt.dataset.tact); };
+    $('#tActAuto').onclick = () => set(null);
+    $('#tActCancel').onclick = () => { TIDE.actUi = null; drawActPick(); };
+  };
+  drawActPick();
+}
+
 
 /* ---- Weekly records view (#weeks) ---- */
 let WK_OPEN = new Set(), WK_YEAR = null;
@@ -2924,13 +3217,13 @@ function renderAll() {
   const ng = !!D.trip?.nogps || (!s.pts.length && String(D.trip?.id || '').startsWith('imp-'));
   $('#detail').classList.toggle('nogps', ng);
   if (ng) {                                                  // rowing machine, treadmill …: no map, charts or splits
-    renderHeader(D, s); renderTitleEdit(D); renderLocEdit(D); renderNotes(D); renderNoGps(D); return;
+    renderHeader(D, s); renderTitleEdit(D); renderLocEdit(D); renderNotes(D); renderNoGps(D); $('#tideCard').hidden = true; return;
   }
   renderLocEdit(D); renderDriveHint(D, s);
   loadOsm(D, s);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
-  renderMap(D, s); renderPhotos(D, s); renderProfile(D, s); renderWx(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
+  renderMap(D, s); renderPhotos(D, s); renderProfile(D, s); renderWx(D, s); renderTideAct(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
 }
 
 /* =========================================================================
@@ -3114,7 +3407,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.17.0';
+const VERSION = 'v0.18.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
