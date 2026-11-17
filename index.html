@@ -250,6 +250,19 @@ td.t-thumb { width: 72px; padding: 6px 4px 6px 14px; }
 .act-sub { font-size: 0.82rem; color: var(--muted); }
 .show-narrow { display: none; }
 td.srcs .sw { margin-right: 4px; }
+/* v0.21.1 activities table: 7 columns, fixed widths on wider screens (no side scroll), titles wrap; months and years fold */
+@media (min-width: 641px) { .act-table { table-layout: fixed; } .act-table th.c-th { width: 72px; } .act-table th.c-dist { width: 92px; } .act-table th.c-vert { width: 86px; }
+  .act-table th.c-hl { width: 96px; } .act-table th.c-time { width: 104px; } .act-table th.c-eff { width: 100px; } }
+.act-table td.t-name { white-space: normal; overflow-wrap: anywhere; }
+.act-table td.num { padding-left: 8px; padding-right: 12px; vertical-align: top; } .act-table td.t-name { vertical-align: top; }
+.act-sub .sw { margin-left: 4px; vertical-align: -1px; } .act-sub .chip { margin-left: 4px; }
+tr.fold-row th { cursor: pointer; user-select: none; color: var(--spruce); font-weight: 600; font-size: 0.9rem; background: var(--bg); padding-top: 12px; white-space: normal; }
+tr.fold-row th:hover { color: var(--ink); } tr.fold-row th:focus-visible { outline: 2px solid var(--series-lt); outline-offset: -2px; }
+tr.fold-row .fs { color: var(--muted); font-weight: 400; font-size: .82rem; margin-left: 6px; }
+tr.fold-row .chev { display: inline-block; width: 1em; color: var(--muted); }
+tr.fold-row.cur th { cursor: default; } tr.fold-row.cur .tag { margin-left: 6px; }
+tr.fold-row.in-yr th { padding-left: 34px; font-size: .86rem; }
+tr.empty-row td { color: var(--muted); font-size: .88rem; padding: 10px 14px 14px 34px; }
 
 /* ---------- Detail ---------- */
 .d-back { display: inline-block; font-weight: 500; text-decoration: none; margin-bottom: 14px; }
@@ -532,8 +545,8 @@ footer p { margin: 0 0 6px; }
     <section aria-labelledby="actTitle">
       <div class="section-head"><h2 id="actTitle">Activities</h2><span class="muted"><span id="actCount"></span> · <a href="#drives">🚗 Drives →</a><span id="fltLink" hidden> · <a href="#flights">✈ Flights →</a></span></span></div>
       <div class="table-wrap">
-        <table>
-          <thead><tr><th></th><th>Activity</th><th class="num hide-narrow">Distance</th><th class="num hide-narrow">Vertical gain</th><th class="num hide-narrow">High</th><th class="num hide-narrow">Low</th><th class="num hide-narrow">Avg HR</th><th class="num hide-narrow">Calories</th><th class="num hide-narrow">Time</th><th class="hide-narrow">Sources</th></tr></thead>
+        <table class="act-table">
+          <thead><tr><th class="c-th"></th><th>Activity</th><th class="num hide-narrow c-dist">Distance</th><th class="num hide-narrow c-vert">Vert</th><th class="num hide-narrow c-hl">High · Low</th><th class="num hide-narrow c-time">Time</th><th class="num hide-narrow c-eff">Effort</th></tr></thead>
           <tbody id="actBody"></tbody>
         </table>
       </div>
@@ -551,7 +564,7 @@ footer p { margin: 0 0 6px; }
   </main>
 
   <main id="dayView" hidden>
-    <a class="d-back" href="#weather">← Daily weather</a>
+    <a class="d-back" href="#">← All activities</a>
     <div id="dayBody"></div>
   </main>
 
@@ -4007,31 +4020,61 @@ function renderLanding() {
   }
 
   const past = ACTS.filter(a => a !== live);
-  $('#actCount').textContent = past.length ? `${past.length} activit${past.length === 1 ? 'y' : 'ies'}` : '';
-  let month = '', rows = '';
-  for (const a of past) {
-    const mo = fmtMonth(a.start);
-    if (mo !== month) { month = mo; rows += `<tr class="group-row"><th colspan="10">${mo}</th></tr>`; }
-    const dur = a.end ? Date.parse(a.end) - Date.parse(a.start) : null;
-    const srcs = a.kind === 'import' ? `<span class="chip" title="${esc(a.source || '')}">${a.fmt ? esc(a.fmt.toUpperCase()) : 'File'}</span>`
-      : [a.n_lt ? '<i class="sw lt" title="LiveTrack"></i>' : '', a.n_ir ? '<i class="sw ir" title="inReach"></i>' : '',
-         a.final ? `<span class="chip" title="Watch file merged">${esc((a.final.fmt || 'file').toUpperCase())}</span>` : ''].join('');
-    rows += `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
+  renderActList(past);
+}
+/* v0.21.1 Activities list: the current month (Mountain time) is always open; other months of this year are folded rows with
+   totals; earlier years fold into one row each (opening a year shows its months, folded). Only the current month starts open. */
+const ACT_OPEN = new Set();
+function actRow(a) {
+  const dur = a.end ? Date.parse(a.end) - Date.parse(a.start) : null;
+  const srcs = a.kind === 'import' ? `<span class="chip" title="${esc(a.source || '')}">${a.fmt ? esc(a.fmt.toUpperCase()) : 'File'}</span>`
+    : [a.n_lt ? '<i class="sw lt" title="LiveTrack"></i>' : '', a.n_ir ? '<i class="sw ir" title="inReach"></i>' : '',
+       a.final ? `<span class="chip" title="Watch file merged">${esc((a.final.fmt || 'file').toUpperCase())}</span>` : ''].join('');
+  const hm2 = ms => fmtClock(ms).replace(/:\d\d$/, '');
+  return `<tr class="act-row" data-id="${esc(a.id)}" tabindex="0">
       <td class="t-thumb">${thumbSvg(a.thumb, 56, 40, { sw:1.6, color: a.n_lt ? 'var(--series-lt)' : 'var(--series-ir)' })}</td>
-      <td><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a>${a.has_notes ? ' <span title="Has notes">📝</span>' : ''}<div class="act-sub">${a.name || a.auto_place ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)}<span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
+      <td class="t-name"><a href="#a/${encodeURIComponent(a.id)}" class="act-name">${esc(a.title)}</a>${a.has_notes ? ' <span title="Has notes">📝</span>' : ''}<div class="act-sub">${a.name || a.auto_place ? fmtDate(a.start) + ' · ' + fmtTime(a.start) : fmtDT(a.start)} <span class="hide-narrow">${srcs}</span><span class="show-narrow"><br>${fmtMi(a.dist_mi)} · ↑ ${fmtFt(a.gain_ft)}${dur != null ? ' · ' + fmtClock(dur) : ''}${a.ele_max_ft != null ? `<br>high ${fmtFt(a.ele_max_ft)} · low ${fmtFt(a.ele_min_ft)}` : ''}${a.hr_avg ? ` · avg HR ${a.hr_avg}` : ''}</span></div></td>
       <td class="num hide-narrow">${a.dist_mi.toFixed(1)} <small>mi</small>${alt(km(a.dist_mi) + ' km')}</td>
       <td class="num hide-narrow">${n0(a.gain_ft)} <small>ft</small>${alt(mOf(a.gain_ft) + ' m')}</td>
-      <td class="num hide-narrow">${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${alt(mOf(a.ele_max_ft) + ' m')}` : '—'}</td>
-      <td class="num hide-narrow">${a.ele_min_ft != null ? `${n0(a.ele_min_ft)} <small>ft</small>${alt(mOf(a.ele_min_ft) + ' m')}` : '—'}</td>
-      <td class="num hide-narrow">${a.hr_avg ? `${a.hr_avg} <small>bpm</small>` : '—'}</td>
-      <td class="num hide-narrow">${a.kcal != null ? `${n0(a.kcal)} <small>kcal</small>` : '—'}</td>
-      <td class="num hide-narrow">${dur != null ? fmtClock(dur) : '—'}${a.moving_s ? alt('moving ' + fmtClock(a.moving_s * 1000)) : ''}</td>
-      <td class="srcs hide-narrow">${srcs}</td></tr>`;
-  }
-  $('#actBody').innerHTML = rows || `<tr><td colspan="10" class="muted" style="padding:18px 14px">Nothing here yet.</td></tr>`;
+      <td class="num hide-narrow"${a.ele_max_ft != null ? ` title="High ${mOf(a.ele_max_ft)} m · low ${mOf(a.ele_min_ft ?? a.ele_max_ft)} m"` : ''}>${a.ele_max_ft != null ? `${n0(a.ele_max_ft)} <small>ft</small>${a.ele_min_ft != null ? alt(n0(a.ele_min_ft) + ' ft low') : ''}` : '—'}</td>
+      <td class="num hide-narrow">${dur != null ? fmtClock(dur) : '—'}${a.moving_s ? alt('mov ' + hm2(a.moving_s * 1000)) : ''}</td>
+      <td class="num hide-narrow">${a.hr_avg ? `${a.hr_avg} <small>bpm</small>` : a.kcal != null ? '' : '—'}${a.kcal != null ? (a.hr_avg ? alt(n0(a.kcal) + ' kcal') : `${n0(a.kcal)} <small>kcal</small>`) : ''}</td></tr>`;
 }
-$('#actBody').addEventListener('click', e => { if (e.target.closest('a')) return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
-$('#actBody').addEventListener('keydown', e => { if (e.key !== 'Enter') return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
+function renderActList(past) {
+  const nowKey = mtDayKey(Date.now()), curM = nowKey.slice(0, 7), curY = nowKey.slice(0, 4);
+  const mName = k => `${['January','February','March','April','May','June','July','August','September','October','November','December'][+k.slice(5, 7) - 1]} ${k.slice(0, 4)}`;
+  const byM = new Map(); for (const a of past) { const k = mtDayKey(Date.parse(a.start)).slice(0, 7); if (!byM.has(k)) byM.set(k, []); byM.get(k).push(a); }
+  if (!byM.has(curM)) byM.set(curM, []);
+  const months = [...byM.keys()].sort().reverse();
+  const tot = acts => `${acts.length} activit${acts.length === 1 ? 'y' : 'ies'}${acts.length ? ` · ${acts.reduce((t, a) => t + (a.dist_mi || 0), 0).toFixed(1)} mi · ${n0(acts.reduce((t, a) => t + (a.gain_ft || 0), 0))} ft` : ''}`;
+  const head = (cls, attr, open, label, sum, extra = '') => `<tr class="fold-row ${cls}" ${attr}><th colspan="7" tabindex="0" aria-expanded="${open}"><span class="chev">${cls.includes('cur') ? '▾' : open ? '▾' : '▸'}</span>${label}${extra}<span class="fs">· ${sum}</span></th></tr>`;
+  let rows = '';
+  const monthBlock = (k, inYr) => {
+    const acts = byM.get(k), cur = k === curM, open = cur || ACT_OPEN.has('m' + k);
+    rows += head(`${cur ? 'cur' : ''}${inYr ? ' in-yr' : ''}`, cur ? '' : `data-fk="m${k}"`, open, mName(k), tot(acts), cur ? '<span class="tag">this month</span>' : '');
+    if (open) rows += acts.length ? acts.map(actRow).join('') : `<tr class="empty-row"><td colspan="7">No activities yet this month.</td></tr>`;
+  };
+  for (const k of months.filter(k => k.slice(0, 4) === curY)) monthBlock(k, false);
+  const years = [...new Set(months.map(k => k.slice(0, 4)).filter(y => y < curY))].sort().reverse();
+  for (const y of years) {
+    const ym = months.filter(k => k.slice(0, 4) === y), open = ACT_OPEN.has('y' + y);
+    rows += head('yr', `data-fk="y${y}"`, open, y, tot(ym.flatMap(k => byM.get(k))));
+    if (open) for (const k of ym) monthBlock(k, true);
+  }
+  $('#actBody').innerHTML = rows;
+  const all = [...months.filter(k => k !== curM).map(k => 'm' + k), ...years.map(y => 'y' + y)];
+  const allOpen = all.length && all.every(k => ACT_OPEN.has(k));
+  $('#actCount').innerHTML = past.length ? `${past.length} activit${past.length === 1 ? 'y' : 'ies'}${all.length ? ` · <a href="#" id="actAll">${allOpen ? 'Close all but this month' : 'Open all'}</a>` : ''}` : '';
+  const aa = $('#actAll'); if (aa) aa.onclick = e => { e.preventDefault(); if (allOpen) ACT_OPEN.clear(); else all.forEach(k => ACT_OPEN.add(k)); renderActList(past); };
+  ACT_LIST = past;
+}
+let ACT_LIST = [];
+function actFold(e) {
+  const r = e.target.closest('tr.fold-row[data-fk]'); if (!r) return false;
+  const k = r.dataset.fk; ACT_OPEN.has(k) ? ACT_OPEN.delete(k) : ACT_OPEN.add(k); renderActList(ACT_LIST); return true;
+}
+$('#actBody').addEventListener('click', e => { if (actFold(e)) return; if (e.target.closest('a')) return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
+$('#actBody').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; if (e.target.closest('tr.fold-row')) { e.preventDefault(); actFold(e); return; } if (e.key !== 'Enter') return; const r = e.target.closest('tr[data-id]'); if (r) location.hash = 'a/' + encodeURIComponent(r.dataset.id); });
 
 /* =========================================================================
    DETAIL
@@ -4239,7 +4282,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.21.0';
+const VERSION = 'v0.21.1';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
