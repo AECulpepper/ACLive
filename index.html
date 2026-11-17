@@ -70,6 +70,30 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .week .now-stats .v { font-size: 1.75rem; }
 .week-last { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
 .week-h a { white-space: nowrap; }
+/* v0.21 daily log: place under High / Low values, tags, Today card, day log edit */
+.place { font-size: .8rem; color: var(--ink); margin-top: 1px; line-height: 1.3; } .place i { font-style: normal; color: var(--muted); }
+.tag-ed, .tag-loc { font-size: .68rem; padding: 0 6px; border-radius: 999px; border: 1px solid var(--series-ir); color: var(--series-ir); margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
+.tag-loc { border-color: var(--line); color: var(--muted); }
+.today-card .now-stats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px 16px; }
+.today-card.rest .now-stats { grid-template-columns: repeat(3, minmax(0, 12rem)); }
+@media (max-width: 900px) { .today-card .now-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .today-card .now-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .today-card.rest .now-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 10px; } }
+.dl-note { margin-top: 10px; font-size: .88rem; color: var(--muted); } .dl-note b { color: var(--ink); }
+.dl-key { margin-top: 8px; font-size: .78rem; color: var(--text-muted); }
+.dl-edit { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.dl-side { display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr); gap: 8px 12px; align-items: start; }
+@media (max-width: 560px) { .dl-side { grid-template-columns: 1fr; } }
+.dl-edit label { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; color: var(--muted); }
+.dl-edit input, .dl-edit textarea { font: inherit; font-size: .95rem; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-height: 40px; box-sizing: border-box; width: 100%; }
+.dl-edit small { font-size: .74rem; color: var(--text-muted); }
+.dl-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .dl-btns button { min-height: 36px; font-size: .82rem; }
+.dl-list { list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.dl-list li { padding: 8px 10px; border-top: 1px solid var(--line); cursor: pointer; font-size: .88rem; } .dl-list li:first-child { border-top: 0; }
+.dl-list li:hover, .dl-list li:focus { background: var(--panel-2); outline: none; } .dl-list li span { color: var(--muted); font-size: .8rem; }
+.dl-map { height: 260px; border-radius: 8px; margin-top: 6px; }
+.dl-acts { margin-top: 10px; font-size: .88rem; } .dl-acts a { display: inline-block; margin: 2px 0; }
+#wkTable tr.day td { font-size: .86rem; background: var(--panel-2); } #wkTable tr.day td:first-child { padding-left: 22px; }
+#wkTable tr.day.rest td { color: var(--muted); } #wkTable td small.pl { display: block; color: var(--muted); font-size: .72rem; white-space: normal; max-width: 12rem; }
 @media (max-width: 560px) { .week .now-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; } .week .now-stats .v { font-size: 1.35rem; } }
 .wk-ctl { display: inline-flex; gap: 6px; align-items: center; } .wk-ctl select, .wk-ctl button { font: inherit; font-size: .82rem; }
 .wk-chart-h { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
@@ -320,6 +344,8 @@ td .alt { font-size: 0.78rem; }
 .tile .value { font-family: var(--font-display); font-weight: 600; font-size: 1.7rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .tile .value small { font-family: var(--font); font-weight: 400; font-size: 0.8rem; color: var(--muted); margin-left: 3px; }
 .tile .foot { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+.tile .foot .tile-sub { margin-top: 8px; } .tile .foot .value { color: var(--ink); } .tile .foot .tile-v2 { margin-top: 6px; }
+.pace-l { font-size: .82rem; } .pace-l span { color: var(--ink); }
 .tile .foot.behind { color: var(--crit-text); } .tile .foot.ahead { color: var(--good-text); }
 .stale-tag { color: var(--warn-text); }
 
@@ -500,6 +526,7 @@ footer p { margin: 0 0 6px; }
     <section aria-label="Drive"><div id="driveCard" class="drive-card" hidden></div></section>
     <section aria-label="Flight"><div id="airCard" class="drive-card" hidden></div></section>
     <section class="top-row" aria-label="This week and inReach check-ins"><div id="weekCard" class="week"></div><div id="irCard" class="week ir-week"></div></section>
+    <section aria-label="Today"><div id="todayCard" class="week today-card"></div></section>
     <section aria-label="Current activity"><div id="nowCard" class="now"></div></section>
     <section aria-label="Weather this week"><div id="metCard" class="week met-week"></div></section>
     <section aria-labelledby="actTitle">
@@ -589,7 +616,7 @@ footer p { margin: 0 0 6px; }
     <a class="d-back" href="#">← All activities</a>
     <section class="card">
       <div class="card-h"><h2>Weekly records</h2>
-        <span class="meta wk-ctl"><select id="wkYear" aria-label="Year"></select><button id="wkCsv">Download CSV</button></span></div>
+        <span class="meta wk-ctl"><select id="wkYear" aria-label="Year"></select><button id="wkCsv">Weekly CSV</button><button id="wkDayCsv" hidden>Daily CSV</button></span></div>
       <div class="card-b">
         <div class="wk-chart-h">Miles per week · last 26 weeks</div>
         <div id="wkChart"></div>
@@ -1392,10 +1419,13 @@ function renderTiles(d, s) {
   // Pace: average moving pace (stops excluded), average including stops, and (live) the recent moving pace
   const mi = s.curMi > 0.05 ? s.curMi : 0, movAvg = mi && s.movingMs ? s.movingMs / MIN / mi : null, allAvg = mi && elapsed ? elapsed / MIN / mi : null;
   const pk = v => v ? `${fmtPace(v / KM_PER_MI)} /km` : '';
+  // v0.20.1 Pace tile. Finished: "Pace moving" (mi, km) and a "Pace overall" section. Live: "Pace now · last 2 h" with Moving and Overall lines.
+  const paceLine = (k, v) => v ? `<div class="pace-l"><span>${k}</span> ${fmtPace(v)} /mi · ${pk(v)}</div>` : '';
   const paceT = !s.ended && s.recentPace
-    ? { label: 'Pace', value: `${fmtPace(s.recentPace)}<small>/mi now</small>`, alt: `${movAvg ? `avg ${fmtPace(movAvg)} moving<br>` : ''}${allAvg ? `${fmtPace(allAvg)} incl. stops` : ''}`, foot: `${pk(s.recentPace)} now · moving, last 2 h` }
-    : { label: 'Pace', value: movAvg || allAvg ? `${fmtPace(movAvg || allAvg)}<small>/mi</small>` : '—', alt: movAvg && allAvg ? `${pk(movAvg)}<br>${fmtPace(allAvg)} /mi incl. stops` : pk(movAvg || allAvg),
-        foot: movAvg ? 'average, moving' : allAvg ? 'average, incl. stops' : '' };
+    ? { label: 'Pace now · last 2 h', value: `${fmtPace(s.recentPace)}<small>/mi</small>`, alt: pk(s.recentPace), foot: paceLine('Moving', movAvg) + paceLine('Overall', allAvg) }
+    : movAvg ? { label: 'Pace moving', value: `${fmtPace(movAvg)}<small>/mi</small>`, alt: pk(movAvg),
+        foot: allAvg ? `<div class="label tile-sub">Pace overall</div><div class="value">${fmtPace(allAvg)}<small>/mi</small></div>${alt(pk(allAvg))}` : '' }
+    : { label: 'Pace overall', value: allAvg ? `${fmtPace(allAvg)}<small>/mi</small>` : '—', alt: pk(allAvg), foot: '' };
   // Summary under the title
   $('#sumLine').innerHTML = !s.last && !imp ? '' : [
     [`${s.curMi.toFixed(1)}<small>mi</small>`, `${km(s.curMi)} km${s.estSince ? ' · est. from inReach' : ''}`],
@@ -1415,8 +1445,9 @@ function renderTiles(d, s) {
     third,
     { label:'Vertical gain', value:`${n0(s.gainSoFar)}<small>ft</small>`, alt:`${mOf(s.gainSoFar)} m`,
       foot: s.gainTotal != null && !s.offRoute && !s.shortcut ? `of ${n0(s.gainTotal)} ft · ${mOf(s.gainTotal)} m` : s.ended ? 'total' : 'so far' },
-    { label:'High · low', value: s.eleHigh != null ? `${n0(s.eleHigh)}<small>ft</small>` : '—', alt: s.eleHigh != null ? `${mOf(s.eleHigh)} m` : '',
-      foot: s.eleLow != null ? `low ${n0(s.eleLow)} ft<br>${mOf(s.eleLow)} m` : '' },
+    // v0.20.1 Elevation tile: High and Low at the same size; v0.21 place of each point underneath
+    { label:'Elevation', value: s.eleHigh != null ? `${n0(s.eleHigh)}<small>ft High</small>` : '—', alt: s.eleHigh != null ? `${mOf(s.eleHigh)} m${actPlace(d.trip?.id, 'hi')}` : '',
+      foot: s.eleLow != null ? `<div class="value tile-v2">${n0(s.eleLow)}<small>ft Low</small></div>${alt(`${mOf(s.eleLow)} m${actPlace(d.trip?.id, 'lo')}`)}` : '' },
     paceT,
     stepsTile(s),
     weatherTile(d, s),
@@ -2366,9 +2397,10 @@ async function getJson(path) {
   return r.json();
 }
 async function loadActivities() {
-  if (CONFIG.dataSource === 'mock') { STEPS = {}; CKS = []; return mockActivities(); }
+  if (CONFIG.dataSource === 'mock') { STEPS = {}; CKS = []; DAYS = { loc: {}, log: {}, pts: {}, _at: Date.now() }; return mockActivities(); }
   const j = await getJson('/api/activities');
   STEPS = j.steps || {}; CKS = j.checkins || [];                // all-day steps by day; check-in elevations
+  DAYS = { loc: {}, log: {}, pts: {}, ...(j.days || {}), _at: Date.now() };   // v0.21 daily log
   return j.activities;
 }
 async function loadTrack(id, fresh = false) {
@@ -2539,10 +2571,12 @@ function weekStats(acts, k) {
     if (a.ele_max_ft != null) w.hi = w.hi == null ? a.ele_max_ft : Math.max(w.hi, a.ele_max_ft);
     if (a.ele_min_ft != null) w.lo = w.lo == null ? a.ele_min_ft : Math.min(w.lo, a.ele_min_ft);
   }
-  if (k) {                                                  // the week's Monday: add check-in elevations and all-day steps
-    const end = addDays(k, 7);
-    for (const c of CKS) { if (c.ele_ft == null) continue; const d = mtDayKey(Date.parse(c.t)); if (d < k || d >= end) continue;
-      w.hi = w.hi == null ? c.ele_ft : Math.max(w.hi, c.ele_ft); w.lo = w.lo == null ? c.ele_ft : Math.min(w.lo, c.ele_ft); }
+  if (k) {                                                  // the week's Monday: High / Low from its days (v0.21), all-day steps
+    w.hi = w.lo = null; w.hiAt = w.loAt = null;
+    const di = daysIndex();
+    for (let i = 0; i < 7; i++) { const d = addDays(k, i), h = dayHL(d, di.get(d) || []);
+      if (h.hi && (w.hi == null || h.hi.ft > w.hi)) { w.hi = h.hi.ft; w.hiAt = { ...h.hi, day: d }; }
+      if (h.lo && (w.lo == null || h.lo.ft < w.lo)) { w.lo = h.lo.ft; w.loAt = { ...h.lo, day: d }; } }
     let sum = 0, nd = 0; for (let i = 0; i < 7; i++) { const v = STEPS[addDays(k, i)]; if (v != null) { sum += v; nd++; } }
     w.all = nd && k >= '2026-11-02' ? sum : null; w.allDays = nd;          // all-day steps start with the week of 2 Nov 2026
   }
@@ -2568,10 +2602,11 @@ function renderWeek(now) {
       ${fig('Activities', w.n, typesLine(w.types) || '')}
       ${fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m')}
       ${fig('Calories', w.kcalN ? `${n0(w.kcal)}<small>kcal</small>` : '—', w.kcalN ? `activities only${w.kcalN < w.n ? ` · ${w.n - w.kcalN} without` : ''}` : (w.n ? 'after the watch files' : ''))}
-      ${fig('High point', w.hi != null ? `${n0(w.hi)}<small>ft</small>` : '—', w.hi != null ? mOf(w.hi) + ' m' : '')}
-      ${fig('Low point', w.lo != null ? `${n0(w.lo)}<small>ft</small>` : '—', w.lo != null ? mOf(w.lo) + ' m' : '')}
+      ${hlFig('High point', w.hiAt, { day: true })}
+      ${hlFig('Low point', w.loAt, { day: true })}
     </div>
-    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${hm(p.sec)} h · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.kcalN ? ` · ${n0(p.kcal)} kcal` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft · low ${n0(p.lo)} ft` : ''}</div>`;
+    <div class="week-last">Last week (${weekLabel(prev)}): ${p.n ? `${p.mi.toFixed(1)} mi · ${n0(p.ft)} ft · ${hm(p.sec)} h · ${p.n} activit${p.n === 1 ? 'y' : 'ies'}` : 'no activities'}${p.all != null ? ` · ${n0(p.all)} steps` : p.steps ? ` · ${p.est ? '≈ ' : ''}${n0(p.steps)} steps` : ''}${p.kcalN ? ` · ${n0(p.kcal)} kcal` : ''}${p.hi != null ? ` · high ${n0(p.hi)} ft${p.hiAt?.pt?.name ? ' (' + esc(p.hiAt.pt.name) + ')' : ''} · low ${n0(p.lo)} ft` : ''}</div>`;
+  renderToday(now);
 }
 
 /* ---- Daily weather record (Worker /api/met): location per day = pinned day > that day's activity finish > newer of last
@@ -3182,7 +3217,7 @@ async function renderDayView(d) {
   const today = MET.today || mtDayKey(Date.now()), max = addDays(today, 14), x = MET.days[d];
   if (d > max) { box.innerHTML = `<p class="muted">The forecast goes ${14} days ahead (to ${dLab(max)}).</p>`; return; }
   if (!x?.model) {
-    box.innerHTML = `<p class="muted">${x && !x.pending ? 'No weather record for this day.' : 'Loading the day…'}</p>`;
+    box.innerHTML = `<div class="day-h"><div><h1>${dayLong(d)}</h1></div></div><div id="dayLog"></div><p class="muted">${x && !x.pending ? 'No weather record for this day.' : 'Loading the day…'}</p>`; renderDayLog(d);
     if (!x || x.pending) { const k = 'met:' + d; if (!DAYV.busy[k]) { DAYV.busy[k] = 1; await loadMet(d, d, () => { if (location.hash === '#day/' + d) renderDayView(d); }); DAYV.busy[k] = 0; } }
     return;
   }
@@ -3262,10 +3297,12 @@ async function renderDayView(d) {
       <div class="muted">${srcIcon(x.src)}${esc(x.place || '')}${where ? ' · ' + esc(where) : ''} · ${tzLab(tz)}${x.station ? ` · station ${esc(x.station.station_name)}` : ''}</div></div>
       <div class="day-btns"><a class="btn" href="#day/${prev}">‹ ${dLab(prev).replace(/ \w+$/, '')}</a>${next <= max ? `<a class="btn" href="#day/${next}">${dLab(next).replace(/ \w+$/, '')} ›</a>` : ''}${own ? '<button type="button" id="daySet">Set location · tide stations</button>' : ''}</div></div>
     ${alerts}
+    <div id="dayLog"></div>
     <section class="card day-sec"><div class="card-h"><h2>The day</h2><span class="meta">${x.station ? 'station where it has values, model for the rest' : 'model · Open-Meteo'}</span></div><div class="card-b"><div class="day-tiles">${tiles.join('')}</div></div></section>
     <section class="card day-sec"><div class="card-h"><h2>Hour by hour</h2><span class="meta">${H ? `${tzLab(tz)} · Open-Meteo ${H.src === 'forecast' ? 'forecast' : 'history'}` : ''}${H && own ? ' · <a href="#" id="dayCsv">CSV</a>' : ''}</span></div><div class="card-b">${hourly}</div></section>
     ${tides}
     <section class="card day-sec"><div class="card-h"><h2>NWS forecast</h2><span class="meta">US · today to 7 days ahead</span></div><div class="card-b">${nws}${nowx}</div></section>`;
+  renderDayLog(d);
   box.querySelectorAll('[data-dmode]').forEach(b => b.onclick = () => { DAYV.mode = b.dataset.dmode; renderDayView(d); });
   const ds = $('#daySet'); if (ds) ds.onclick = () => { MET_EDIT = d; location.hash = 'weather'; setTimeout(() => $('#metEdit')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600); };
   const cv = $('#dayCsv'); if (cv) cv.onclick = e => { e.preventDefault();
@@ -3282,7 +3319,11 @@ const AIRLINE = { DAL: ['DL', 'Delta'], UAL: ['UA', 'United'], AAL: ['AA', 'Amer
   FFT: ['F9', 'Frontier'], NKS: ['NK', 'Spirit'], ENY: ['MQ', 'Envoy'], RPA: ['YX', 'Republic'], EDV: ['9E', 'Endeavor'], GJS: ['G7', 'GoJet'], AAY: ['G4', 'Allegiant'], HAL: ['HA', 'Hawaiian'],
   ACA: ['AC', 'Air Canada'], WJA: ['WS', 'WestJet'], PDT: ['PT', 'Piedmont'], JIA: ['OH', 'PSA'], CPZ: ['C5', 'CommuteAir'], QXE: ['QX', 'Horizon'], ASH: ['YV', 'Mesa'], SCX: ['SY', 'Sun Country'],
   BAW: ['BA', 'British Airways'], DLH: ['LH', 'Lufthansa'], KLM: ['KL', 'KLM'], AFR: ['AF', 'Air France'], SAA: ['SA', 'South African'], UAE: ['EK', 'Emirates'], QTR: ['QR', 'Qatar'] };
-const fltNo = cs => { const m = String(cs || '').match(/^([A-Z]{3})(\d{1,4}[A-Z]?)$/); return m && AIRLINE[m[1]] ? { no: AIRLINE[m[1]][0] + m[2], airline: AIRLINE[m[1]][1] } : null; };
+// v0.20.1: regional airlines fly under their own callsign (AA 6472 = SKW6472), and the number is the same, but the flight is sold
+// as the mainline airline's. For these the flight number is left for you to type (it is never turned into OO6472).
+const REGIONAL = new Set(['SKW', 'ENY', 'EDV', 'RPA', 'PDT', 'JIA', 'ASH', 'GJS', 'CPZ', 'QXE', 'AWI', 'UCA']);
+const fltNo = cs => { const m = String(cs || '').match(/^([A-Z]{3})(\d{1,4}[A-Z]?)$/); if (!m || !AIRLINE[m[1]]) return null;
+  return REGIONAL.has(m[1]) ? { no: '', airline: '', op: AIRLINE[m[1]][1], regional: true } : { no: AIRLINE[m[1]][0] + m[2], airline: AIRLINE[m[1]][1] }; };
 const fltT = (iso, tz) => iso ? new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'America/Denver', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(Date.parse(iso)) : '—';
 const fltD = (iso, tz) => iso ? new Date(Date.parse(iso)).toLocaleDateString('en-GB', { timeZone: tz || 'America/Denver', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const tzAbbr = (iso, tz) => { try { return new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(Date.parse(iso)).find(x => x.type === 'timeZoneName')?.value || ''; } catch { return ''; } };
@@ -3309,12 +3350,14 @@ function parseFlightKml(text, fname) {
   if (timed) { track.sort((a, b) => a[0] - b[0]); for (let i = 1; i < track.length; i++) { const a = track[i - 1], b = track[i], h = (b[0] - a[0]) / 3600;
     if (h > 0) { const v = haversineMiP(a, b) / h; if (v < 800) track[i][4] = Math.round(v); } } }
   const names = [doc.getElementsByTagNameNS('*', 'name')[0]?.textContent || '', fname || ''].join(' ').toUpperCase();
-  const cs = (names.match(/\b([A-Z]{3}\d{1,4}[A-Z]?)\b/) || names.match(/([A-Z]{3}\d{1,4})/) || [])[1] || '';
+  const css = [...names.matchAll(/(?:^|[^A-Z0-9])([A-Z]{3}\d{1,4}[A-Z]?)(?=[^A-Z0-9]|$)/g)].map(m => m[1]);
+  const cs = css.find(c => REGIONAL.has(c.slice(0, 3))) || css[0] || (names.match(/([A-Z]{3}\d{1,4})/) || [])[1] || '';
   const icao = (names.match(/[_\s-]([A-Z]{4})[_\s-]+([A-Z]{4})[_\s.-]/) || []).slice(1);
-  const fn = fltNo(cs);
+  let fn = fltNo(cs);
+  if (fn?.regional) { const mk = css.map(fltNo).find(x => x && !x.regional); if (mk) fn = { ...mk, op: fn.op, regional: true }; }   // a mainline number in the file name wins
   const desc = by('description').map(e => e.textContent).join(' ');
   const ac = (desc.match(/\b(A3[0-9]{2}|A2[0-9]{2}N?|B7[0-9]{2}|B3[0-9]M?|E1[0-9]{2}|E[0-9]{3}|CRJ[0-9]?|CR[0-9]|DH8[A-D]?|AT[0-9]{2})\b/) || [])[1] || '';
-  return { track, timed, callsign: cs, flight_no: fn?.no || cs, airline: fn?.airline || '', dep: icao[0] || '', arr: icao[1] || '', aircraft: ac };
+  return { track, timed, callsign: cs, flight_no: fn ? fn.no : cs, airline: fn?.airline || '', op: fn?.op || '', regional: !!fn?.regional, dep: icao[0] || '', arr: icao[1] || '', aircraft: ac };
 }
 const haversineMiP = (a, b) => { const R = 3958.8, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[2] - a[2]) * r;
   const s = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(s)); };
@@ -3354,7 +3397,7 @@ async function renderFlightsView() {
     <td>${f.sched_dep ? fltT(f.sched_dep, f.summary?.dep_tz) : '<span class="muted">all day</span>'}</td><td>${stat(f)}</td>
     <td class="l"><label class="flt-share"><input type="checkbox" data-fshare="${f.id}"${f.share ? ' checked' : ''}> Share live</label> <button type="button" data-fdel="${f.id}">Remove</button>${f.status === 'live' ? ` <a href="#f/${f.id}">Open</a>` : ''}</td></tr>`).join('');
   const trips = fltTrips(done);
-  const rowOf = f => `<tr><td>${fltD(f.dep_t, f.summary?.dep_tz).replace(/ \d{4}$/, '')}</td><td>${esc(fltName(f))}</td><td><a href="#f/${f.id}">${esc(fltRoute(f))}</a></td><td>${esc(f.aircraft || '—')}</td>
+  const rowOf = f => `<tr><td>${fltD(f.dep_t, f.summary?.dep_tz).replace(/ \d{4}$/, '')}</td><td>${esc(fltName(f))}</td><td><a href="#f/${f.id}">${esc(fltRoute(f))}</a></td><td>${esc(f.aircraft || '—')}${f.reg ? `<br><small class="muted">${esc(f.reg)}</small>` : ''}</td>
     <td>${fltT(f.dep_t, f.summary?.dep_tz)}–${fltT(f.arr_t, f.summary?.arr_tz)}</td><td>${fltHM(f.summary?.air_s)}</td><td>${f.summary?.mi != null ? n0(Math.round(f.summary.mi)) : '—'}</td>
     <td>${f.summary?.max_alt_ft ? n0(f.summary.max_alt_ft) : '—'}</td><td class="muted">${f.src === 'live' ? 'tracked' : esc(f.src || '')}</td></tr>`;
   const body = trips.map(t => {
@@ -3365,7 +3408,7 @@ async function renderFlightsView() {
       <div class="day-btns"><label class="muted">Year <select id="fltYear">${[...years, 'all'].map(y => `<option value="${y}"${y === FLT.year ? ' selected' : ''}>${y === 'all' ? 'All years' : y}</option>`).join('')}</select></label>
       <button type="button" data-fui="upload" class="primary">Upload KML</button><button type="button" data-fui="manual">Add manually</button><button type="button" data-fui="plan">Add upcoming flight</button><button type="button" data-fui="test">Test a callsign</button><button type="button" id="fltCsv">CSV</button></div></div>
     <div id="fltForm"></div>
-    ${up.length ? `<section class="card day-sec"><div class="card-h"><h2>Upcoming and live</h2><span class="meta">followed with airplanes.live · Share live = shown on the front page while in the air</span></div><div class="card-b"><div class="table-wrap day-table flt-table"><table><thead><tr><th class="l">Day</th><th class="l">Callsign</th><th class="l">Route</th><th>Departs</th><th>Status</th><th></th></tr></thead><tbody>${upRows}</tbody></table></div></div></section>` : ''}
+    ${up.length ? `<section class="card day-sec"><div class="card-h"><h2>Upcoming and live</h2><span class="meta">followed with the open ADS-B feeds · Share live = shown on the front page while in the air</span></div><div class="card-b"><div class="table-wrap day-table flt-table"><table><thead><tr><th class="l">Day</th><th class="l">Callsign</th><th class="l">Route</th><th>Departs</th><th>Status</th><th></th></tr></thead><tbody>${upRows}</tbody></table></div></div></section>` : ''}
     <section class="card day-sec"><div class="card-b"><div class="day-tiles">${tiles.join('')}</div></div></section>
     <section class="card day-sec"><div class="card-h"><h2>Map</h2><span class="meta">${done.length} flight${done.length === 1 ? '' : 's'} · click a line to open it</span></div><div class="card-b"><div id="fltMap" class="flt-map"></div></div></section>
     <section class="card day-sec"><div class="card-h"><h2>Flights</h2><span class="meta">newest first · connections within 24 h grouped as trips</span></div><div class="card-b">${done.length ? `<div class="table-wrap day-table flt-table"><table><thead><tr><th class="l">Date</th><th class="l">Flight</th><th class="l">Route</th><th class="l">Aircraft</th><th>Dep–Arr (local)</th><th>Time</th><th>Miles</th><th>Max alt ft</th><th>Source</th></tr></thead><tbody>${body}</tbody></table></div>` : '<p class="muted">No flights yet: upload a FlightAware KML or add one manually.</p>'}</div></section>`;
@@ -3374,9 +3417,9 @@ async function renderFlightsView() {
   box.querySelectorAll('[data-fshare]').forEach(c => c.onchange = async () => { await ownerPost('/admin/flight/share', { id: c.dataset.fshare, share: c.checked }); loadFlights(true); });
   box.querySelectorAll('[data-fdel]').forEach(b => b.onclick = async () => { if (!confirm('Remove this upcoming flight?')) return; await ownerPost('/admin/flight/delete', { id: b.dataset.fdel }); await loadFlights(true); renderFlightsView(); });
   $('#fltCsv').onclick = () => {
-    const L = [['date_local', 'flight', 'callsign', 'airline', 'from', 'to', 'dep_utc', 'arr_utc', 'air_min', 'miles_flown', 'miles_great_circle', 'max_alt_ft', 'top_mph', 'aircraft', 'source', 'notes'].join(',')];
+    const L = [['date_local', 'flight', 'callsign', 'airline', 'from', 'to', 'dep_utc', 'arr_utc', 'air_min', 'miles_flown', 'miles_great_circle', 'max_alt_ft', 'top_mph', 'aircraft', 'tail', 'seat', 'source', 'notes'].join(',')];
     for (const f of done.slice().reverse()) L.push([f.day, f.flight_no || '', f.callsign || '', `"${f.airline || ''}"`, f.dep?.iata || '', f.arr?.iata || '', f.dep_t || '', f.arr_t || '', f.summary?.air_s != null ? Math.round(f.summary.air_s / 60) : '',
-      f.summary?.mi ?? '', f.summary?.gc_mi ?? '', f.summary?.max_alt_ft ?? '', f.summary?.top_mph ?? '', `"${(f.aircraft || '').replace(/"/g, '')}"`, f.src || '', `"${(f.notes || '').replace(/"/g, '""')}"`].join(','));
+      f.summary?.mi ?? '', f.summary?.gc_mi ?? '', f.summary?.max_alt_ft ?? '', f.summary?.top_mph ?? '', `"${(f.aircraft || '').replace(/"/g, '')}"`, f.reg || '', f.seat || '', f.src || '', `"${(f.notes || '').replace(/"/g, '""')}"`].join(','));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv' })); a.download = `ACLive_flights_${FLT.year}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
   renderFltForm();
   // map of all flights in the year (airport to airport)
@@ -3416,11 +3459,11 @@ function renderFltForm() {
       const first = tr[0], last = tr.at(-1), maxAlt = Math.max(...tr.map(x => x[3] || 0));
       review = p.err ? `<p class="flt-warn">${esc(cur.name)}: ${esc(p.err)}</p><div class="row"><button type="button" id="fSkip">Next file</button></div>` : `
         <div class="flt-file"><b>${esc(cur.name)}</b> <span class="muted">· ${FLT.idx + 1} of ${FLT.files.length} · ${n0(tr.length)} points${p.timed ? '' : ' · no times in this file'}${maxAlt ? ` · max ${n0(maxAlt)} ft` : ''}</span></div>
-        <div class="flt-grid">${fltField('fNo', 'Flight', p.flight_no, { ph: 'DL 2345' })}${fltField('fAirline', 'Airline', p.airline)}
+        <div class="flt-grid">${fltField('fNo', 'Flight', p.flight_no, { ph: p.regional ? 'AA 6472' : 'DL 2345', note: p.regional && !p.flight_no ? `${esc(p.callsign)} is ${esc(p.op)}: type the number you booked` : '' })}${fltField('fAirline', 'Airline', p.airline || (p.regional ? '' : ''), { ph: p.regional ? 'American' : '' })}${fltField('fSeat', 'Seat', '', { ph: '14A', size: 5 })}${fltField('fReg', 'Tail', '', { ph: 'N730EV', size: 8 })}
           ${fltField('fDep', 'From', p.dep, { ph: 'auto from the track', size: 8 })}${fltField('fArr', 'To', p.arr, { ph: 'auto from the track', size: 8 })}${fltField('fAc', 'Aircraft', p.aircraft, { ph: 'A321' })}
           ${p.timed ? `<div class="flt-f"><span>Times</span><div>${new Date(first[0] * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date(last[0] * 1000).toISOString().slice(11, 16)} UTC <small>from the track</small></div></div>`
             : `${fltField('fDepL', 'Departs (local at From)', '', { type: 'datetime-local' })}${fltField('fArrL', 'Arrives (local at To)', '', { type: 'datetime-local' })}`}</div>
-        <label class="flt-f flt-notes"><span>Notes</span><textarea id="fNotes" rows="2" placeholder="seat, trip, anything"></textarea></label>
+        <label class="flt-f flt-notes"><span>Notes</span><textarea id="fNotes" rows="2" placeholder="trip, anything"></textarea></label>
         ${cur.dup ? `<p class="flt-warn">Already in the log: ${esc(cur.dup.flight_no || '')} ${esc(cur.dup.dep || '')} → ${esc(cur.dup.arr || '')} on ${esc((cur.dup.dep_t || '').slice(0, 10))}. <button type="button" id="fReplace">Replace it</button> <button type="button" id="fSkip2">Skip this file</button></p>` : ''}
         <div class="row"><button type="button" class="primary" id="fSave">Save flight</button><button type="button" id="fSkip">Skip</button>${msg}</div>`;
     }
@@ -3432,7 +3475,7 @@ function renderFltForm() {
     const save = async (extra = {}) => {
       const p = cur.p, $v = id => ($('#' + id)?.value || '').trim();
       const body = { flight_no: $v('fNo').replace(/\s+/g, ''), callsign: p.callsign, airline: $v('fAirline'), dep: $v('fDep'), arr: $v('fArr'), aircraft: $v('fAc'), notes: $v('fNotes'),
-        track: p.track, src: 'kml', dep_local: $v('fDepL') || undefined, arr_local: $v('fArrL') || undefined, ...extra };
+        seat: $v('fSeat'), reg: $v('fReg'), track: p.track, src: 'kml', dep_local: $v('fDepL') || undefined, arr_local: $v('fArrL') || undefined, ...extra };
       if (!p.timed && !body.dep_local) { $('#fMsg').textContent = 'This file has no times: enter the departure time.'; return; }
       if (!p.timed && (!body.dep || !body.arr)) { $('#fMsg').textContent = 'Enter From and To so the local times can be read.'; return; }
       $('#fMsg').textContent = 'Saving…';
@@ -3449,7 +3492,7 @@ function renderFltForm() {
     const e = FLT.edit || {}, loc = (iso, tz) => iso ? new Intl.DateTimeFormat('sv-SE', { timeZone: tz || 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(Date.parse(iso)).replace(' ', 'T') : '';
     box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>${e.id ? 'Edit flight' : 'Add a flight manually'}</h2><span class="meta">airport codes like DRO, DEN, ATL · times are local at each airport</span></div><div class="card-b">
       <div class="flt-grid">${fltField('mNo', 'Flight', e.flight_no, { ph: 'UA 5123' })}${fltField('mAirline', 'Airline', e.airline)}${fltField('mDep', 'From', e.dep?.iata, { ph: 'DRO', size: 8 })}${fltField('mArr', 'To', e.arr?.iata, { ph: 'DEN', size: 8 })}
-        ${fltField('mDepL', 'Departs (local at From)', loc(e.dep_t, e.summary?.dep_tz), { type: 'datetime-local' })}${fltField('mArrL', 'Arrives (local at To)', loc(e.arr_t, e.summary?.arr_tz), { type: 'datetime-local' })}${fltField('mAc', 'Aircraft', e.aircraft, { ph: 'E175' })}</div>
+        ${fltField('mDepL', 'Departs (local at From)', loc(e.dep_t, e.summary?.dep_tz), { type: 'datetime-local' })}${fltField('mArrL', 'Arrives (local at To)', loc(e.arr_t, e.summary?.arr_tz), { type: 'datetime-local' })}${fltField('mAc', 'Aircraft', e.aircraft, { ph: 'E175' })}${fltField('mSeat', 'Seat', e.seat, { ph: '14A', size: 5 })}${fltField('mReg', 'Tail', e.reg, { ph: 'N730EV', size: 8, note: e.src === 'live' ? 'filled from the live feed' : '' })}</div>
       <label class="flt-f flt-notes"><span>Notes</span><textarea id="mNotes" rows="2">${esc(e.notes || '')}</textarea></label>
       <div class="row"><button type="button" class="primary" id="mSave">Save</button><button type="button" id="mCancel">Cancel</button>${msg}</div></div></section>`;
     $('#mCancel').onclick = () => { FLT.ui = null; FLT.edit = null; renderFltForm(); };
@@ -3457,24 +3500,24 @@ function renderFltForm() {
       if (!$v('mDep') || !$v('mArr') || !$v('mDepL')) { $('#fMsg').textContent = 'From, To and the departure time are needed.'; return; }
       $('#fMsg').textContent = 'Saving…';
       try { const r = await ownerPost('/admin/flight/save', { id: e.id, force: !!e.id, flight_no: $v('mNo').replace(/\s+/g, ''), airline: $v('mAirline'), dep: $v('mDep'), arr: $v('mArr'), dep_local: $v('mDepL'), arr_local: $v('mArrL') || undefined,
-          aircraft: $v('mAc'), notes: $v('mNotes'), src: e.src || 'manual', callsign: e.callsign });
+          aircraft: $v('mAc'), seat: $v('mSeat'), reg: $v('mReg'), notes: $v('mNotes'), src: e.src || 'manual', callsign: e.callsign });
         if (r.dup) { $('#fMsg').textContent = `Already in the log (${r.dup.flight_no || ''} ${r.dup.dep} → ${r.dup.arr}).`; return; }
         if (!r.ok) { $('#fMsg').textContent = r.error || 'Not saved'; return; }
         FLT.ui = null; FLT.edit = null; delete FLT.one[r.id]; await loadFlights(true); if (location.hash === '#f/' + r.id) renderFlightView(r.id); else renderFlightsView(); } catch (err) { $('#fMsg').textContent = err.message; } };
     return;
   }
   if (ui === 'plan') {
-    box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Add an upcoming flight</h2><span class="meta">followed live with airplanes.live · nothing to do on the day</span></div><div class="card-b">
+    box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Add an upcoming flight</h2><span class="meta">followed live (adsb.lol, then adsb.fi, then airplanes.live) · nothing to do on the day</span></div><div class="card-b">
       <p class="muted flt-hint">Paste the flight's FlightAware link (it holds the callsign the plane broadcasts, e.g. SKW5123 for a United Express leg), or type the callsign.</p>
       <div class="flt-grid">${fltField('pFa', 'FlightAware link or callsign', '', { ph: 'https://flightaware.com/live/flight/DAL2345' })}${fltField('pDay', 'Date', today, { type: 'date' })}
-        ${fltField('pDep', 'From', '', { ph: 'DEN', size: 8, note: 'for the ETA and progress' })}${fltField('pArr', 'To', '', { ph: 'ATL', size: 8 })}${fltField('pSched', 'Departs (local, optional)', '', { type: 'time', note: 'starts checking 45 min before; else all day' })}${fltField('pNo', 'Flight number (optional)', '', { ph: 'DL 2345' })}</div>
+        ${fltField('pDep', 'From', '', { ph: 'DEN', size: 8, note: 'for the ETA and progress' })}${fltField('pArr', 'To', '', { ph: 'ATL', size: 8 })}${fltField('pSched', 'Departs (local, optional)', '', { type: 'time', note: 'starts checking 45 min before; else all day' })}${fltField('pNo', 'Flight number (optional)', '', { ph: 'AA 6472', note: 'for a regional leg, the number you booked' })}${fltField('pSeat', 'Seat', '', { ph: '14A', size: 5 })}${fltField('pReg', 'Tail (optional)', '', { ph: 'filled in live', size: 8 })}</div>
       <label class="flt-share"><input type="checkbox" id="pShare" checked> Share live: show the In the air card on the front page during this flight</label>
       <div class="row"><button type="button" class="primary" id="pSave">Add flight</button><button type="button" id="pCancel">Cancel</button>${msg}</div></div></section>`;
     $('#pCancel').onclick = () => { FLT.ui = null; renderFltForm(); };
     $('#pSave').onclick = async () => { const $v = id => ($('#' + id)?.value || '').trim(), fa = $v('pFa');
       $('#fMsg').textContent = 'Saving…';
       try { const r = await ownerPost('/admin/flight/plan', { fa: /flightaware/i.test(fa) ? fa : undefined, callsign: /flightaware/i.test(fa) ? undefined : fa, day: $v('pDay'), dep: $v('pDep') || undefined, arr: $v('pArr') || undefined,
-          sched: $v('pSched') || undefined, flight_no: $v('pNo').replace(/\s+/g, '') || undefined, share: $('#pShare').checked });
+          sched: $v('pSched') || undefined, flight_no: $v('pNo').replace(/\s+/g, '') || undefined, seat: $v('pSeat') || undefined, reg: $v('pReg') || undefined, share: $('#pShare').checked });
         if (!r.ok) { $('#fMsg').textContent = r.error || 'Not saved'; return; }
         FLT.ui = null; await loadFlights(true); renderFlightsView(); } catch (e) { $('#fMsg').textContent = e.message; } };
     return;
@@ -3483,8 +3526,9 @@ function renderFltForm() {
     const t = FLT.test;
     box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Test a callsign</h2><span class="meta">any plane flying right now, e.g. one from FlightAware's map</span></div><div class="card-b">
       <div class="row">${fltField('tCs', 'Callsign', t?.callsign || '', { ph: 'DAL2345' })}<button type="button" class="primary" id="tGo">Look up</button></div>
-      ${t ? (t.ok === false ? `<p class="flt-warn">${esc(t.error || 'failed')}</p>` : t.found ? `<p>Found <b>${esc(t.callsign)}</b>: ${t.pos.ground ? 'on the ground' : `${n0(t.pos.alt)} ft · ${t.pos.mph} mph · heading ${t.pos.hdg}°`} at ${t.pos.lat}, ${t.pos.lon}${t.near ? ` · near ${esc(t.near.iata)} ${esc(t.near.name)}` : ''}${t.pos.type ? ` · ${esc(t.pos.type)}` : ''}${t.pos.reg ? ` ${esc(t.pos.reg)}` : ''}. Live tracking will work for this callsign.</p>`
-        : `<p class="muted">${esc(t.callsign)} isn't in the air (or not in range of a receiver) right now.</p>`) : ''}</div></section>`;
+      ${t ? (t.ok === false ? `<p class="flt-warn">${esc(t.error || 'failed')}</p>` : t.found ? `<p>Found <b>${esc(t.callsign)}</b>: ${t.pos.ground ? 'on the ground' : `${n0(t.pos.alt)} ft · ${t.pos.mph} mph · heading ${t.pos.hdg}°`} at ${t.pos.lat}, ${t.pos.lon}${t.near ? ` · near ${esc(t.near.iata)} ${esc(t.near.name)}` : ''}${t.pos.type ? ` · ${esc(t.pos.type)}` : ''}${t.pos.reg ? ` ${esc(t.pos.reg)}` : ''}. Answered by <b>${esc(t.source || '?')}</b>. Live tracking will work for this callsign.</p>`
+        : `<p class="muted">${esc(t.callsign)} isn't in the air (or not in range of a receiver) right now.</p>`) : ''}
+      ${t?.tried?.length ? `<p class="muted flt-hint">Feeds tried: ${t.tried.map(esc).join(' · ')}</p>` : ''}</div></section>`;
     $('#tGo').onclick = async () => { try { FLT.test = await ownerPost('/admin/flight/test', { callsign: $('#tCs').value }); } catch (e) { FLT.test = { ok: false, error: e.message }; } renderFltForm(); };
   }
 }
@@ -3516,7 +3560,7 @@ async function renderFlightView(id) {
   const wxT = (k, w, ap) => tile(k, w ? `${Math.round(w.temp_c)}°<small>C</small>` : '—', w ? `${cF(w.temp_c)} °F · ${esc(w.desc || '')} · ${dirName(w.wind_dir)} ${w.wind_mph ?? '—'}${w.gust_mph ? '/' + w.gust_mph : ''} mph${ap ? ' · ' + esc(ap) : ''}` : 'no weather for this hour');
   const live = f.status === 'live', lp = tr.at(-1);
   box.innerHTML = `<div class="day-h"><div><h1>${esc(fltRoute(f))} <span>· ${esc(fltName(f))} · ${fltD(f.dep_t || f.sched_dep || f.day + 'T12:00:00Z', dz)}</span></h1>
-      <div class="muted">${esc(f.dep?.name || '')} → ${esc(f.arr?.name || '')}${f.aircraft ? ' · ' + esc(f.aircraft) : ''}${f.reg ? ' ' + esc(f.reg) : ''} · ${f.src === 'live' ? 'tracked live (airplanes.live)' : f.src === 'kml' ? 'KML upload' : 'manual entry'}${live ? ' · <span class="pill">in the air</span>' : ''}</div></div>
+      <div class="muted">${esc(f.dep?.name || '')} → ${esc(f.arr?.name || '')}${f.aircraft ? ' · ' + esc(f.aircraft) : ''}${f.reg ? ' · tail ' + esc(f.reg) : ''}${f.seat ? ' · seat ' + esc(f.seat) : ''} · ${f.src === 'live' ? 'tracked live' : f.src === 'kml' ? 'KML upload' : 'manual entry'}${live ? ' · <span class="pill">in the air</span>' : ''}</div></div>
       <div class="day-btns"><button type="button" id="foEdit">Edit</button>${tr.length > 1 ? '<button type="button" id="foKml">Download KML</button>' : ''}<button type="button" id="foDel">Delete</button></div></div>
     <div id="fltForm"></div>
     ${f.prev || f.next || f.drive ? `<div class="flt-conn">${f.prev ? `<a href="#f/${f.prev.id}">‹ ${esc(f.prev.flight_no || '')} ${esc(f.prev.dep)} → ${esc(f.prev.arr)}</a> <span class="muted">layover ${fltHM(f.prev.layover_s)}</span>` : ''}
@@ -3568,7 +3612,7 @@ async function renderAirCard() {
         ${fig('To go', r.mi_left != null ? `${n0(r.mi_left)}<small>mi</small>` : '—', pct != null ? `${pct}% of the way to ${esc(r.arr?.iata || '')}` : esc(r.arr?.name || ''))}
         ${fig('ETA', r.eta ? `${fltT(r.eta, r.arr_tz)}<small>${tzAbbr(r.eta, r.arr_tz)}</small>` : '—', r.eta ? `at ${esc(r.arr?.iata || '')} · estimate from speed` : 'when cruising')}
       </div><div id="airMap" class="flt-map air-map"></div>
-      <p class="muted" style="font-size:.76rem;margin:6px 0 0">Position from airplanes.live (community ADS-B receivers); over water or remote areas it can pause.</p>`
+      <p class="muted" style="font-size:.76rem;margin:6px 0 0">Position from open community ADS-B feeds (adsb.lol, adsb.fi, airplanes.live); over water or remote areas it can pause.</p>`
     : `<div class="drv-h"><h2>✈ Landed · ${esc(nm)} · ${esc(route)}</h2><span class="muted"><span class="pill">at ${esc(r.arr?.iata || '')} ${fltT(r.arr_t, r.arr_tz)} ${tzAbbr(r.arr_t, r.arr_tz)}</span></span></div>`;
   const m = $('#airMap'); if (!m || typeof L === 'undefined') return;
   if (FLT.airMap) { FLT.airMap.remove(); FLT.airMap = null; }
@@ -3581,6 +3625,275 @@ async function renderAirCard() {
   if (pts.length) FLT.airMap.fitBounds(pts, { padding: [20, 20] });
 }
 
+
+/* =========================================================================
+   v0.21 DAILY LOG
+   Day High / Low: your edit > activities and inReach check-ins that day > location elevation (no activity: the ground
+   elevation at that day's weather location, marked ≈ and "location"). Week cards, #weeks and records use the same values.
+   Each High / Low shows its place underneath: the named peak, pass, trailhead or lake nearest the point (else "near town"),
+   worked out once by the first page that opens a finished activity, your own "Where" text, or the day's place.
+   ========================================================================= */
+let DAYS = { loc: {}, log: {}, pts: {} }, DAYIDX = null, DAYIDX_OF = null, ACTS_P = null;
+const DLOG = { day: null, edit: null, draft: null, msg: '', sugg: null, map: null, coords: null };
+function daysIndex() {
+  if (DAYIDX_OF === ACTS && DAYIDX) return DAYIDX;
+  const m = new Map(); for (const a of ACTS) { if (!a.start) continue; const k = mtDayKey(Date.parse(a.start)); if (!m.has(k)) m.set(k, []); m.get(k).push(a); }
+  DAYIDX = m; DAYIDX_OF = ACTS; return m;
+}
+function ensureActs(then) {                                  // pages opened directly (#day/, #a/) still need the activity list
+  if (DAYS._at || CONFIG.dataSource === 'mock' && ACTS.length) return true;
+  if (!ACTS_P) ACTS_P = loadActivities().then(a => { ACTS = a; }).catch(e => console.warn(e)).finally(() => { ACTS_P = null; then?.(); });
+  return false;
+}
+const dShort = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });          // "Sat 7"
+const dDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const csvQ = v => v == null || v === '' ? '' : `"${String(v).replace(/"/g, '""')}"`;
+const actPt = (id, side) => { const p = DAYS.pts?.[id]?.[side]; return p && p[0] ? { name: p[0], kind: p[1] || '' } : null; };
+function dayHL(d, acts) {
+  acts = acts || daysIndex().get(d) || [];
+  const out = { hi: null, lo: null };
+  for (const a of acts) {
+    if (a.ele_max_ft != null && (!out.hi || a.ele_max_ft > out.hi.ft)) out.hi = { ft: a.ele_max_ft, src: 'act', pt: actPt(a.id, 'hi'), act: a.id };
+    if (a.ele_min_ft != null && (!out.lo || a.ele_min_ft < out.lo.ft)) out.lo = { ft: a.ele_min_ft, src: 'act', pt: actPt(a.id, 'lo'), act: a.id };
+  }
+  for (const c of CKS) {
+    if (c.ele_ft == null || mtDayKey(Date.parse(c.t)) !== d) continue;
+    const pt = { name: 'inReach check-in', kind: '' };
+    if (!out.hi || c.ele_ft > out.hi.ft) out.hi = { ft: c.ele_ft, src: 'ck', pt };
+    if (!out.lo || c.ele_ft < out.lo.ft) out.lo = { ft: c.ele_ft, src: 'ck', pt };
+  }
+  const L = DAYS.loc?.[d];
+  if (!out.hi && L?.ele_ft != null) { const pt = L.place ? { name: L.place, kind: '' } : null; out.hi = { ft: L.ele_ft, src: 'loc', pt }; out.lo = { ft: L.ele_ft, src: 'loc', pt }; }
+  const g = DAYS.log?.[d];
+  if (g) for (const sd of ['hi', 'lo']) {
+    const ft = g[sd + '_ft'], wh = g[sd + '_where'];
+    if (ft != null) out[sd] = { ft, src: 'edit', pt: wh ? { name: wh, kind: '' } : null, auto: out[sd] };
+    else if (wh && out[sd]) out[sd] = { ...out[sd], pt: { name: wh, kind: '' }, whereEdit: true };
+  }
+  return out;
+}
+function dayStats(d) {
+  const acts = daysIndex().get(d) || [], w = weekStats(acts), h = dayHL(d, acts);
+  w.hiAt = h.hi; w.loAt = h.lo; w.hi = h.hi?.ft ?? null; w.lo = h.lo?.ft ?? null;
+  w.all = STEPS[d] ?? null; w.note = DAYS.log?.[d]?.note || null; w.loc = DAYS.loc?.[d] || null; w.acts = acts;
+  return w;
+}
+// "Handies Peak · peak" / "≈ Durango, CO · location, no activity" / "Handies Peak · your entry" (+ the day for week figures)
+function placeTxt(h, o = {}) {
+  if (!h) return '';
+  const nm = h.pt?.name || '', day = h.day && o.day ? (o.day === 'date' ? dDate(h.day) : dShort(h.day)) : '';
+  const why = h.src === 'loc' ? 'no activity' : h.src === 'edit' ? 'your entry' : h.whereEdit ? 'your entry' : h.src === 'ck' ? '' : (/^(town|place)$/.test(h.pt?.kind || '') ? '' : h.pt?.kind || '');
+  const tail = [o.day ? day : why].filter(Boolean).join(' · ');
+  if (!nm && !tail) return '';
+  return nm ? `${esc(nm)}${tail ? ` <i>· ${esc(tail)}</i>` : ''}` : `<i>${esc(tail)}</i>`;
+}
+const actPlace = (id, side) => { const p = actPt(id, side); return p ? `<div class="place">${esc(p.name)}${p.kind && !/^(town|place)$/.test(p.kind) ? ` <i>· ${esc(p.kind)}</i>` : ''}</div>` : ''; };
+function hlFig(k, h, o = {}) {
+  const tag = h?.src === 'edit' ? '<span class="tag-ed">edited</span>' : h?.src === 'loc' ? '<span class="tag-loc">location</span>' : '';
+  const pl = placeTxt(h, o);
+  return `<div><div class="k">${k}${tag}</div><div class="v">${h ? `${h.src === 'loc' ? '≈ ' : ''}${n0(h.ft)}<small>ft</small>` : '—'}</div>${h ? alt(mOf(h.ft) + ' m') : ''}${pl ? `<div class="place">${pl}</div>` : ''}</div>`;
+}
+function hlCell(h, day) {
+  if (!h) return '—';
+  const pl = placeTxt(h, { day: day || false });
+  return `${h.src === 'loc' ? '≈ ' : ''}${n0(h.ft)} ft${h.src === 'edit' ? ' ✎' : ''}${pl ? `<small class="pl">${pl}</small>` : ''}`;
+}
+// Figures for one day: the week card's values; a day with no activity shows steps and High / Low only
+function dayFigs(w) {
+  const fig = (k, v, a) => `<div><div class="k">${k}</div><div class="v">${v}</div>${a != null && a !== '' ? alt(a) : ''}</div>`;
+  const steps = w.all != null ? fig('Steps', n0(w.all), w.steps ? `${w.est ? '≈ ' : ''}${n0(w.steps)} in activities` : 'all day · Garmin')
+    : fig('Steps', w.steps ? `${w.est ? '≈ ' : ''}${n0(w.steps)}` : '—', w.steps ? 'in activities' : '');
+  if (!w.n) return steps + hlFig('High', w.hiAt) + hlFig('Low', w.loAt);
+  return fig('Distance', `${w.mi.toFixed(1)}<small>mi</small>`, km(w.mi) + ' km') + steps +
+    `<div title="Elapsed, start to finish. Moving ${hm(w.mov)}"><div class="k">Time</div><div class="v">${hm(w.sec)}<small>h</small></div>${alt(timesLine(w.tsec) || 'moving ' + hm(w.mov))}</div>` +
+    fig('Activities', w.n, typesLine(w.types) || '') + fig('Vert', `${n0(w.ft)}<small>ft</small>`, mOf(w.ft) + ' m') +
+    fig('Calories', w.kcalN ? `${n0(w.kcal)}<small>kcal</small>` : '—', w.kcalN ? 'activities only' : 'after the watch files') +
+    hlFig('High', w.hiAt) + hlFig('Low', w.loAt);
+}
+function renderToday(now) {
+  const el = $('#todayCard'); if (!el) return;
+  const d = mtDayKey(now), w = dayStats(d);
+  el.classList.toggle('rest', !w.n);
+  el.innerHTML = `<div class="week-h"><h2>Today</h2><span class="muted">${dDate(d)}${w.loc?.place ? ' · ' + esc(w.loc.place) : ''} · <a href="#day/${d}">Day log →</a></span></div>
+    <div class="now-stats">${dayFigs(w)}</div>${w.note ? `<div class="dl-note"><b>Note</b> · ${esc(w.note)}</div>` : ''}`;
+}
+// Day totals on #day/<date> (+ owner edit of High / Low, where, note)
+function renderDayLog(d) {
+  const el = $('#dayLog'); if (!el) return;
+  DLOG.day = d;
+  if (!ensureActs(() => { if (location.hash === '#day/' + d) renderDayLog(d); })) { el.innerHTML = '<p class="muted">Loading the day…</p>'; return; }
+  const w = dayStats(d), own = isOwner(), today = mtDayKey(Date.now());
+  if (d > today) { el.innerHTML = ''; return; }
+  if (!w.n && w.all == null && !w.hiAt && !w.note && !own) { el.innerHTML = ''; return; }
+  const ed = own && DLOG.edit === d;
+  const acts = [...w.acts].sort((a, b) => a.start.localeCompare(b.start));
+  el.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Day totals</h2><span class="meta">${dDate(d)}${own && !ed ? ' · <a href="#" id="dlEdit">Edit</a>' : ed ? ' · editing' : ''}</span></div><div class="card-b">
+    <div class="week today-card${w.n ? '' : ' rest'}" style="border:0;padding:0;margin:0;background:none"><div class="now-stats">${dayFigs(w)}</div></div>
+    ${w.note && !ed ? `<div class="dl-note"><b>Note</b> · ${esc(w.note)}</div>` : ''}
+    ${acts.length ? `<div class="dl-acts"><b>Activities this day</b> · ${acts.map(a => `<a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> <span class="muted">${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${hm(actSec(a))}</span>`).join(' · ')}</div>` : ''}
+    ${ed ? dayEditHtml(d, w) : ''}
+    ${w.hiAt?.src === 'edit' || w.hiAt?.src === 'loc' || w.loAt?.src === 'edit' ? `<div class="dl-key"><span style="color:var(--series-ir)">edited</span> = your value · location = no activity: ground elevation where you were that day (≈)</div>` : ''}
+  </div></section>`;
+  const eb = $('#dlEdit'); if (eb) eb.onclick = e => { e.preventDefault(); dayEditOpen(d); };
+  if (ed) dayEditWire(d, w);
+  fillNames(acts);
+}
+async function dayEditOpen(d) {
+  const g = DAYS.log?.[d] || {};
+  DLOG.edit = d; DLOG.msg = ''; DLOG.sugg = null;
+  DLOG.draft = { hi_ft: g.hi_ft ?? '', hi_where: g.hi_where || '', lo_ft: g.lo_ft ?? '', lo_where: g.lo_where || '', note: g.note || '', hi_lat: null, hi_lon: null, lo_lat: null, lo_lon: null };
+  renderDayLog(d);
+  try { const r = await ownerGet('/admin/day?day=' + d); if (r.log) for (const k of ['hi_lat', 'hi_lon', 'lo_lat', 'lo_lon']) DLOG.draft[k] = r.log[k]; } catch (e) { /* coords optional */ }
+}
+function dayEditHtml(d, w) {
+  const D = DLOG.draft, autoOf = sd => { const h = w[sd + 'At']; const a = h?.src === 'edit' ? h.auto : h; return a ? `automatic: ${a.src === 'loc' ? '≈ ' : ''}${n0(a.ft)} ft (${a.src === 'loc' ? 'location' : a.src === 'ck' ? 'inReach check-in' : 'activities'})` : 'automatic: none'; };
+  const hasTrack = sd => { const h = w[sd + 'At'], a = h?.src === 'edit' ? h.auto : h; return a?.src === 'act'; };
+  const side = (sd, lab) => `<div class="dl-side">
+      <label>${lab} (ft)<input id="dl_${sd}_ft" inputmode="numeric" value="${esc(String(D[sd + '_ft'] ?? ''))}" placeholder="automatic"><small>${autoOf(sd)}</small></label>
+      <div><label>Where<input id="dl_${sd}_where" value="${esc(D[sd + '_where'] || '')}" placeholder="type a name, or search a landmark"></label>
+        <div class="dl-btns"><button type="button" data-dls="${sd}">Search landmark</button><button type="button" data-dlt="${sd}"${hasTrack(sd) ? '' : ' disabled title="no track this day"'}>Suggest from track</button><button type="button" data-dlm="${sd}"${window.L ? '' : ' disabled title="map not loaded"'}>Pick on map</button></div>
+        ${DLOG.sugg?.side === sd ? suggHtml(DLOG.sugg) : ''}
+        ${DLOG.map === sd ? '<div class="dl-map" id="dlMap"></div>' : ''}</div></div>`;
+  return `<div class="dl-edit"><div><b>Edit day</b> <span class="muted" style="font-size:.8rem">owner · empty = automatic</span></div>
+    ${side('hi', 'High')}${side('lo', 'Low')}
+    <label>Note<textarea id="dl_note" rows="2">${esc(D.note || '')}</textarea></label>
+    <div class="dl-btns"><button type="button" class="primary" id="dlSave">Save</button><button type="button" id="dlAuto">Back to automatic</button><button type="button" id="dlCancel">Cancel</button><span class="muted" id="dlMsg">${esc(DLOG.msg || '')}</span></div></div>`;
+}
+function suggHtml(S) {
+  if (S.busy) return '<p class="muted" style="margin:6px 0 0">Looking…</p>';
+  if (S.err) return `<p class="flt-warn" style="margin:6px 0 0">${esc(S.err)}</p>`;
+  if (!S.items.length) return `<p class="muted" style="margin:6px 0 0">${S.none || 'Nothing found.'}</p>`;
+  return `<ul class="dl-list">${S.items.map((x, i) => `<li tabindex="0" data-dli="${i}"><b>${esc(x.name)}</b> <span>· ${[x.kind, x.ele_ft != null ? n0(x.ele_ft) + ' ft' + (x.ele_src === 'terrain' ? ' (terrain)' : '') : '', x.mi != null ? (x.mi < 0.1 ? 'at ' : x.mi.toFixed(1) + ' mi from ') + S.from : '', x.area].filter(Boolean).map(esc).join(' · ')}</span></li>`).join('')}</ul>
+    <small>${esc(S.hint || 'Picking one sets the place and its elevation; you can still change the number.')}</small>`;
+}
+function dayEditWire(d, w) {
+  const D = DLOG.draft, $v = id => $('#' + id)?.value ?? '';
+  const keep = () => { for (const sd of ['hi', 'lo']) { D[sd + '_ft'] = $v(`dl_${sd}_ft`).replace(/[^\d-]/g, ''); const nw = $v(`dl_${sd}_where`).trim(); if (nw !== D[sd + '_where']) { D[sd + '_where'] = nw; if (!DLOG.picking) { D[sd + '_lat'] = null; D[sd + '_lon'] = null; } } } D.note = $v('dl_note'); };
+  $('#dayLog').querySelectorAll('input, textarea').forEach(i => i.addEventListener('input', keep));
+  const loc = MET.days[d], near = loc?.loc_lat != null ? `${loc.loc_lat},${loc.loc_lon}` : '';
+  const pick = (sd, x) => { keep(); DLOG.picking = 1; D[sd + '_where'] = x.name; D[sd + '_lat'] = x.lat ?? null; D[sd + '_lon'] = x.lon ?? null; if (x.ele_ft != null) D[sd + '_ft'] = String(x.ele_ft);
+    DLOG.sugg = null; DLOG.map = null; DLOG.picking = 0; renderDayLog(d); };
+  $('#dayLog').querySelectorAll('[data-dli]').forEach(li => { const go = () => pick(DLOG.sugg.side, DLOG.sugg.items[+li.dataset.dli]); li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  $('#dayLog').querySelectorAll('[data-dls]').forEach(b => b.onclick = async () => { keep(); const sd = b.dataset.dls, q = D[sd + '_where'];
+    if (q.length < 3) { DLOG.sugg = { side: sd, items: [], none: 'Type at least 3 letters in Where, then search.' }; return renderDayLog(d); }
+    DLOG.sugg = { side: sd, busy: true }; DLOG.map = null; renderDayLog(d);
+    try { const r = await ownerGet(`/admin/day/search?q=${encodeURIComponent(q)}${near ? '&near=' + near : ''}`);
+      DLOG.sugg = { side: sd, items: r.results || [], err: r.ok === false ? r.error : null, none: 'No landmark by that name near this day\'s place.', hint: 'OpenStreetMap; elevation from the map, else terrain. Picking one sets the place and its elevation; you can still change the number.' }; }
+    catch (e) { DLOG.sugg = { side: sd, items: [], err: e.message }; } renderDayLog(d); });
+  $('#dayLog').querySelectorAll('[data-dlt]').forEach(b => b.onclick = async () => { keep(); const sd = b.dataset.dlt, h = w[sd + 'At'], a = h?.src === 'edit' ? h.auto : h;
+    if (!a?.act) return;
+    DLOG.sugg = { side: sd, busy: true }; DLOG.map = null; renderDayLog(d);
+    try { const p = (await ownerGet('/admin/actpts?id=' + encodeURIComponent(a.act))).pts, lat = p?.[sd + '_lat'], lon = p?.[sd + '_lon'];
+      if (lat == null) { DLOG.sugg = { side: sd, items: [], none: 'This activity\'s high/low point isn\'t known yet: open the activity once, then try again.' }; return renderDayLog(d); }
+      const r = await ownerGet(`/admin/day/point?lat=${lat}&lon=${lon}`), here = { lat, lon };
+      const items = [r.name, ...(r.others || [])].filter(Boolean).map(x => ({ ...x, mi: x.lat != null ? haversine(here, x) : null, ele_ft: x.ele_ft ?? null }));
+      DLOG.sugg = { side: sd, items, from: `your ${sd === 'hi' ? 'high' : 'low'} point`, none: 'No named place near this point.' }; }
+    catch (e) { DLOG.sugg = { side: sd, items: [], err: e.message }; } renderDayLog(d); });
+  $('#dayLog').querySelectorAll('[data-dlm]').forEach(b => b.onclick = () => { keep(); DLOG.map = DLOG.map === b.dataset.dlm ? null : b.dataset.dlm; DLOG.sugg = null; renderDayLog(d); });
+  if (DLOG.map && window.L && $('#dlMap')) {
+    const sd = DLOG.map, c0 = D[sd + '_lat'] != null ? [D[sd + '_lat'], D[sd + '_lon']] : loc?.loc_lat != null ? [loc.loc_lat, loc.loc_lon] : [37.27, -107.88];
+    const m = L.map('dlMap').setView(c0, 13);
+    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 16, attribution: '© OpenStreetMap contributors, SRTM · OpenTopoMap' }).addTo(m);
+    if (D[sd + '_lat'] != null) L.marker(c0).addTo(m);
+    m.on('click', async ev => { const { lat, lng } = ev.latlng;
+      DLOG.sugg = { side: sd, busy: true }; DLOG.map = null; renderDayLog(d);
+      try { const r = await ownerGet(`/admin/day/point?lat=${lat.toFixed(5)}&lon=${lng.toFixed(5)}`), here = { lat, lon: lng };
+        const own = { name: r.name?.name ? (r.name.kind === 'town' || r.name.kind === 'place' ? r.name.name : r.name.name) : `${lat.toFixed(4)}, ${lng.toFixed(4)}`, kind: 'picked point', lat: +lat.toFixed(5), lon: +lng.toFixed(5), ele_ft: r.ele_ft, ele_src: 'terrain' };
+        const items = [own, ...[r.name, ...(r.others || [])].filter(x => x && x.lat != null).map(x => ({ ...x, mi: haversine(here, x) }))];
+        DLOG.sugg = { side: sd, items, from: 'the picked point', hint: 'First line = the spot you picked (ground elevation, ~90 m terrain); or pick a named place nearby.' }; }
+      catch (e) { DLOG.sugg = { side: sd, items: [], err: e.message }; } renderDayLog(d); });
+  }
+  const save = async body => { $('#dlMsg').textContent = 'Saving…';
+    try { const r = await ownerPost('/admin/day/save', { day: d, ...body }); if (!r.ok) { DLOG.msg = r.error || 'Not saved'; $('#dlMsg').textContent = DLOG.msg; return; }
+      DLOG.edit = null; DLOG.draft = null; DLOG.sugg = null; DLOG.map = null; DLOG.msg = '';
+      ACTS = await loadActivities(); renderDayLog(d); } catch (e) { $('#dlMsg').textContent = e.message; } };
+  $('#dlSave').onclick = () => { keep(); save(D); };
+  $('#dlAuto').onclick = () => { if (confirmLite('Clear your High/Low, places and note for this day?')) save({}); };
+  $('#dlCancel').onclick = () => { DLOG.edit = null; DLOG.draft = null; DLOG.sugg = null; DLOG.map = null; renderDayLog(d); };
+}
+const confirmLite = () => true;                               // no browser dialogs (they block the page); the button says what it does
+async function ownerGet(path) {
+  const r = await fetch(CONFIG.api + path, { headers: { authorization: 'Bearer ' + OWNER }, cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status); return r.json();
+}
+// Name the high / low points of a finished activity once (stored for everyone)
+const NAMED = new Set();
+const FEAT_R = { peak: 400, pass: 350, viewpoint: 250, trailhead: 250, lake: 200, spring: 150 };
+function featKind(t) { return t.natural === 'peak' || t.natural === 'volcano' ? 'peak' : t.natural === 'saddle' || t.mountain_pass === 'yes' ? 'pass' : t.tourism === 'viewpoint' ? 'viewpoint'
+  : t.highway === 'trailhead' ? 'trailhead' : t.natural === 'water' ? 'lake' : t.natural === 'spring' ? 'spring' : null; }
+function nearestFeat(p, els) {
+  let best = null;
+  for (const e of els || []) { const t = e.tags || {}, k = featKind(t); if (!k || !t.name) continue;
+    const pts = e.type === 'node' ? [e] : e.geometry || (e.center ? [e.center] : []);
+    let dm = Infinity; for (const q of pts) dm = Math.min(dm, haversine(p, q) * 1609.34);
+    const sc = dm / FEAT_R[k]; if (sc <= 1 && (!best || sc < best.sc)) best = { name: t.name, kind: k, sc }; }
+  return best;
+}
+async function nameHiLo(D, s) {
+  const id = D.trip?.id;
+  if (CONFIG.dataSource !== 'api' || !id || !s.ended || NAMED.has(id) || !DAYS._at || DAYS.pts?.[id]) return;
+  const pe = s.pts.filter(p => p.ele != null); if (pe.length < 5) return;
+  NAMED.add(id);
+  let hi = pe[0], lo = pe[0]; for (const p of pe) { if (p.ele > hi.ele) hi = p; if (p.ele < lo.ele) lo = p; }
+  const a = ACTS.find(x => x.id === id) || {}, town = a.auto_town || D.trip?.town || null;
+  let els = OSM.id === id && OSM.data?.elements ? OSM.data.elements : [];
+  let fh = nearestFeat(hi, els), fl = nearestFeat(lo, els);
+  if (!fh || !fl) {
+    const ar = (p, r, f) => `${f}(around:${r},${p.lat.toFixed(5)},${p.lon.toFixed(5)});`;
+    const q = '[out:json][timeout:20];(' + [hi, lo].map(p => ar(p, 400, 'node[name][natural~"^(peak|saddle|volcano|spring)$"]') + ar(p, 400, 'node[name][mountain_pass=yes]') +
+      ar(p, 250, 'node[name][highway=trailhead]') + ar(p, 250, 'node[name][tourism=viewpoint]') + ar(p, 200, 'way[name][natural=water]')).join('') + ');out geom tags 60;';
+    try { const j = await overpass(q); els = j.elements || []; fh = fh || nearestFeat(hi, els); fl = fl || nearestFeat(lo, els); } catch (e) { console.warn('point names: Overpass failed', e); NAMED.delete(id); return; }
+  }
+  const nm = f => f ? { name: f.name, kind: f.kind } : town ? { name: 'near ' + town, kind: 'town' } : { name: null, kind: null };
+  const body = { id, src: 'page', hi: { lat: hi.lat, lon: hi.lon, ft: D.trip?.ele_max_ft ?? hi.ele, ...nm(fh) }, lo: { lat: lo.lat, lon: lo.lon, ft: D.trip?.ele_min_ft ?? lo.ele, ...nm(fl) } };
+  try { const r = await (await fetch(`${CONFIG.api}/api/actpts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (r.ok && !r.kept) { DAYS.pts[id] = { hi: [body.hi.name, body.hi.kind, body.hi.ft], lo: [body.lo.name, body.lo.kind, body.lo.ft] }; if (DATA?.trip?.id === id) renderAll(); } }
+  catch (e) { console.warn('point names not saved', e); }
+}
+// Owner: fill in names for listed activities nobody has opened yet (one at a time, in the background)
+const FILLQ = []; let FILL_ON = false;
+function fillNames(acts) {
+  if (!isOwner() || CONFIG.dataSource !== 'api' || !DAYS._at) return;
+  for (const a of acts) if (a.status !== 'live' && a.ele_max_ft != null && !DAYS.pts?.[a.id] && !NAMED.has(a.id) && !a.nogps && !FILLQ.includes(a.id)) FILLQ.push(a.id);
+  if (FILL_ON || !FILLQ.length) return;
+  FILL_ON = true;
+  (async () => {
+    let n = 0;
+    while (FILLQ.length && n < 12) { const id = FILLQ.shift(); n++;
+      try { const d = await loadTrack(id); if (d?.trip) { const D = viewOf(d); await nameHiLo(D, derive(D)); } } catch (e) { console.warn('name fill', id, e); }
+      await new Promise(r => setTimeout(r, 1500)); }
+    FILL_ON = false;
+    if (!$('#weeksView').hidden) renderWeeks(); if (DLOG.day && !$('#dayView').hidden) renderDayLog(DLOG.day);
+  })();
+}
+// Daily CSV (owner): one row per day of the listed weeks, with the places and coordinates of the High and Low
+async function dailyCsv(weekKeys) {
+  let co = { log: {}, pts: {} };
+  try { co = await ownerGet('/admin/day/coords'); } catch (e) { console.warn('coords', e); }
+  const L = [['date', 'place', 'activities', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'time_h', 'moving_h', 'activity_steps', 'all_day_steps', 'kcal',
+    'high_ft', 'high_source', 'high_place', 'high_lat', 'high_lon', 'low_ft', 'low_source', 'low_place', 'low_lat', 'low_lon', 'note'].join(',')];
+  const today = mtDayKey(Date.now()), src = h => h ? ({ act: 'activities', ck: 'inreach', loc: 'location', edit: 'edited' })[h.src] : '';
+  const ll = (h, d, sd) => { if (!h) return ['', '']; const g = co.log?.[d]; if (h.src === 'edit' || h.whereEdit) return [g?.[sd + '_lat'] ?? '', g?.[sd + '_lon'] ?? ''];
+    if (h.act) { const p = co.pts?.[h.act]; return [p?.[sd + '_lat'] ?? '', p?.[sd + '_lon'] ?? '']; } return ['', '']; };
+  for (const k of [...weekKeys].sort()) for (let i = 0; i < 7; i++) {
+    const d = addDays(k, i); if (d > today) break;
+    const w = dayStats(d); if (!w.n && w.all == null && !w.hiAt) continue;
+    const [hla, hlo] = ll(w.hiAt, d, 'hi'), [lla, llo] = ll(w.loAt, d, 'lo');
+    L.push([d, csvQ(w.loc?.place || ''), w.n, w.mi.toFixed(2), (w.mi * KM_PER_MI).toFixed(2), Math.round(w.ft), Math.round(w.ft * M_PER_FT), (w.sec / 3600).toFixed(2), (w.mov / 3600).toFixed(2),
+      w.steps || '', w.all ?? '', w.kcalN ? Math.round(w.kcal) : '', w.hi ?? '', src(w.hiAt), csvQ(w.hiAt?.pt?.name), hla, hlo, w.lo ?? '', src(w.loAt), csvQ(w.loAt?.pt?.name), lla, llo, csvQ(w.note)].join(','));
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv' }));
+  a.download = `ACLive_days_${WK_YEAR}_${today.replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+// Version footer: this page and the server (/health); flagged when they differ
+async function showVersions() {
+  const el = $('#verLine'); if (!el) return;
+  el.textContent = `ACLive page ${VERSION} · server …`;
+  if (CONFIG.dataSource !== 'api') { el.textContent = `ACLive page ${VERSION} · mock data`; return; }
+  try { const j = await (await fetch(`${CONFIG.api}/health`, { cache: 'no-store' })).json(), sv = j.version || '?';
+    el.innerHTML = `ACLive page ${esc(VERSION)} · server ${esc(sv)}${sv !== VERSION ? ' <span class="stale-tag" title="The page and the Worker are different versions: deploy the other half">⚠ versions differ</span>' : ''}`; }
+  catch (e) { el.textContent = `ACLive page ${VERSION} · server not reachable`; }
+}
 
 /* ---- Weekly records view (#weeks) ---- */
 let WK_OPEN = new Set(), WK_YEAR = null;
@@ -3614,30 +3927,43 @@ function renderWeeks() {
   // table
   const { rows } = weeksRows(WK_YEAR);
   const all = weekStats(rows.flatMap(r => r.w.acts)), allSteps = rows.reduce((t, r) => t + (r.w.all || 0), 0);
-  for (const r of rows) { if (r.w.hi != null) all.hi = all.hi == null ? r.w.hi : Math.max(all.hi, r.w.hi); if (r.w.lo != null) all.lo = all.lo == null ? r.w.lo : Math.min(all.lo, r.w.lo); }
+  all.hi = all.lo = null; all.hiAt = all.loAt = null;
+  for (const r of rows) { if (r.w.hi != null && (all.hi == null || r.w.hi > all.hi)) { all.hi = r.w.hi; all.hiAt = r.w.hiAt; } if (r.w.lo != null && (all.lo == null || r.w.lo < all.lo)) { all.lo = r.w.lo; all.loAt = r.w.loAt; } }
   const big = n => n >= 1e6 ? (n / 1e6).toFixed(2) + ' M' : n0(n);
   const head = `<thead><tr><th>Week</th><th>Distance</th><th>Vert</th><th>Time</th><th>Activities</th><th>Activity steps</th><th>All-day steps</th><th>Calories</th><th>High</th><th>Low</th></tr></thead>`;
   const body = rows.map(({ k, w }) => {
     const open = WK_OPEN.has(k), c = k === cur ? ' cur' : '';
     const allD = w.all != null ? n0(w.all) : '—';
-    if (!w.n) return `<tr class="empty${c}"><td>${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="5">no activities</td><td>${allD}</td><td>—</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
-    const main = `<tr class="wk${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td>
+    const main = !w.n ? `<tr class="wk empty${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td><td colspan="5">no activities</td><td>${allD}</td><td>—</td><td>${hlCell(w.hiAt, true)}</td><td>${hlCell(w.loAt, true)}</td></tr>`
+      : `<tr class="wk${c}" data-k="${k}"><td>${open ? '▾' : '▸'} ${weekLabel(k)}${k === cur ? '<span class="tag">this week</span>' : ''}</td>
       <td>${w.mi.toFixed(1)} mi</td><td>${n0(w.ft)} ft</td><td title="moving ${hm(w.mov)}">${hm(w.sec)}</td><td>${w.n}<span class="ty">${typesLine(w.types, true)}</span></td>
-      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${allD}</td><td>${w.kcalN ? n0(w.kcal) + ' kcal' : '—'}</td><td>${w.hi != null ? n0(w.hi) + ' ft' : '—'}</td><td>${w.lo != null ? n0(w.lo) + ' ft' : '—'}</td></tr>`;
+      <td>${w.est ? '≈ ' : ''}${w.steps ? n0(w.steps) : '—'}</td><td>${allD}</td><td>${w.kcalN ? n0(w.kcal) + ' kcal' : '—'}</td><td>${hlCell(w.hiAt, true)}</td><td>${hlCell(w.loAt, true)}</td></tr>`;
     if (!open) return main;
-    const subs = [...w.acts].sort((a, b) => a.start.localeCompare(b.start));
-    return main + subs.map((a, i) => `<tr class="sub${i === subs.length - 1 ? ' last' : ''}"><td colspan="10"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtDT(Date.parse(a.start))} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${hm(actSec(a))}${a.moving_s != null ? ` (${hm(a.moving_s)} moving)` : ''}${a.kcal != null ? ` · ${n0(a.kcal)} kcal` : ''}</td></tr>`).join('');
+    // v0.21: the week's days (each links to its day log), with that day's activities under it
+    let out = main; const today = mtDayKey(Date.now());
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(k, i); if (d > today) break;
+      const x = dayStats(d), pl = x.loc?.place || x.acts.find(a => a.auto_town)?.auto_town || '';
+      out += `<tr class="day${x.n ? '' : ' rest'}"><td><a href="#day/${d}">${dShort(d)}</a>${pl ? `<small class="pl">${esc(pl)}</small>` : ''}</td>
+        <td>${x.n ? x.mi.toFixed(1) + ' mi' : '—'}</td><td>${x.n ? n0(x.ft) + ' ft' : '—'}</td><td>${x.n ? hm(x.sec) : '—'}</td><td>${x.n || '—'}</td>
+        <td>${x.steps ? (x.est ? '≈ ' : '') + n0(x.steps) : '—'}</td><td>${x.all != null ? n0(x.all) : '—'}</td><td>${x.kcalN ? n0(x.kcal) + ' kcal' : '—'}</td><td>${hlCell(x.hiAt)}</td><td>${hlCell(x.loAt)}</td></tr>`;
+      const subs = [...x.acts].sort((a, b) => a.start.localeCompare(b.start));
+      out += subs.map((a, j) => `<tr class="sub${j === subs.length - 1 ? ' last' : ''}"><td colspan="10"><a href="#a/${encodeURIComponent(a.id)}">${esc(a.title)}</a> · ${fmtTime(a.start)} · ${(a.dist_mi || 0).toFixed(1)} mi · ${n0(a.gain_ft || 0)} ft · ${hm(actSec(a))}${a.moving_s != null ? ` (${hm(a.moving_s)} moving)` : ''}${a.kcal != null ? ` · ${n0(a.kcal)} kcal` : ''}</td></tr>`).join('');
+      fillNames(x.acts);
+    }
+    return out;
   }).join('');
   const tot = `<tr class="tot"><td>${WK_YEAR === 'all' ? 'All' : WK_YEAR} total · ${rows.length} weeks</td><td>${n0(all.mi)} mi</td><td>${n0(all.ft)} ft</td><td>${n0(all.sec / 3600)} h</td><td>${all.n}</td>
-    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : big(all.steps)}</td><td>${allSteps ? big(allSteps) : '—'}</td><td>${all.kcalN ? big(all.kcal) + ' kcal' : '—'}</td><td>${all.hi != null ? n0(all.hi) + ' ft' : '—'}</td><td>${all.lo != null ? n0(all.lo) + ' ft' : '—'}</td></tr>`;
+    <td>${!all.steps ? '—' : ''}${all.steps ? (all.est ? '≈ ' : '') : ''}${!all.steps ? '' : big(all.steps)}</td><td>${allSteps ? big(allSteps) : '—'}</td><td>${all.kcalN ? big(all.kcal) + ' kcal' : '—'}</td><td>${hlCell(all.hiAt, 'date')}</td><td>${hlCell(all.loAt, 'date')}</td></tr>`;
   $('#wkTable').innerHTML = head + '<tbody>' + body + tot + '</tbody>';
   $('#wkTable').onclick = e => { if (e.target.closest('a')) return; const r = e.target.closest('tr.wk'); if (!r) return;
     const k = r.dataset.k; WK_OPEN.has(k) ? WK_OPEN.delete(k) : WK_OPEN.add(k); renderWeeks(); };
   $('#wkCsv').hidden = !isOwner();                         // your weekly records download only for you
+  const dc = $('#wkDayCsv'); if (dc) { dc.hidden = !isOwner(); dc.onclick = () => dailyCsv(rows.map(r => r.k)); }
   $('#wkCsv').onclick = () => {
-    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'time_h', 'moving_h', 'high_ft', 'low_ft', 'kcal'].join(',')];
+    const lines = [['week_start', 'week_end', 'distance_mi', 'distance_km', 'vert_ft', 'vert_m', 'activities', 'run', 'walk', 'hike', 'other', 'activity_steps', 'steps_estimated', 'all_day_steps', 'time_h', 'moving_h', 'high_ft', 'high_place', 'high_day', 'low_ft', 'low_place', 'low_day', 'kcal'].join(',')];
     for (const { k, w } of rows) lines.push([k, addDays(k, 6), w.mi.toFixed(2), (w.mi * KM_PER_MI).toFixed(2), Math.round(w.ft), Math.round(w.ft * M_PER_FT), w.n,
-      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', (w.sec / 3600).toFixed(2), (w.mov / 3600).toFixed(2), w.hi ?? '', w.lo ?? '', w.kcalN ? Math.round(w.kcal) : ''].join(','));
+      w.types.run, w.types.walk, w.types.hike, w.types.other, w.steps, w.est, w.all ?? '', (w.sec / 3600).toFixed(2), (w.mov / 3600).toFixed(2), w.hi ?? '', csvQ(w.hiAt?.pt?.name), w.hiAt?.day || '', w.lo ?? '', csvQ(w.loAt?.pt?.name), w.loAt?.day || '', w.kcalN ? Math.round(w.kcal) : ''].join(','));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
     a.download = `ACLive_weeks_${WK_YEAR}_${mtDayKey(Date.now()).replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
@@ -3720,7 +4046,7 @@ function renderAll() {
     renderHeader(D, s); renderTitleEdit(D); renderLocEdit(D); renderNotes(D); renderNoGps(D); $('#tideCard').hidden = true; return;
   }
   renderLocEdit(D); renderDriveHint(D, s);
-  loadOsm(D, s);
+  loadOsm(D, s); if (ensureActs(() => { if (DATA) renderAll(); })) nameHiLo(D, s);
   $('#lgPlan').style.display = s.freeform ? 'none' : '';
   renderHeader(D, s); renderTitleEdit(D); renderNotes(D); renderAlerts(D, s); renderTiles(D, s); renderFresh(D, s); renderNext(D, s);
   renderMap(D, s); renderPhotos(D, s); renderProfile(D, s); renderWx(D, s); renderTideAct(D, s); renderEffort(D, s); renderSplits(D, s); renderCpTable(D, s); renderTimeline(D, s); renderDebug(D, s);
@@ -3753,7 +4079,7 @@ async function route() {
 }
 async function refreshLanding() {
   setStatus('loading', 'Loading activities…');
-  try { ACTS = await loadActivities(); renderLanding(); if (!$('#weeksView').hidden) renderWeeks(); if (!$('#landing').hidden) { renderDriveCard(); renderAirCard(); } $('#fltLink').hidden = !isOwner(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
+  try { ACTS = await loadActivities(); renderLanding(); if (!$('#weeksView').hidden) renderWeeks(); if (!$('#dayView').hidden && DLOG.day) renderDayLog(DLOG.day); if (!$('#landing').hidden) { renderDriveCard(); renderAirCard(); } $('#fltLink').hidden = !isOwner(); setStatus('live', `Updated ${fmtTime(Date.now())}`); }
   catch (e) { console.error(e); setStatus('error', 'Couldn’t reach the tracking server. Retrying automatically.'); }
 }
 /* ---- Route events from OpenStreetMap: which named trails/streets you were on, turns, and landmarks passed ----
@@ -3913,7 +4239,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.20.0';
+const VERSION = 'v0.21.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -4561,6 +4887,7 @@ function renderDriveHint(d, s) {
 
 renderOwnerBox();
 route();
+showVersions();
 
 </script>
 </body>
