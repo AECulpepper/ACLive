@@ -3351,16 +3351,22 @@ function parseFlightKml(text, fname) {
   const M2F = 3.28084, track = [];
   const whens = by('when').map(e => Date.parse(e.textContent.trim())), coords = by('coord').map(e => e.textContent.trim().split(/\s+/).map(Number));
   if (coords.length > 1 && whens.length === coords.length) coords.forEach((c, i) => track.push([Math.round(whens[i] / 1000), c[1], c[0], c[2] != null && isFinite(c[2]) ? Math.round(c[2] * M2F) : null, null]));
-  if (!track.length) for (const pm of by('Placemark')) {
+  let ownSpd = false;
+  if (!track.length) for (const pm of by('Placemark')) {             // one placemark per position (FlightRadar24): read only <coordinates> inside the Point
     const pt = pm.getElementsByTagNameNS('*', 'Point')[0], w = pm.getElementsByTagNameNS('*', 'when')[0];
-    if (!pt || !w) continue; const c = pt.textContent.trim().split(',').map(Number);
-    if (isFinite(c[0]) && isFinite(c[1])) track.push([Math.round(Date.parse(w.textContent.trim()) / 1000), c[1], c[0], isFinite(c[2]) ? Math.round(c[2] * M2F) : null, null]);
+    if (!pt || !w) continue;
+    const c = (pt.getElementsByTagNameNS('*', 'coordinates')[0]?.textContent || pt.textContent).trim().split(/\s+/).pop().split(',').map(Number);
+    if (!isFinite(c[0]) || !isFinite(c[1])) continue;
+    const ds = pm.getElementsByTagNameNS('*', 'description')[0]?.textContent || '';
+    const altFt = (ds.match(/Altitude:[\s\S]*?([\d,]+)\s*ft/) || [])[1], kt = (ds.match(/Speed:[\s\S]*?(\d+)\s*kt/) || [])[1];
+    if (kt != null) ownSpd = true;
+    track.push([Math.round(Date.parse(w.textContent.trim()) / 1000), c[1], c[0], altFt != null ? +altFt.replace(/,/g, '') : isFinite(c[2]) ? Math.round(c[2] * M2F) : null, kt != null ? Math.round(+kt * 1.15078) : null]);
   }
   if (!track.length) { let best = []; for (const ls of by('LineString')) { const c = (ls.getElementsByTagNameNS('*', 'coordinates')[0]?.textContent || '').trim().split(/\s+/).map(x => x.split(',').map(Number)).filter(x => isFinite(x[0]) && isFinite(x[1])); if (c.length > best.length) best = c; }
     best.forEach(c => track.push([0, c[1], c[0], isFinite(c[2]) ? Math.round(c[2] * M2F) : null, null])); }
   if (track.length < 2) return { err: 'no track found in this file' };
   const timed = track.every(p => p[0] > 0);
-  if (timed) { track.sort((a, b) => a[0] - b[0]); for (let i = 1; i < track.length; i++) { const a = track[i - 1], b = track[i], h = (b[0] - a[0]) / 3600;
+  if (timed) { track.sort((a, b) => a[0] - b[0]); if (!ownSpd) for (let i = 1; i < track.length; i++) { const a = track[i - 1], b = track[i], h = (b[0] - a[0]) / 3600;
     if (h > 0) { const v = haversineMiP(a, b) / h; if (v < 800) track[i][4] = Math.round(v); } } }
   const names = [doc.getElementsByTagNameNS('*', 'name')[0]?.textContent || '', fname || ''].join(' ').toUpperCase();
   const css = [...names.matchAll(/(?:^|[^A-Z0-9])([A-Z]{3}\d{1,4}[A-Z]?)(?=[^A-Z0-9]|$)/g)].map(m => m[1]);
@@ -3370,8 +3376,47 @@ function parseFlightKml(text, fname) {
   if (fn?.regional) { const mk = css.map(fltNo).find(x => x && !x.regional); if (mk) fn = { ...mk, op: fn.op, regional: true }; }   // a mainline number in the file name wins
   const desc = by('description').map(e => e.textContent).join(' ');
   const ac = (desc.match(/\b(A3[0-9]{2}|A2[0-9]{2}N?|B7[0-9]{2}|B3[0-9]M?|E1[0-9]{2}|E[0-9]{3}|CRJ[0-9]?|CR[0-9]|DH8[A-D]?|AT[0-9]{2})\b/) || [])[1] || '';
-  return { track, timed, callsign: cs, flight_no: fn ? fn.no : cs, airline: fn?.airline || '', op: fn?.op || '', regional: !!fn?.regional, dep: icao[0] || '', arr: icao[1] || '', aircraft: ac };
+  const out = { track, timed, callsign: cs, flight_no: fn ? fn.no : cs, airline: fn?.airline || '', op: fn?.op || '', regional: !!fn?.regional, dep: icao[0] || '', arr: icao[1] || '', aircraft: ac, fmt: 'fa-kml' };
+  // FlightRadar24 KML: the document's description carries airports, schedule, aircraft and tail
+  const hd = doc.getElementsByTagNameNS('*', 'Document')[0]?.getElementsByTagNameNS('*', 'description')[0]?.textContent || '';
+  if (/flightradar24/i.test(hd) || /flightradar24/i.test(text.slice(0, 4000))) {
+    out.fmt = 'fr24-kml';
+    const tx = hd.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
+    const dA = (hd.match(/\/airport\/([a-z0-9]{3,4})\/departures/i) || [])[1], aA = (hd.match(/\/airport\/([a-z0-9]{3,4})\/arrivals/i) || [])[1];
+    if (dA && !out.dep) out.dep = dA.toUpperCase(); if (aA && !out.arr) out.arr = aA.toUpperCase();
+    const t = (tx.match(/Aircraft\s*\(([A-Z0-9]{2,4})\)/) || [])[1]; if (t) out.aircraft = t;
+    const tn = (tx.match(/Aircraft\s*\([A-Z0-9]{2,4}\)\s*([A-Za-z][^|]*?)\s+Registration/) || [])[1]; if (tn) out.aircraft_name = tn.trim();
+    const rg = (tx.match(/Registration\s+([A-Z0-9-]{3,10})/) || [])[1]; if (rg) out.reg = rg;
+    const al = (hd.match(/\/\s*[A-Z]{3}\d{1,4}[A-Z]?\s*<br\s*\/?>\s*([^<]{2,40})</i) || [])[1]; if (al && !out.airline) out.airline = al.trim();
+    const tm = k => (tx.match(new RegExp(k + '\\s+(\\d{1,2}:\\d{2})\\s+UTC')) || [])[1];
+    const day = track[0]?.[0] ? new Date(track[0][0] * 1000).toISOString().slice(0, 10) : null;
+    const at = hhmm => { if (!day || !hhmm) return null; let v = Date.parse(`${day}T${hhmm.padStart(5, '0')}:00Z`); if (track[0][0] * 1000 - v > 12 * 3600e3) v += 86400e3; return new Date(v).toISOString(); };
+    out.sched_dep = at(tm('STD')); out.sched_arr = at(tm('STA'));
+    if (out.sched_arr && out.sched_dep && out.sched_arr < out.sched_dep) out.sched_arr = new Date(Date.parse(out.sched_arr) + 86400e3).toISOString();
+  }
+  return out;
 }
+// v0.21.2 FlightRadar24 CSV: Timestamp,UTC,Callsign,Position,Altitude,Speed,Direction (feet, knots; "lat,lon" in quotes)
+function parseFr24Csv(text, fname) {
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (!/^\s*Timestamp\s*,\s*UTC\s*,\s*Callsign\s*,\s*Position/i.test(lines[0] || '')) return { err: 'not a FlightRadar24 CSV (expected Timestamp,UTC,Callsign,Position,…)' };
+  const track = []; let cs = '';
+  for (const ln of lines.slice(1)) {
+    const m = ln.match(/^\s*(\d+)\s*,[^,]*,\s*([^,]*?)\s*,\s*"?\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*"?\s*,\s*(-?\d+)?\s*,\s*(\d+)?/);
+    if (!m) continue; if (!cs && m[2]) cs = m[2].toUpperCase().replace(/[^A-Z0-9]/g, '');
+    track.push([+m[1], +m[3], +m[4], m[5] != null ? +m[5] : null, m[6] != null ? Math.round(+m[6] * 1.15078) : null]);
+  }
+  if (track.length < 2) return { err: 'no positions found in this CSV' };
+  track.sort((a, b) => a[0] - b[0]);
+  if (!cs) cs = ((fname || '').toUpperCase().match(/([A-Z]{3}\d{1,4}[A-Z]?)/) || [])[1] || '';
+  let fn = fltNo(cs); if (!fn) { const iata = ((fname || '').toUpperCase().match(/^([A-Z0-9]{2}\d{1,4})/) || [])[1]; if (iata) fn = { no: iata, airline: '' }; }
+  return { track, timed: true, callsign: cs, flight_no: fn ? fn.no : cs, airline: fn?.airline || '', op: fn?.op || '', regional: !!fn?.regional, dep: '', arr: '', aircraft: '', fmt: 'fr24-csv' };
+}
+function parseFlightFile(text, fname) {
+  if (/\.csv$/i.test(fname || '') || /^\s*Timestamp\s*,\s*UTC/i.test(text.slice(0, 200))) return parseFr24Csv(text, fname);
+  return parseFlightKml(text, fname);
+}
+const FMT_TXT = { 'fa-kml': 'FlightAware KML', 'fr24-kml': 'FlightRadar24 KML', 'fr24-csv': 'FlightRadar24 CSV', kml: 'KML upload' };
 const haversineMiP = (a, b) => { const R = 3958.8, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[2] - a[2]) * r;
   const s = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(s)); };
 async function loadFlights(force) {
@@ -3401,7 +3446,7 @@ async function renderFlightsView() {
   const tile = (k, v, sub) => `<div class="tile"><div class="label">${k}</div><div class="value">${v}</div><div class="foot">${sub}</div></div>`;
   const mi = sum('mi');
   const tiles = [tile('Flights', done.length, [nSrc('kml') && `${nSrc('kml')} KML`, nSrc('manual') && `${nSrc('manual')} manual`, nSrc('live') && `${nSrc('live')} tracked live`].filter(Boolean).join(' · ') || '—'),
-    tile('Distance', `${n0(Math.round(mi))}<small>mi</small>`, `${n0(Math.round(mi * KM_PER_MI))} km · flown`), tile('Air time', fltHM(sum('air_s')), 'first to last point'),
+    tile('Distance', `${n0(Math.round(mi))}<small>mi</small>`, `${n0(Math.round(mi * KM_PER_MI))} km · flown`), tile('Air time', fltHM(done.reduce((t, f) => t + (f.summary?.flight_s ?? f.summary?.air_s ?? 0), 0)), 'wheels up to down where known'),
     tile('Airports', Object.keys(aps).length, topAp ? `${topAp[0]} most used (${topAp[1]})` : '—'),
     tile('Longest', longest ? fltRoute(longest) : '—', longest ? `${n0(Math.round(longest.summary?.mi || 0))} mi · ${fltHM(longest.summary?.air_s)}` : ''),
     tile('Highest', highest?.summary?.max_alt_ft ? `${n0(highest.summary.max_alt_ft)}<small>ft</small>` : '—', highest?.summary?.max_alt_ft ? `${n0(Math.round(highest.summary.max_alt_ft * M_PER_FT))} m · ${fltRoute(highest)}` : '')];
@@ -3411,7 +3456,7 @@ async function renderFlightsView() {
     <td class="l"><label class="flt-share"><input type="checkbox" data-fshare="${f.id}"${f.share ? ' checked' : ''}> Share live</label> <button type="button" data-fdel="${f.id}">Remove</button>${f.status === 'live' ? ` <a href="#f/${f.id}">Open</a>` : ''}</td></tr>`).join('');
   const trips = fltTrips(done);
   const rowOf = f => `<tr><td>${fltD(f.dep_t, f.summary?.dep_tz).replace(/ \d{4}$/, '')}</td><td>${esc(fltName(f))}</td><td><a href="#f/${f.id}">${esc(fltRoute(f))}</a></td><td>${esc(f.aircraft || '—')}${f.reg ? `<br><small class="muted">${esc(f.reg)}</small>` : ''}</td>
-    <td>${fltT(f.dep_t, f.summary?.dep_tz)}–${fltT(f.arr_t, f.summary?.arr_tz)}</td><td>${fltHM(f.summary?.air_s)}</td><td>${f.summary?.mi != null ? n0(Math.round(f.summary.mi)) : '—'}</td>
+    <td>${fltT(f.dep_t, f.summary?.dep_tz)}–${fltT(f.arr_t, f.summary?.arr_tz)}</td><td>${fltHM(f.summary?.flight_s ?? f.summary?.air_s)}</td><td>${f.summary?.mi != null ? n0(Math.round(f.summary.mi)) : '—'}</td>
     <td>${f.summary?.max_alt_ft ? n0(f.summary.max_alt_ft) : '—'}</td><td class="muted">${f.src === 'live' ? 'tracked' : esc(f.src || '')}</td></tr>`;
   const body = trips.map(t => {
     const head = t.length > 1 ? `<tr class="flt-trip"><td colspan="9"><b>Trip</b> · ${t.map(f => f.dep?.iata).concat(t.at(-1).arr?.iata).join(' → ')} · layovers ${t.slice(1).map((f, i) => fltHM((Date.parse(f.dep_t) - Date.parse(t[i].arr_t)) / 1000)).join(', ')}</td></tr>` : '';
@@ -3419,7 +3464,7 @@ async function renderFlightsView() {
   }).join('');
   box.innerHTML = `<div class="day-h"><div><h1>Flight log <span class="pill">owner only</span></h1><div class="muted">KML uploads, manual entries and flights tracked live · never counted in activities or weekly totals</div></div>
       <div class="day-btns"><label class="muted">Year <select id="fltYear">${[...years, 'all'].map(y => `<option value="${y}"${y === FLT.year ? ' selected' : ''}>${y === 'all' ? 'All years' : y}</option>`).join('')}</select></label>
-      <button type="button" data-fui="upload" class="primary">Upload KML</button><button type="button" data-fui="manual">Add manually</button><button type="button" data-fui="plan">Add upcoming flight</button><button type="button" data-fui="test">Test a callsign</button><button type="button" id="fltCsv">CSV</button></div></div>
+      <button type="button" data-fui="upload" class="primary">Upload KML or CSV</button><button type="button" data-fui="manual">Add manually</button><button type="button" data-fui="plan">Add upcoming flight</button><button type="button" data-fui="test">Test a callsign</button><button type="button" id="fltCsv">CSV</button></div></div>
     <div id="fltForm"></div>
     ${up.length ? `<section class="card day-sec"><div class="card-h"><h2>Upcoming and live</h2><span class="meta">followed with the open ADS-B feeds · Share live = shown on the front page while in the air</span></div><div class="card-b"><div class="table-wrap day-table flt-table"><table><thead><tr><th class="l">Day</th><th class="l">Callsign</th><th class="l">Route</th><th>Departs</th><th>Status</th><th></th></tr></thead><tbody>${upRows}</tbody></table></div></div></section>` : ''}
     <section class="card day-sec"><div class="card-b"><div class="day-tiles">${tiles.join('')}</div></div></section>
@@ -3430,9 +3475,10 @@ async function renderFlightsView() {
   box.querySelectorAll('[data-fshare]').forEach(c => c.onchange = async () => { await ownerPost('/admin/flight/share', { id: c.dataset.fshare, share: c.checked }); loadFlights(true); });
   box.querySelectorAll('[data-fdel]').forEach(b => b.onclick = async () => { if (!confirm('Remove this upcoming flight?')) return; await ownerPost('/admin/flight/delete', { id: b.dataset.fdel }); await loadFlights(true); renderFlightsView(); });
   $('#fltCsv').onclick = () => {
-    const L = [['date_local', 'flight', 'callsign', 'airline', 'from', 'to', 'dep_utc', 'arr_utc', 'air_min', 'miles_flown', 'miles_great_circle', 'max_alt_ft', 'top_mph', 'aircraft', 'tail', 'seat', 'source', 'notes'].join(',')];
+    const L = [['date_local', 'flight', 'callsign', 'airline', 'from', 'to', 'dep_utc', 'arr_utc', 'air_min', 'miles_flown', 'miles_great_circle', 'max_alt_ft', 'top_mph', 'aircraft', 'tail', 'seat', 'source', 'off_utc', 'on_utc', 'flight_min', 'taxi_out_min', 'taxi_in_min', 'sched_dep_utc', 'sched_arr_utc', 'notes'].join(',')];
     for (const f of done.slice().reverse()) L.push([f.day, f.flight_no || '', f.callsign || '', `"${f.airline || ''}"`, f.dep?.iata || '', f.arr?.iata || '', f.dep_t || '', f.arr_t || '', f.summary?.air_s != null ? Math.round(f.summary.air_s / 60) : '',
-      f.summary?.mi ?? '', f.summary?.gc_mi ?? '', f.summary?.max_alt_ft ?? '', f.summary?.top_mph ?? '', `"${(f.aircraft || '').replace(/"/g, '')}"`, f.reg || '', f.seat || '', f.src || '', `"${(f.notes || '').replace(/"/g, '""')}"`].join(','));
+      f.summary?.mi ?? '', f.summary?.gc_mi ?? '', f.summary?.max_alt_ft ?? '', f.summary?.top_mph ?? '', `"${(f.aircraft || '').replace(/"/g, '')}"`, f.reg || '', f.seat || '', f.summary?.fmt || f.src || '', f.summary?.off_t || '', f.summary?.on_t || '', f.summary?.flight_s != null ? Math.round(f.summary.flight_s / 60) : '',
+      f.summary?.taxi_out_s != null ? Math.round(f.summary.taxi_out_s / 60) : '', f.summary?.taxi_in_s != null ? Math.round(f.summary.taxi_in_s / 60) : '', f.summary?.sched_dep || '', f.summary?.sched_arr || '', `"${(f.notes || '').replace(/"/g, '""')}"`].join(','));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv' })); a.download = `ACLive_flights_${FLT.year}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
   renderFltForm();
   // map of all flights in the year (airport to airport)
@@ -3471,24 +3517,24 @@ function renderFltForm() {
       const p = cur.p, tr = p.track || [];
       const first = tr[0], last = tr.at(-1), maxAlt = Math.max(...tr.map(x => x[3] || 0));
       review = p.err ? `<p class="flt-warn">${esc(cur.name)}: ${esc(p.err)}</p><div class="row"><button type="button" id="fSkip">Next file</button></div>` : `
-        <div class="flt-file"><b>${esc(cur.name)}</b> <span class="muted">· ${FLT.idx + 1} of ${FLT.files.length} · ${n0(tr.length)} points${p.timed ? '' : ' · no times in this file'}${maxAlt ? ` · max ${n0(maxAlt)} ft` : ''}</span></div>
-        <div class="flt-grid">${fltField('fNo', 'Flight', p.flight_no, { ph: p.regional ? 'AA 6472' : 'DL 2345', note: p.regional && !p.flight_no ? `${esc(p.callsign)} is ${esc(p.op)}: type the number you booked` : '' })}${fltField('fAirline', 'Airline', p.airline || (p.regional ? '' : ''), { ph: p.regional ? 'American' : '' })}${fltField('fSeat', 'Seat', '', { ph: '14A', size: 5 })}${fltField('fReg', 'Tail', '', { ph: 'N730EV', size: 8 })}
-          ${fltField('fDep', 'From', p.dep, { ph: 'auto from the track', size: 8 })}${fltField('fArr', 'To', p.arr, { ph: 'auto from the track', size: 8 })}${fltField('fAc', 'Aircraft', p.aircraft, { ph: 'A321' })}
-          ${p.timed ? `<div class="flt-f"><span>Times</span><div>${new Date(first[0] * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date(last[0] * 1000).toISOString().slice(11, 16)} UTC <small>from the track</small></div></div>`
+        <div class="flt-file"><b>${esc(cur.name)}</b> <span class="muted">· ${FMT_TXT[p.fmt] || 'file'} · ${FLT.idx + 1} of ${FLT.files.length} · ${n0(tr.length)} points${p.timed ? '' : ' · no times in this file'}${maxAlt ? ` · max ${n0(maxAlt)} ft` : ''}</span></div>
+        <div class="flt-grid">${fltField('fNo', 'Flight', p.flight_no, { ph: p.regional ? 'AA 6472' : 'DL 2345', note: p.regional && !p.flight_no ? `${esc(p.callsign)} is ${esc(p.op)}: type the number you booked` : '' })}${fltField('fAirline', 'Airline', p.airline || (p.regional ? '' : ''), { ph: p.regional ? 'American' : '' })}${fltField('fSeat', 'Seat', '', { ph: '14A', size: 5 })}${fltField('fReg', 'Tail', p.reg || '', { ph: 'N730EV', size: 8, note: p.reg ? 'from the file' : '' })}
+          ${fltField('fDep', 'From', p.dep, { ph: 'auto from the track', size: 8 })}${fltField('fArr', 'To', p.arr, { ph: 'auto from the track', size: 8 })}${fltField('fAc', 'Aircraft', p.aircraft, { ph: 'A321', note: p.aircraft_name ? esc(p.aircraft_name) : '' })}
+          ${p.timed ? `<div class="flt-f"><span>Times</span><div>${new Date(first[0] * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date(last[0] * 1000).toISOString().slice(11, 16)} UTC <small>from the track${p.sched_dep ? ` · scheduled ${p.sched_dep.slice(11, 16)} → ${(p.sched_arr || '').slice(11, 16)} UTC` : ''}</small></div></div>`
             : `${fltField('fDepL', 'Departs (local at From)', '', { type: 'datetime-local' })}${fltField('fArrL', 'Arrives (local at To)', '', { type: 'datetime-local' })}`}</div>
         <label class="flt-f flt-notes"><span>Notes</span><textarea id="fNotes" rows="2" placeholder="trip, anything"></textarea></label>
         ${cur.dup ? `<p class="flt-warn">Already in the log: ${esc(cur.dup.flight_no || '')} ${esc(cur.dup.dep || '')} → ${esc(cur.dup.arr || '')} on ${esc((cur.dup.dep_t || '').slice(0, 10))}. <button type="button" id="fReplace">Replace it</button> <button type="button" id="fSkip2">Skip this file</button></p>` : ''}
         <div class="row"><button type="button" class="primary" id="fSave">Save flight</button><button type="button" id="fSkip">Skip</button>${msg}</div>`;
     }
-    box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Upload FlightAware KML</h2><span class="meta">FlightAware: flight page › Track log › KML · several files at once is fine</span></div><div class="card-b">
-      <label class="flt-drop"><input type="file" id="fFiles" accept=".kml,application/vnd.google-earth.kml+xml" multiple> Choose .kml files</label>${review}${!cur && FLT.msg ? `<p>${esc(FLT.msg)}</p>` : ''}</div></section>`;
+    box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Upload flight files</h2><span class="meta">FlightAware KML (Track log › KML) · FlightRadar24 KML or CSV (playback › download) · several at once is fine</span></div><div class="card-b">
+      <label class="flt-drop"><input type="file" id="fFiles" accept=".kml,.csv,application/vnd.google-earth.kml+xml,text/csv" multiple> Choose .kml or .csv files</label>${review}${!cur && FLT.msg ? `<p>${esc(FLT.msg)}</p>` : ''}</div></section>`;
     $('#fFiles').onchange = async e => { FLT.files = []; FLT.idx = 0; FLT.msg = '';
-      for (const f of e.target.files) FLT.files.push({ name: f.name, p: parseFlightKml(await f.text(), f.name) }); renderFltForm(); };
+      for (const f of e.target.files) FLT.files.push({ name: f.name, p: parseFlightFile(await f.text(), f.name) }); renderFltForm(); };
     const next = (m) => { FLT.idx++; FLT.msg = m || ''; if (FLT.idx >= FLT.files.length) { FLT.files = []; FLT.idx = 0; loadFlights(true).then(renderFlightsView); } else renderFltForm(); };
     const save = async (extra = {}) => {
       const p = cur.p, $v = id => ($('#' + id)?.value || '').trim();
       const body = { flight_no: $v('fNo').replace(/\s+/g, ''), callsign: p.callsign, airline: $v('fAirline'), dep: $v('fDep'), arr: $v('fArr'), aircraft: $v('fAc'), notes: $v('fNotes'),
-        seat: $v('fSeat'), reg: $v('fReg'), track: p.track, src: 'kml', dep_local: $v('fDepL') || undefined, arr_local: $v('fArrL') || undefined, ...extra };
+        seat: $v('fSeat'), reg: $v('fReg'), track: p.track, src: 'kml', fmt: p.fmt, sched_dep: p.sched_dep || undefined, sched_arr: p.sched_arr || undefined, dep_local: $v('fDepL') || undefined, arr_local: $v('fArrL') || undefined, ...extra };
       if (!p.timed && !body.dep_local) { $('#fMsg').textContent = 'This file has no times: enter the departure time.'; return; }
       if (!p.timed && (!body.dep || !body.arr)) { $('#fMsg').textContent = 'Enter From and To so the local times can be read.'; return; }
       $('#fMsg').textContent = 'Saving…';
@@ -3573,7 +3619,7 @@ async function renderFlightView(id) {
   const wxT = (k, w, ap) => tile(k, w ? `${Math.round(w.temp_c)}°<small>C</small>` : '—', w ? `${cF(w.temp_c)} °F · ${esc(w.desc || '')} · ${dirName(w.wind_dir)} ${w.wind_mph ?? '—'}${w.gust_mph ? '/' + w.gust_mph : ''} mph${ap ? ' · ' + esc(ap) : ''}` : 'no weather for this hour');
   const live = f.status === 'live', lp = tr.at(-1);
   box.innerHTML = `<div class="day-h"><div><h1>${esc(fltRoute(f))} <span>· ${esc(fltName(f))} · ${fltD(f.dep_t || f.sched_dep || f.day + 'T12:00:00Z', dz)}</span></h1>
-      <div class="muted">${esc(f.dep?.name || '')} → ${esc(f.arr?.name || '')}${f.aircraft ? ' · ' + esc(f.aircraft) : ''}${f.reg ? ' · tail ' + esc(f.reg) : ''}${f.seat ? ' · seat ' + esc(f.seat) : ''} · ${f.src === 'live' ? 'tracked live' : f.src === 'kml' ? 'KML upload' : 'manual entry'}${live ? ' · <span class="pill">in the air</span>' : ''}</div></div>
+      <div class="muted">${esc(f.dep?.name || '')} → ${esc(f.arr?.name || '')}${f.aircraft ? ' · ' + esc(f.aircraft) : ''}${f.reg ? ' · tail ' + esc(f.reg) : ''}${f.seat ? ' · seat ' + esc(f.seat) : ''} · ${f.src === 'live' ? 'tracked live' : f.src === 'kml' ? FMT_TXT[f.summary?.fmt] || 'KML upload' : 'manual entry'}${live ? ' · <span class="pill">in the air</span>' : ''}</div></div>
       <div class="day-btns"><button type="button" id="foEdit">Edit</button>${tr.length > 1 ? '<button type="button" id="foKml">Download KML</button>' : ''}<button type="button" id="foDel">Delete</button></div></div>
     <div id="fltForm"></div>
     ${f.prev || f.next || f.drive ? `<div class="flt-conn">${f.prev ? `<a href="#f/${f.prev.id}">‹ ${esc(f.prev.flight_no || '')} ${esc(f.prev.dep)} → ${esc(f.prev.arr)}</a> <span class="muted">layover ${fltHM(f.prev.layover_s)}</span>` : ''}
@@ -3581,7 +3627,10 @@ async function renderFlightView(id) {
     <section class="card day-sec"><div class="card-b"><div class="day-tiles">
       ${tile('Departed', fltT(f.dep_t, dz) + `<small>${tzAbbr(f.dep_t, dz)}</small>`, f.dep_t ? `${fltT(f.dep_t, 'UTC')} UTC · ${esc(f.dep?.iata || '')}` : '')}
       ${tile(live ? 'Last seen' : 'Arrived', live ? fmtAge(Date.now() - Date.parse(f.last_seen)) : fltT(f.arr_t, az) + `<small>${tzAbbr(f.arr_t, az)}</small>`, live ? (lp ? `${n0(lp[3] || 0)} ft · ${lp[4] ?? '—'} mph` : '') : f.arr_t ? `${fltT(f.arr_t, 'UTC')} UTC · ${esc(f.arr?.iata || '')}` : '')}
-      ${tile('Air time', fltHM(S.air_s), tr.length > 1 ? 'first to last track point' : 'from the times entered')}
+      ${S.flight_s != null ? tile('Air time', fltHM(S.flight_s), `wheels up ${fltT(S.off_t, dz)} → down ${fltT(S.on_t, az)}<br>gate to gate ${fltHM(S.air_s)} · taxi ${Math.round(S.taxi_out_s / 60)} + ${Math.round(S.taxi_in_s / 60)} min`)
+        : tile('Air time', fltHM(S.air_s), tr.length > 1 ? 'first to last track point' : 'from the times entered')}
+      ${S.sched_dep ? tile('Schedule', `${fltT(S.sched_dep, dz)}–${fltT(S.sched_arr, az)}`, (() => { const d = f.dep_t ? Math.round((Date.parse(f.dep_t) - Date.parse(S.sched_dep)) / 60000) : null, a = f.arr_t && S.sched_arr ? Math.round((Date.parse(f.arr_t) - Date.parse(S.sched_arr)) / 60000) : null;
+          const w = (k, m) => m == null ? '' : `${k} ${m === 0 ? 'on time' : Math.abs(m) + ' min ' + (m > 0 ? 'late' : 'early')}`; return [w('gate out', d), w('gate in', a)].filter(Boolean).join(' · '); })()) : ''}
       ${tile('Distance', S.mi != null ? `${n0(Math.round(S.mi))}<small>mi</small>` : '—', `${S.mi != null ? n0(Math.round(S.mi * KM_PER_MI)) + ' km' : ''}${S.gc_mi != null && tr.length > 1 ? ` · ${n0(Math.round(S.gc_mi))} mi great circle` : tr.length > 1 ? '' : ' · great circle'}`)}
       ${tile('Max altitude', S.max_alt_ft ? `${n0(S.max_alt_ft)}<small>ft</small>` : '—', S.max_alt_ft ? `${n0(Math.round(S.max_alt_ft * M_PER_FT))} m${S.max_alt_t ? ' · at ' + fltT(S.max_alt_t, dz) : ''}` : 'no altitude in the data')}
       ${tile('Top speed', S.top_mph ? `${S.top_mph}<small>mph</small>` : '—', S.top_mph ? `${Math.round(S.top_mph * KM_PER_MI)} km/h · ground speed` : '')}
@@ -4282,7 +4331,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.21.1';
+const VERSION = 'v0.21.2';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
