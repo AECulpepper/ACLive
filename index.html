@@ -3381,6 +3381,11 @@ function parseFlightKml(text, fname) {
   const hd = doc.getElementsByTagNameNS('*', 'Document')[0]?.getElementsByTagNameNS('*', 'description')[0]?.textContent || '';
   if (/flightradar24/i.test(hd) || /flightradar24/i.test(text.slice(0, 4000))) {
     out.fmt = 'fr24-kml';
+    const nm = (doc.getElementsByTagNameNS('*', 'name')[0]?.textContent || '').toUpperCase().match(/^\s*([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s*\/\s*([A-Z]{3}\d{1,4}[A-Z]?)/);
+    if (nm && /[A-Z]/.test(nm[1])) {                                   // "DL3735/SKW3735": the number you booked / the callsign flown
+      out.flight_no = nm[1] + nm[2];
+      if (!out.airline) out.airline = Object.values(AIRLINE).find(v => v[0] === nm[1])?.[1] || '';
+    }
     const tx = hd.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
     const dA = (hd.match(/\/airport\/([a-z0-9]{3,4})\/departures/i) || [])[1], aA = (hd.match(/\/airport\/([a-z0-9]{3,4})\/arrivals/i) || [])[1];
     if (dA && !out.dep) out.dep = dA.toUpperCase(); if (aA && !out.arr) out.arr = aA.toUpperCase();
@@ -3416,6 +3421,7 @@ function parseFlightFile(text, fname) {
   if (/\.csv$/i.test(fname || '') || /^\s*Timestamp\s*,\s*UTC/i.test(text.slice(0, 200))) return parseFr24Csv(text, fname);
   return parseFlightKml(text, fname);
 }
+const FMT_SHORT = { 'fa-kml': 'FlightAware', 'fr24-kml': 'FR24 KML', 'fr24-csv': 'FR24 CSV', kml: 'KML' };
 const FMT_TXT = { 'fa-kml': 'FlightAware KML', 'fr24-kml': 'FlightRadar24 KML', 'fr24-csv': 'FlightRadar24 CSV', kml: 'KML upload' };
 const haversineMiP = (a, b) => { const R = 3958.8, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[2] - a[2]) * r;
   const s = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(s)); };
@@ -3457,7 +3463,7 @@ async function renderFlightsView() {
   const trips = fltTrips(done);
   const rowOf = f => `<tr><td>${fltD(f.dep_t, f.summary?.dep_tz).replace(/ \d{4}$/, '')}</td><td>${esc(fltName(f))}</td><td><a href="#f/${f.id}">${esc(fltRoute(f))}</a></td><td>${esc(f.aircraft || '—')}${f.reg ? `<br><small class="muted">${esc(f.reg)}</small>` : ''}</td>
     <td>${fltT(f.dep_t, f.summary?.dep_tz)}–${fltT(f.arr_t, f.summary?.arr_tz)}</td><td>${fltHM(f.summary?.flight_s ?? f.summary?.air_s)}</td><td>${f.summary?.mi != null ? n0(Math.round(f.summary.mi)) : '—'}</td>
-    <td>${f.summary?.max_alt_ft ? n0(f.summary.max_alt_ft) : '—'}</td><td class="muted">${f.src === 'live' ? 'tracked' : esc(f.src || '')}</td></tr>`;
+    <td>${f.summary?.max_alt_ft ? n0(f.summary.max_alt_ft) : '—'}</td><td class="muted">${f.src === 'live' ? 'tracked live' : f.src === 'manual' ? 'manual' : esc(FMT_SHORT[f.summary?.fmt] || 'KML')}</td></tr>`;
   const body = trips.map(t => {
     const head = t.length > 1 ? `<tr class="flt-trip"><td colspan="9"><b>Trip</b> · ${t.map(f => f.dep?.iata).concat(t.at(-1).arr?.iata).join(' → ')} · layovers ${t.slice(1).map((f, i) => fltHM((Date.parse(f.dep_t) - Date.parse(t[i].arr_t)) / 1000)).join(', ')}</td></tr>` : '';
     return head + [...t].reverse().map(rowOf).join('');
@@ -3528,6 +3534,7 @@ function renderFltForm() {
     }
     box.innerHTML = `<section class="card day-sec"><div class="card-h"><h2>Upload flight files</h2><span class="meta">FlightAware KML (Track log › KML) · FlightRadar24 KML or CSV (playback › download) · several at once is fine</span></div><div class="card-b">
       <label class="flt-drop"><input type="file" id="fFiles" accept=".kml,.csv,application/vnd.google-earth.kml+xml,text/csv" multiple> Choose .kml or .csv files</label>${review}${!cur && FLT.msg ? `<p>${esc(FLT.msg)}</p>` : ''}</div></section>`;
+    if (cur?.vals) for (const [k, v] of Object.entries(cur.vals)) { const el = $('#' + k); if (el) el.value = v; }   // v0.21.3: what you typed survives the duplicate warning
     $('#fFiles').onchange = async e => { FLT.files = []; FLT.idx = 0; FLT.msg = '';
       for (const f of e.target.files) FLT.files.push({ name: f.name, p: parseFlightFile(await f.text(), f.name) }); renderFltForm(); };
     const next = (m) => { FLT.idx++; FLT.msg = m || ''; if (FLT.idx >= FLT.files.length) { FLT.files = []; FLT.idx = 0; loadFlights(true).then(renderFlightsView); } else renderFltForm(); };
@@ -3539,8 +3546,9 @@ function renderFltForm() {
       if (!p.timed && (!body.dep || !body.arr)) { $('#fMsg').textContent = 'Enter From and To so the local times can be read.'; return; }
       $('#fMsg').textContent = 'Saving…';
       try { const r = await ownerPost('/admin/flight/save', body);
-        if (r.dup) { cur.dup = r.dup; renderFltForm(); return; }
+        if (r.dup) { cur.dup = r.dup; cur.vals = Object.fromEntries([...$('#fltForm').querySelectorAll('input[id], textarea[id]')].filter(el => el.type !== 'file').map(el => [el.id, el.value])); renderFltForm(); return; }
         if (!r.ok) { $('#fMsg').textContent = r.error || 'Not saved'; return; }
+        if (p.track?.[0]?.[0]) FLT.year = String(new Date(p.track[0][0] * 1000).getUTCFullYear());
         next(`Saved ${body.flight_no || p.callsign || cur.name}.`); } catch (e) { $('#fMsg').textContent = e.message; } };
     if ($('#fSave')) $('#fSave').onclick = () => save();
     if ($('#fReplace')) $('#fReplace').onclick = () => save({ id: cur.dup.id, force: true });
@@ -4331,7 +4339,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.21.2';
+const VERSION = 'v0.21.3';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
