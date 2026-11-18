@@ -501,6 +501,7 @@ footer p { margin: 0 0 6px; }
 .status-card h2 { margin: 0; font-size: 1.05rem; } .status-card .st-meta { font-size: .8rem; color: var(--muted); display: inline-flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .status-card .st-tag { font-size: .7rem; padding: 0 8px; border-radius: 999px; border: 1px solid var(--series-ir); color: var(--series-ir); } .status-card .st-tag.off { border-color: var(--line); color: var(--muted); }
 .status-card .st-line { margin: 8px 0 4px; font-size: 1.22rem; line-height: 1.45; color: var(--ink); }
+.status-card .st-disc { margin: 0 0 6px; font-size: .74rem; font-style: italic; color: var(--muted); }
 .st-earlier summary { font-size: .82rem; color: var(--muted); cursor: pointer; } .st-earlier ul { list-style: none; margin: 6px 0 0; padding: 0; }
 .st-earlier li { display: flex; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .86rem; color: var(--muted); } .st-earlier li span { min-width: 64px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .st-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
@@ -3999,7 +4000,7 @@ function renderStatusCard() {
   if (!card.querySelector('#stMain')) card.innerHTML = '<div id="stMain"></div><div id="stOwn"></div>';
   const by = L ? (L.src === 'claude' ? `written by Claude (${esc(L.model || '')})` : 'template') : '';
   $('#stMain').innerHTML = `<div class="st-h"><h2>Status update</h2><span class="st-meta">${L ? `updated ${esc(L.clock)} · ${by}` : ''}<span class="st-tag">beta</span>${own && d.public === false ? '<span class="st-tag off">hidden from visitors</span>' : ''}</span></div>
-    ${L ? `<p class="st-line">${esc(L.line)}</p>` : `<p class="st-line muted">${own ? 'No status line yet. It writes one with the next update, or press Regenerate.' : ''}</p>`}
+    ${L ? `<p class="st-line">${esc(L.line)}</p>${d.beta ? '<p class="st-disc">Claude status updates are in beta testing and might contain inaccuracies.</p>' : ''}` : `<p class="st-line muted">${own ? 'No status line yet. It writes one with the next update, or press Regenerate.' : ''}</p>`}
     ${d.today?.length ? `<details class="st-earlier"><summary>Earlier today · ${d.today.length}</summary><ul>${d.today.map(x => `<li><span>${esc(x.clock)}</span>${esc(x.line)}</li>`).join('')}</ul></details>` : ''}`;
   if (!own) { $('#stOwn').innerHTML = ''; return; }
   if (STAT.panel === 'interject' || STAT.panel === 'replay') { if (!$('#stOwn .st-panel')) renderStatusOwn(); return; }   // don't wipe a form being filled in
@@ -4017,7 +4018,7 @@ function renderStatusOwn() {
       <div class="st-row"><label class="st-f">Until<select id="stUntil"><option value="eod">End of today</option><option value="time">A time today…</option><option value="dt">A day and time…</option></select></label>
         <label class="st-f" id="stUT" hidden>Time<input type="time" id="stUntilT"></label><label class="st-f" id="stUD" hidden>Day and time<input type="datetime-local" id="stUntilD"></label></div>
       <div class="st-row"><button type="button" class="primary" id="stSave">Save and update</button>${n ? '<button type="button" id="stClear">Clear note</button>' : ''}<button type="button" data-stp="">Cancel</button><span class="muted" id="stMsg">${esc(STAT.msg)}</span></div>
-      <div class="muted st-hint">${n ? `Current: ${esc(n.quick ? ST_Q.find(q => q[0] === n.quick)?.[1] || n.quick : '')}${n.text ? ' · “' + esc(n.text) + '”' : ''} · until ${n.until ? esc(fmtDT(Date.parse(n.until))) : 'end of day'} · ` : ''}In the field: send an inReach message. “Out of signal until 4pm”, “Battery low” or “Tracking off” are understood.</div></div>`;
+      <div class="muted st-hint">${n ? `Current: ${esc(n.quick ? ST_Q.find(q => q[0] === n.quick)?.[1] || n.quick : '')}${n.text ? ' · “' + esc(n.text) + '”' : ''} · until ${n.until ? esc(new Date(n.until).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })) : 'end of day'} · ` : ''}In the field: send an inReach message. “Out of signal until 16:00”, “Battery low” or “Tracking off” are understood.</div></div>`;
   } else if (P === 'facts') {
     const sh = o.shadow;
     panel = `<div class="st-panel"><div class="st-ph">Facts <span class="muted">what the latest line was written from (no coordinates)</span></div>
@@ -4473,7 +4474,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.22.0';
+const VERSION = 'v0.22.1';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
