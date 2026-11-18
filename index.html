@@ -496,11 +496,22 @@ footer p { margin: 0 0 6px; }
 }
 /* v0.15: inReach check-ins, non-GPS activities, location editor */
 /* v0.21.4: Status update (placeholder for the Claude-written status line; owner only until built), then Live, then Week / inReach */
-.status-card { border: 1px dashed var(--line); border-radius: var(--r-md); padding: 14px 18px; margin-bottom: 14px; }
-.status-card .st-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.status-card h2 { margin: 0; font-size: 1.05rem; } .status-card .st-tag { font-size: .72rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--series-ir); color: var(--series-ir); }
-.status-card .st-line { margin: 8px 0 4px; font-size: 1.05rem; line-height: 1.5; color: var(--muted); }
-.status-card .st-foot { font-size: .78rem; color: var(--text-muted); }
+.status-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 18px; margin-bottom: 14px; }
+.status-card .st-h { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 10px; flex-wrap: wrap; }
+.status-card h2 { margin: 0; font-size: 1.05rem; } .status-card .st-meta { font-size: .8rem; color: var(--muted); display: inline-flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.status-card .st-tag { font-size: .7rem; padding: 0 8px; border-radius: 999px; border: 1px solid var(--series-ir); color: var(--series-ir); } .status-card .st-tag.off { border-color: var(--line); color: var(--muted); }
+.status-card .st-line { margin: 8px 0 4px; font-size: 1.22rem; line-height: 1.45; color: var(--ink); }
+.st-earlier summary { font-size: .82rem; color: var(--muted); cursor: pointer; } .st-earlier ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.st-earlier li { display: flex; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .86rem; color: var(--muted); } .st-earlier li span { min-width: 64px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.st-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.st-btn { min-height: 34px; font-size: .8rem; padding: 4px 12px; } .st-btn.on { border-color: var(--series-lt); color: var(--ink); } .st-own { font-size: .74rem; margin-left: auto; }
+.st-panel { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; } .st-ph { font-weight: 600; font-size: .92rem; } .st-ph .muted { font-weight: 400; font-size: .78rem; }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; } .st-chip { border-radius: 999px; min-height: 36px; font-size: .84rem; } .st-chip.on { background: var(--series-lt); border-color: var(--series-lt); color: #fff; }
+.st-f { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; color: var(--muted); } .st-f textarea, .st-f input, .st-f select { font: inherit; font-size: .95rem; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-height: 40px; box-sizing: border-box; }
+.st-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; } .st-cb { display: flex; gap: 6px; align-items: center; font-size: .86rem; min-height: 40px; }
+.st-hint { font-size: .76rem; } .st-cmp { font-size: .88rem; } .st-cmp b { color: var(--muted); font-weight: 600; margin-right: 6px; }
+.st-facts { font-size: .76rem; max-height: 320px; overflow: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 0; white-space: pre-wrap; }
+.st-rp { font-size: .8rem; } .st-rp td { vertical-align: top; white-space: normal; min-width: 110px; } .st-rp td:first-child { min-width: 64px; white-space: nowrap; } .st-rp tr.fire td { background: var(--panel-2); }
 #nowCard.now { margin-bottom: 14px; }
 #todayCard.today-card { margin-bottom: 14px; }
 .top-row { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; align-items: stretch; }
@@ -3964,13 +3975,119 @@ async function dailyCsv(weekKeys) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv' }));
   a.download = `ACLive_days_${WK_YEAR}_${today.replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
-// v0.21.4 Status update placeholder (owner only): the Claude-written status line goes here later (claude/05_FAMILY_SUMMARY_PLAN.md)
+// v0.22 Status update: Claude-written line (beta, public), Earlier today; owner tools: Interject, Facts, Regenerate, Settings, Replay
+const STAT = { data: null, panel: null, msg: '', busy: false, rp: null, loading: false };
+const ST_Q = [['work', 'At work'], ['rest', 'Rest day'], ['home', 'Home'], ['travel', 'Travelling'], ['oos', 'Out of signal']];
+async function loadStatus() {
+  if (CONFIG.dataSource !== 'api') return;
+  if (STAT.loading) { STAT.again = true; return; }                     // e.g. owner sign-in finished mid-load: load again after
+  STAT.loading = true; STAT.again = false;
+  try { const r = await fetch(`${CONFIG.api}/api/status`, { cache: 'no-store', headers: isOwner() ? { authorization: 'Bearer ' + OWNER } : {} }); STAT.data = await r.json(); }
+  catch (e) { STAT.data = { ok: false, error: e.message }; }
+  STAT.loading = false;
+  if (STAT.again) return loadStatus();
+  renderStatusCard();
+}
 function renderStatusCard() {
   const sec = $('#statusSec'); if (!sec) return;
-  sec.hidden = !isOwner(); if (sec.hidden) return;
-  $('#statusCard').innerHTML = `<div class="st-h"><h2>Status update</h2><span class="st-tag">coming soon · Claude</span></div>
-    <p class="st-line">“Anthony is about halfway through his run, moving well, and expects to reach the trailhead around 10:45 am.”</p>
-    <div class="st-foot">Example only · you see this card because you're signed in as owner · it will be written from the live facts, never guessed</div>`;
+  if (CONFIG.dataSource !== 'api') { sec.hidden = true; return; }
+  if (!STAT.data && !STAT.loading) { loadStatus(); return; }
+  const d = STAT.data || {}, own = isOwner(), L = d.latest;
+  sec.hidden = !(own || (d.ok && !d.hidden && L));
+  if (sec.hidden) return;
+  const card = $('#statusCard');
+  if (!card.querySelector('#stMain')) card.innerHTML = '<div id="stMain"></div><div id="stOwn"></div>';
+  const by = L ? (L.src === 'claude' ? `written by Claude (${esc(L.model || '')})` : 'template') : '';
+  $('#stMain').innerHTML = `<div class="st-h"><h2>Status update</h2><span class="st-meta">${L ? `updated ${esc(L.clock)} · ${by}` : ''}<span class="st-tag">beta</span>${own && d.public === false ? '<span class="st-tag off">hidden from visitors</span>' : ''}</span></div>
+    ${L ? `<p class="st-line">${esc(L.line)}</p>` : `<p class="st-line muted">${own ? 'No status line yet. It writes one with the next update, or press Regenerate.' : ''}</p>`}
+    ${d.today?.length ? `<details class="st-earlier"><summary>Earlier today · ${d.today.length}</summary><ul>${d.today.map(x => `<li><span>${esc(x.clock)}</span>${esc(x.line)}</li>`).join('')}</ul></details>` : ''}`;
+  if (!own) { $('#stOwn').innerHTML = ''; return; }
+  if (STAT.panel === 'interject' || STAT.panel === 'replay') { if (!$('#stOwn .st-panel')) renderStatusOwn(); return; }   // don't wipe a form being filled in
+  renderStatusOwn();
+}
+function renderStatusOwn() {
+  const d = STAT.data || {}, P = STAT.panel, n = d.note, o = d.owner || {};
+  const tb = (id, t) => `<button type="button" class="st-btn${P === id ? ' on' : ''}" data-stp="${id}">${t}</button>`;
+  let panel = '';
+  if (P === 'interject') {
+    const sel = n?.quick || '';
+    panel = `<div class="st-panel"><div class="st-ph">Interject <span class="muted">owner · used in the next line, right away</span></div>
+      <div class="st-chips">${ST_Q.map(([k, t]) => `<button type="button" class="st-chip${sel === k ? ' on' : ''}" data-stq="${k}">${t}</button>`).join('')}</div>
+      <label class="st-f">Note (optional, 200 characters)<textarea id="stText" rows="2" maxlength="200">${esc(n?.text || '')}</textarea></label>
+      <div class="st-row"><label class="st-f">Until<select id="stUntil"><option value="eod">End of today</option><option value="time">A time today…</option><option value="dt">A day and time…</option></select></label>
+        <label class="st-f" id="stUT" hidden>Time<input type="time" id="stUntilT"></label><label class="st-f" id="stUD" hidden>Day and time<input type="datetime-local" id="stUntilD"></label></div>
+      <div class="st-row"><button type="button" class="primary" id="stSave">Save and update</button>${n ? '<button type="button" id="stClear">Clear note</button>' : ''}<button type="button" data-stp="">Cancel</button><span class="muted" id="stMsg">${esc(STAT.msg)}</span></div>
+      <div class="muted st-hint">${n ? `Current: ${esc(n.quick ? ST_Q.find(q => q[0] === n.quick)?.[1] || n.quick : '')}${n.text ? ' · “' + esc(n.text) + '”' : ''} · until ${n.until ? esc(fmtDT(Date.parse(n.until))) : 'end of day'} · ` : ''}In the field: send an inReach message. “Out of signal until 4pm”, “Battery low” or “Tracking off” are understood.</div></div>`;
+  } else if (P === 'facts') {
+    const sh = o.shadow;
+    panel = `<div class="st-panel"><div class="st-ph">Facts <span class="muted">what the latest line was written from (no coordinates)</span></div>
+      ${o.err ? `<p class="flt-warn">Claude not used: ${esc(o.err)}</p>` : ''}
+      ${sh?.model ? `<div class="st-cmp"><b>Shadow · ${esc(sh.model === 'opus' ? 'Opus 5.5' : 'Sonnet 5.5')}</b> ${sh.line ? esc(sh.line) : `<span class="flt-warn">${esc(sh.err || 'no line')}</span>`}</div>` : ''}
+      ${sh?.template ? `<div class="st-cmp"><b>Template</b> ${esc(sh.template)}</div>` : ''}
+      <pre class="st-facts">${esc(JSON.stringify(o.facts || {}, null, 1))}</pre></div>`;
+  } else if (P === 'settings') {
+    const s = d.settings || {};
+    panel = `<div class="st-panel"><div class="st-ph">Settings</div>
+      <div class="st-row"><label class="st-f">Model<select id="stModel"><option value="sonnet"${s.model === 'sonnet' ? ' selected' : ''}>Sonnet 5.5 (default)</option><option value="opus"${s.model === 'opus' ? ' selected' : ''}>Opus 5.5</option></select></label>
+        <label class="st-cb"><input type="checkbox" id="stShadow"${s.shadow ? ' checked' : ''}> Shadow: the other model writes too (Facts view only)</label>
+        <label class="st-cb"><input type="checkbox" id="stPublic"${s.public ? ' checked' : ''}> Show to visitors</label></div>
+      <div class="st-row"><button type="button" class="primary" id="stSet">Save</button><span class="muted" id="stMsg">${esc(STAT.msg)}</span></div>
+      <div class="muted st-hint">Claude API key: ${d.key ? 'set' : '<b>not set</b>, so lines come from templates'} · each update ≈ 1 500 tokens in, 100 out</div></div>`;
+  } else if (P === 'replay') {
+    const R = STAT.rp || (STAT.rp = { day: mtDayKey(Date.now() - 864e5), start: '06:00', step: 30, rows: [], running: false });
+    panel = `<div class="st-panel"><div class="st-ph">Replay <span class="muted">a past day, moment by moment: template vs Sonnet vs Opus (nothing is posted)</span></div>
+      <div class="st-row"><label class="st-f">Day<input type="date" id="rpDay" value="${R.day}"></label><label class="st-f">From<input type="time" id="rpStart" value="${R.start}"></label>
+        <label class="st-f">Every<select id="rpStep">${[15, 30, 60].map(v => `<option value="${v}"${R.step === v ? ' selected' : ''}>${v} min</option>`).join('')}</select></label>
+        <button type="button" class="primary" id="rpGo"${R.running ? ' disabled' : ''}>${R.running ? 'Running…' : 'Run'}</button>${R.running ? '<button type="button" id="rpStop">Stop</button>' : ''}<span class="muted" id="stMsg">${esc(STAT.msg)}</span></div>
+      ${R.rows.length ? `<div class="table-wrap"><table class="st-rp"><thead><tr><th>Time</th><th>State · trigger</th><th>Template</th><th>Sonnet 5.5</th><th>Opus 5.5</th></tr></thead><tbody>${R.rows.map(r => `<tr${r.trig ? ' class="fire"' : ''}>
+        <td>${esc(r.clock)}</td><td>${esc(r.state)}${r.trig ? `<br><b>${esc(r.trig)}</b>` : '<br><span class="muted">no update</span>'}</td><td>${esc(r.template)}</td>
+        ${['sonnet', 'opus'].map(m => { const x = r.lines?.[m]; return `<td>${x?.line ? esc(x.line) : `<span class="flt-warn">${esc(x?.err || '—')}</span>`}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+        <div class="muted st-hint">Bold trigger = a line would have been posted then. Rows without one show what it would say if asked.</div>` : ''}</div>`;
+  }
+  $('#stOwn').innerHTML = `<div class="st-tools">${tb('interject', 'Interject')}${tb('facts', 'Facts')}<button type="button" class="st-btn" id="stRegen"${STAT.busy ? ' disabled' : ''}>Regenerate</button>${tb('settings', 'Settings')}${tb('replay', 'Replay')}<span class="muted st-own">owner tools · visitors see the line and Earlier today</span></div>${panel}`;
+  wireStatusOwn();
+}
+function wireStatusOwn() {
+  const box = $('#stOwn'), msg = t => { STAT.msg = t; const m = $('#stMsg'); if (m) m.textContent = t; };
+  box.querySelectorAll('[data-stp]').forEach(b => b.onclick = () => { STAT.panel = STAT.panel === b.dataset.stp || !b.dataset.stp ? null : b.dataset.stp; STAT.msg = ''; renderStatusOwn(); });
+  $('#stRegen').onclick = async () => { STAT.busy = true; renderStatusOwn(); try { const r = await ownerPost('/admin/status/regen', {}); if (!r.ok) alertLine(r.error); } catch (e) { alertLine(e.message); } STAT.busy = false; await loadStatus(); };
+  const alertLine = t => { STAT.msg = t; renderStatusOwn(); };
+  if (STAT.panel === 'interject') {
+    let q = STAT.data?.note?.quick || null;
+    box.querySelectorAll('[data-stq]').forEach(b => b.onclick = () => { q = q === b.dataset.stq ? null : b.dataset.stq; box.querySelectorAll('[data-stq]').forEach(x => x.classList.toggle('on', x.dataset.stq === q));
+      if (q === 'oos' && $('#stUntil').value === 'eod') { $('#stUntil').value = 'time'; $('#stUntil').onchange(); } });
+    $('#stUntil').onchange = () => { $('#stUT').hidden = $('#stUntil').value !== 'time'; $('#stUD').hidden = $('#stUntil').value !== 'dt'; };
+    $('#stSave').onclick = async () => {
+      const text = $('#stText').value.trim(), mode = $('#stUntil').value;
+      let until = null;
+      if (mode === 'time') { const v = $('#stUntilT').value; if (!v) return msg('Pick a time.'); const d = new Date(); const [h, m] = v.split(':').map(Number); d.setHours(h, m, 0, 0); if (d < new Date()) d.setDate(d.getDate() + 1); until = d.toISOString(); }
+      if (mode === 'dt') { const v = $('#stUntilD').value; if (!v) return msg('Pick a day and time.'); until = new Date(v).toISOString(); }
+      if (!q && !text) return msg('Pick a quick status or type a note.');
+      msg('Saving and writing a new line…');
+      try { const r = await ownerPost('/admin/status/note', { quick: q, text, until }); if (!r.ok) return msg(r.error); STAT.panel = null; STAT.msg = ''; await loadStatus(); } catch (e) { msg(e.message); }
+    };
+    const c = $('#stClear'); if (c) c.onclick = async () => { msg('Clearing…'); try { await ownerPost('/admin/status/note', { clear: true }); STAT.panel = null; STAT.msg = ''; await loadStatus(); } catch (e) { msg(e.message); } };
+  }
+  if (STAT.panel === 'settings') $('#stSet').onclick = async () => {
+    try { const r = await ownerPost('/admin/status/settings', { model: $('#stModel').value, shadow: $('#stShadow').checked, public: $('#stPublic').checked }); STAT.msg = r.ok ? 'Saved.' : r.error; await loadStatus(); } catch (e) { msg(e.message); } };
+  if (STAT.panel === 'replay') {
+    const R = STAT.rp;
+    const st = $('#rpStop'); if (st) st.onclick = () => { R.stop = true; };
+    $('#rpGo').onclick = async () => {
+      R.day = $('#rpDay').value; R.start = $('#rpStart').value || '06:00'; R.step = +$('#rpStep').value; R.rows = []; R.running = true; R.stop = false; STAT.msg = ''; renderStatusOwn();
+      let body = { day: R.day, start: R.start, step: R.step, n: 6, models: ['sonnet', 'opus'] };
+      try {
+        for (let k = 0; k < 16 && !R.stop; k++) {
+          const r = await ownerPost('/admin/status/replay', body);
+          if (!r.ok) { STAT.msg = r.error || 'replay failed'; break; }
+          R.rows.push(...r.rows); STAT.msg = `${R.rows.length} moments`; renderStatusOwn();
+          if (!r.next) break;
+          body = { day: R.day, step: R.step, n: 6, models: ['sonnet', 'opus'], from_t: r.next.from_t, prev: r.next.prev, prev_t: r.next.prev_t, recent: r.next.recent };
+        }
+      } catch (e) { STAT.msg = e.message; }
+      R.running = false; renderStatusOwn();
+    };
+  }
 }
 // Version footer: this page and the server (/health); flagged when they differ
 async function showVersions() {
@@ -4057,7 +4174,7 @@ function renderWeeks() {
 }
 function renderLanding() {
   const now = Date.now();
-  renderStatusCard(); renderWeek(now); loadMetWeek(); loadIrCard();
+  loadStatus(); renderWeek(now); loadMetWeek(); loadIrCard();
   const live = ACTS.find(a => a.status === 'live');
   const hero = $('#nowCard');
   if (live) {
@@ -4356,7 +4473,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.21.4';
+const VERSION = 'v0.22.0';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
@@ -4559,7 +4676,7 @@ function renderOwnerBox() {
   };
 }
 function ownerChanged() {
-  renderStatusCard();
+  STAT.data = null; STAT.panel = null; loadStatus();
   if (!$('#detail').hidden && DATA) renderAll();
   DRV.plan = undefined; if (!$('#drivesView').hidden) renderDrivesView(); if (DRV.cur && DRV.data) renderDriveView(DRV.data);
   if (!$('#weeksView').hidden) renderWeeks();
