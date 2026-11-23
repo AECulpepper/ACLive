@@ -2764,7 +2764,39 @@ function stnHtml(D) {
     ${L.length > 1 ? `<div class="stn-chips"><span class="muted">Stations:</span>${L.map((x, i) => `<button type="button" class="stn-chip${x.id === s.id ? ' on' : ''}" data-stn="${esc(x.id)}">${i === 0 ? '● ' : ''}${esc(x.name)} · ${esc(x.net)}${x.dist_mi != null ? ` · ${x.dist_mi} mi` : ''}</button>`).join('')}</div>` : ''}
     <div class="stn-src">Station data: ${(D.stations.sources || []).map(esc).join(', ')}. Mesonet observations are unofficial and may be inaccurate.</div></div>`;
 }
+// ---- v0.22.5 Weather Underground block (personal weather stations), under the other stations
+const WUP = { pick: null }; try { WUP.pick = JSON.parse(localStorage.getItem('aclive.wuPick') || 'null'); } catch {}
+function wuChosen(D) {
+  const L = D?.wu?.stations || []; if (!L.length) return null;
+  const p = WUP.pick, moved = p && (Math.abs(p.lat - D.lat) > 0.03 || Math.abs(p.lon - D.lon) > 0.035), old = p && Date.now() - p.at > 6 * 3600e3;
+  return (!p || moved || old) ? L[0] : (L.find(x => x.id === p.id) || L[0]);
+}
+function wuHtml(D) {
+  const L = D?.wu?.stations || [], s = wuChosen(D); if (!s) return '';
+  const n = D.now, cC = v => v == null ? null : (v < 0 ? '−' + Math.abs(Math.round(v)) : Math.round(v)), cF = c => Math.round(c * 9 / 5 + 32);
+  const fig = (k, v, sub) => `<div class="${v == null ? 'stn-off' : ''}"><div class="k">${k}</div><div class="v">${v == null ? '—' : v}</div><div class="a">${v == null ? 'not measured' : sub || ''}</div></div>`;
+  const mdl = n?.temp_f != null ? (n.temp_f - 32) * 5 / 9 : null, dT = mdl != null && s.temp_c != null ? Math.round(s.temp_c - mdl) : null;
+  const age = s.age_min != null ? (s.age_min < 60 ? `${s.age_min} min ago` : `${Math.floor(s.age_min / 60)} h ${s.age_min % 60} min ago`) : '';
+  const dist = s.dist_mi != null ? ` · ${s.dist_mi} mi${s.dh_ft != null ? ` · ${s.dh_ft >= 0 ? '+' : '−'}${n0(Math.abs(s.dh_ft))} ft` : ''}` : '';
+  return `<div class="now-sec stn wu"><div class="now-lab" style="margin-top:0">Measured · personal weather station</div>
+    <div class="now-sh"><span><b>${esc(s.name)}</b> · Weather Underground ${esc(s.wu_id)}${dist}${s === L[0] ? ' · best nearby' : ''}</span><span class="muted${s.stale ? ' stn-stale' : ''}">observed ${fmtTime(Date.parse(s.t))}${age ? ` (${age})` : ''}</span></div>
+    <div class="now-g" style="margin-top:6px">
+      <div><div class="now-big">${cC(s.temp_c)}°C</div><div class="a">${cF(s.temp_c)} °F${dT != null ? ` · ${dT === 0 ? 'same as model' : Math.abs(dT) + ' °C ' + (dT < 0 ? 'below' : 'above') + ' model'}` : ''}</div></div>
+      ${fig('High / low', s.hi_c != null ? `${cC(s.hi_c)}° / ${cC(s.lo_c)}°C` : null, s.hi_c != null ? `${cF(s.hi_c)}/${cF(s.lo_c)} °F · since 00:00` : '')}
+      ${fig('Wind', s.wind_mph != null ? `${s.wind_mph}<small> mph</small>` : null, `${s.wind_dir != null ? dirName(s.wind_dir) + ' · ' : ''}${s.gust_mph != null ? `gusts ${s.gust_mph} · ` : ''}${Math.round((s.wind_mph || 0) * KM_PER_MI)} km/h`)}
+      ${fig('Humidity', s.rh != null ? `${s.rh}<small>%</small>` : null, s.dew_c != null ? `dew point ${cC(s.dew_c)} °C · ${cF(s.dew_c)} °F` : '')}
+      ${fig('Pressure', s.msl_mb != null ? `${n0(s.msl_mb)}<small> mbar</small>` : null, s.msl_trend_3h != null ? `${s.msl_trend_3h > 0.4 ? '↑' : s.msl_trend_3h < -0.4 ? '↓' : '→'} ${Math.abs(s.msl_trend_3h)} in 3 h` : '')}
+      ${fig('Precip today', s.ptoday_in != null ? `${s.ptoday_in.toFixed(2)}<small> in</small>` : null, s.ptoday_in != null ? `${Math.round(s.ptoday_in * 25.4)} mm${s.prate_in != null ? ` · rate ${s.prate_in.toFixed(2)} in/h` : ''}` : '')}
+      ${fig('Sun', s.solar_wm2 != null ? `${s.solar_wm2}<small> W/m²</small>` : null, s.uv != null ? `UV ${s.uv}` : '')}
+    </div>
+    ${L.length > 1 ? `<div class="stn-chips"><span class="muted">Stations:</span>${L.map((x, i) => `<button type="button" class="stn-chip${x.id === s.id ? ' on' : ''}" data-wu="${esc(x.id)}">${i === 0 ? '● ' : ''}${esc(x.name)}${x.dist_mi != null ? ` · ${x.dist_mi} mi` : ''} · ${x.fields}/7</button>`).join('')}</div>` : ''}
+    <div class="stn-src">Personal weather stations via Weather Underground: unofficial readings, often not sited to standards. Ranked by distance, data completeness and freshness.</div></div>`;
+}
 function bindStations() {
+  document.querySelectorAll('[data-wu]').forEach(b => b.onclick = () => {
+    const D = NOWX.d; WUP.pick = { id: b.dataset.wu, lat: D.lat, lon: D.lon, at: Date.now() };
+    try { localStorage.setItem('aclive.wuPick', JSON.stringify(WUP.pick)); } catch {}
+    const el = $('#nowBar'); if (el) { el.innerHTML = nowBarHtml(); bindNowBar(); } });
   document.querySelectorAll('[data-stn]').forEach(b => b.onclick = () => {
     const D = NOWX.d; STN.pick = { id: b.dataset.stn, lat: D.lat, lon: D.lon, at: Date.now() };
     try { localStorage.setItem('aclive.stnPick', JSON.stringify(STN.pick)); } catch {}
@@ -2803,7 +2835,7 @@ function nowBarHtml() {
         : `${f.summary ? `<pre>${esc(f.summary)}</pre>` : ''}<pre>${esc(f.zone_text)}</pre>`}
       <div class="a"><a href="${esc(f.url)}" target="_blank" rel="noopener">Full fire weather forecast on weather.gov →</a></div></details>`;
   return `<div class="now-h"><b>Now · ${esc(D.place || '')}</b><span class="muted">${NOW_SRC[D.src] || ''}${n ? ` · updated ${fmtTime(Date.parse(n.t))}` : ''}</span></div>
-    ${ctl}${stats ? '<div class="now-lab">Model · Open-Meteo</div>' : ''}${stats}${stnHtml(D)}${met}${afd}${fire}`;
+    ${ctl}${stats ? '<div class="now-lab">Model · Open-Meteo</div>' : ''}${stats}${stnHtml(D)}${wuHtml(D)}${met}${afd}${fire}`;
 }
 function ownCtl(ov) {
   if (NOWX.ui === 'search') return `<div class="now-ctl"><input id="nowQ" placeholder="Town, ST or lat, lon" size="24"> <button id="nowFind">Find</button> <button id="nowCancel">Cancel</button> <span class="muted" id="nowMsg">${esc(NOWX.msg)}</span></div>`;
@@ -4534,7 +4566,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.22.4';
+const VERSION = 'v0.22.5';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
