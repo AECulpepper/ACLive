@@ -217,6 +217,14 @@ a.met-d { display: block; text-decoration: none; color: var(--muted); } a.met-d:
 .met-table { min-width: 860px; } .met-table td small { display: block; color: var(--muted); font-size: .76rem; }
 .met-table td.loc, .met-table th:nth-child(2) { white-space: nowrap; text-align: left; } .met-table .src { font-size: .68rem; padding: 0 5px; border-radius: 4px; background: var(--panel-2); color: var(--muted); margin-left: 4px; }
 .met-table .src.st { background: color-mix(in srgb, var(--series-lt) 22%, transparent); color: var(--text); }
+.met-table tr.obs td { font-size: .82rem; padding-top: 2px; padding-bottom: 2px; border-top: 0; background: color-mix(in srgb, var(--panel-2) 45%, transparent); }
+.met-table tr.obs td.loc { padding-left: 14px; } .met-table tr.obs td.loc small, .obs-tab td.loc small { display: block; }
+.met-table tr.obs.off td, .obs-tab tr.off td { opacity: .45; } .met-table td.ext, .obs-tab td.ext { text-align: left !important; white-space: normal; font-size: .78rem; }
+.met-table tr.ext2 td { padding-top: 0; color: var(--muted); }
+.obs-nets { font-size: .82rem; margin: 0 0 8px; } .obs-nets label { margin-right: 10px; white-space: nowrap; } .obs-nets input { vertical-align: -1px; }
+.obs-tab .src, .met-table tr.obs .src { font-size: .68rem; padding: 0 5px; border-radius: 4px; margin-right: 4px; background: color-mix(in srgb, var(--series-lt) 22%, transparent); color: var(--text); }
+.obs-tab td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; } .obs-tab td small { display: block; color: var(--muted); font-size: .74rem; }
+.obs-tab td.loc, .obs-tab th:first-child { text-align: left; } .obs-tab th { text-align: right; font-weight: 500; color: var(--muted); font-size: .8rem; padding: 4px 6px; } .obs-tab th.ext { text-align: left; }
 .met-table tr.gap td { color: var(--muted); font-style: italic; text-align: left; }
 .met-edit { margin-top: 10px; background: var(--panel-2); border-radius: 8px; padding: 10px 12px; font-size: .86rem; }
 .met-edit .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; } .met-edit input { flex: 1; min-width: 160px; }
@@ -613,6 +621,7 @@ footer p { margin: 0 0 6px; }
         <div id="metComing"></div>
         <div id="alertTest"></div>
         <div id="metEdit"></div>
+        <div class="obs-nets" id="obsNets"></div>
         <div class="table-wrap"><table class="wk-table met-table" id="metTable"></table></div>
         <p class="muted" style="font-size:.8rem;margin:6px 0 0" id="metNote"></p>
       </div>
@@ -2959,6 +2968,59 @@ function renderMetComing() {
   loadTides(tk, renderMetComing);
   box.onclick = e => { const a = e.target.closest('[data-met-edit]'); if (!a) return; e.preventDefault(); MET_EDIT = a.dataset.metEdit; renderMetEdit(); $('#metEdit').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
 }
+// v0.22.6 measured stations under each day: WU, SNOTEL, NWS (MADIS once live). Same value order as the model row.
+const OBS_NETS = [['wu', 'WU'], ['snotel', 'SNOTEL'], ['nws', 'NWS / MADIS']];
+let OBSN = (() => { try { return JSON.parse(localStorage.getItem('aclive.obsNets') || 'null') || { wu: 1, snotel: 1, nws: 1 }; } catch { return { wu: 1, snotel: 1, nws: 1 }; } })();
+const obsTag = (k, o) => k === 'nws' ? (o.net === 'madis' ? 'MADIS' : 'NWS') : k === 'wu' ? 'WU' : 'SNOTEL';
+const obsList = x => x?.obs ? OBS_NETS.map(([k]) => [k, x.obs[k]]).filter(([k, o]) => o && OBSN[k]) : [];
+function obsCells(k, o) {
+  const dash = '<span class="muted">—</span>', off = o.off, X = o.x || {}, ft = v => v == null ? '' : `${v >= 0 ? '+' : '−'}${n0(Math.abs(v))} ft vs town · `;
+  const name = o.hidden ? esc(o.place || '') : `${esc(o.name || o.id || '')}${o.ele_ft != null ? ` <span class="muted">· ${o.ele_est ? '≈ ' : ''}${n0(o.ele_ft)} ft · ${n0(o.ele_ft * 0.3048)} m</span>` : ''}`;
+  const sub = o.hidden ? 'near the day\'s location' : `${o.id && o.id !== o.name ? esc(String(o.id).replace(/:.*$/, '')) + ' · ' : ''}${o.dist_mi != null ? o.dist_mi + ' mi · ' : ''}${ft(o.dh_ft)}${o.daily ? 'daily values' : `${o.hrs}/${o.of_hrs} h`}${off ? ' · too few hours, not used' : ''}`;
+  const loc = `<span class="src">${obsTag(k, o)}</span>${name}<small>${sub}</small>`;
+  const hl = o.tmax_c != null ? `${Math.round(o.tmax_c)}° / ${Math.round(o.tmin_c)}° C<small>${cF(o.tmax_c)} / ${cF(o.tmin_c)} °F${o.tavg_c != null ? ` · mean ${Math.round(o.tavg_c)} °C` : ''}</small>` : dash;
+  const pr = !off && o.precip_in != null ? `${o.precip_in.toFixed(2)} in<small>${mmOf(o.precip_in)} mm</small>` : dash;
+  const wd = !off && o.wind_mph != null ? `${o.wind_dir != null ? dirName(o.wind_dir) + ' ' : ''}${o.wind_mph} / ${o.gust_mph ?? '—'} mph<small>${Math.round(o.wind_mph * KM_PER_MI)} / ${o.gust_mph != null ? Math.round(o.gust_mph * KM_PER_MI) : '—'} km/h</small>` : dash;
+  const rh = !off && o.rh != null ? o.rh + '%' : dash;
+  const ps = !off && o.msl_mb != null ? `${n0(o.msl_mb)} mbar<small>${(o.msl_mb / 33.8639).toFixed(2)} inHg</small>` : dash;
+  let ext = '';
+  if (!off && k === 'wu') ext = [X.solar_wm2 != null ? `Solar max ${X.solar_wm2} W/m²` : '', X.uv != null ? `UV ${X.uv}` : ''].filter(Boolean).join(' · ');
+  if (!off && k === 'nws') ext = [X.vis_min_mi != null ? `Visibility down to ${X.vis_min_mi} mi (${Math.round(X.vis_min_mi * 1.609)} km)` : '', X.ceil_min_ft ? `ceiling ${n0(X.ceil_min_ft)} ft` : ''].filter(Boolean).join(' · ');
+  if (!off && k === 'snotel') { const sg = v => v > 0 ? `+${v}` : `${v}`, p = [];
+    if (X.snwd_in != null) p.push(`Snow ${X.snwd_in} in${X.dsnwd_in ? ` (${sg(X.dsnwd_in)})` : ''} · ${Math.round(X.snwd_in * 2.54)} cm`);
+    if (X.wteq_in != null) p.push(`SWE ${X.wteq_in.toFixed(1)} in${X.dwteq_in ? ` (${sg(X.dwteq_in.toFixed(1))})` : ''} · ${Math.round(X.wteq_in * 25.4)} mm`);
+    if (X.density_pct != null) p.push(`density ${X.density_pct}%`);
+    if (X.sms) p.push(`soil moisture 2/8/20 in: ${X.sms.map(v => v ?? '—').join('/')}%`);
+    if (X.sto_c) p.push(`soil temp ${X.sto_c.map(v => v == null ? '—' : sg1(v)).join('/')} °C`);
+    if (X.srad_wm2 != null) p.push(`solar ${X.srad_wm2} W/m²`);
+    ext = p.join(' · '); }
+  return { loc, hl, pr, wd, rh, ps, ext };
+}
+function obsRows(x) {
+  const out = [];
+  for (const [k, o] of obsList(x)) { const c = obsCells(k, o);
+    out.push(`<tr class="obs${o.off ? ' off' : ''}"><td></td><td class="loc">${c.loc}</td><td>${c.hl}</td><td>${c.pr}</td><td>${c.wd}</td><td>${c.rh}</td><td>${c.ps}</td><td colspan="4" class="ext">${k === 'snotel' ? '' : c.ext}</td></tr>`);
+    if (k === 'snotel' && c.ext) out.push(`<tr class="obs ext2${o.off ? ' off' : ''}"><td></td><td></td><td colspan="9" class="ext">${c.ext}</td></tr>`); }
+  return out.join('');
+}
+function obsNetsBar(after) {
+  const box = $('#obsNets'); if (!box) return;
+  box.innerHTML = `Measured rows: ${OBS_NETS.map(([k, l]) => `<label><input type="checkbox" data-obsn="${k}"${OBSN[k] ? ' checked' : ''}> ${l}</label>`).join('')}<span class="muted">· model row first, the nearest good station of each network under it</span>`;
+  box.querySelectorAll('[data-obsn]').forEach(b => b.onchange = () => { OBSN = { ...OBSN, [b.dataset.obsn]: b.checked ? 1 : 0 };
+    try { localStorage.setItem('aclive.obsNets', JSON.stringify(OBSN)); } catch {} after(); });
+}
+function obsCsv(x) {
+  const o = x?.obs || {}, cols = [];
+  for (const [k] of OBS_NETS) { const r = o[k], X = r?.x || {};
+    cols.push(r ? `"${String(r.name || '').replace(/"/g, '""')}"` : '', r?.id ?? '', r?.ele_ft ?? '', r?.ele_ft != null ? Math.round(r.ele_ft * 0.3048) : '', r?.dist_mi ?? '', r?.hrs ?? '', r ? (r.off ? 0 : 1) : '',
+      r?.tmax_c ?? '', r?.tmin_c ?? '', r?.tavg_c ?? '', r?.precip_in ?? '', r?.wind_mph ?? '', r?.gust_mph ?? '', r?.wind_dir ?? '', r?.rh ?? '', r?.msl_mb ?? '');
+    if (k === 'wu') cols.push(X.solar_wm2 ?? '', X.uv ?? '');
+    if (k === 'nws') cols.push(X.vis_min_mi ?? '', X.ceil_min_ft ?? '');
+    if (k === 'snotel') cols.push(X.snwd_in ?? '', X.dsnwd_in ?? '', X.wteq_in ?? '', X.dwteq_in ?? '', X.density_pct ?? '', ...(X.sms || ['', '', '']).map(v => v ?? ''), ...(X.sto_c || ['', '', '']).map(v => v ?? ''), X.srad_wm2 ?? ''); }
+  return cols;
+}
+const OBS_CSV_H = OBS_NETS.flatMap(([k]) => [...['station', 'station_id', 'elev_ft', 'elev_m', 'dist_mi', 'hours', 'used', 'high_c', 'low_c', 'mean_c', 'precip_in', 'wind_mph', 'gust_mph', 'wind_dir', 'rh_pct', 'pressure_mbar'],
+  ...(k === 'wu' ? ['solar_max_wm2', 'uv_max'] : k === 'nws' ? ['vis_min_mi', 'ceiling_min_ft'] : ['snow_depth_in', 'snow_depth_change_in', 'swe_in', 'swe_change_in', 'density_pct', 'soil_moist_2in', 'soil_moist_8in', 'soil_moist_20in', 'soil_temp_2in_c', 'soil_temp_8in_c', 'soil_temp_20in_c', 'solar_wm2'])].map(c => `${k}_${c}`));
 function renderMetTable() {
   const [from, to] = monthRange(MET_MONTH), own = isOwner(), rows = [];
   const days = []; for (let d = to; d >= from; d = addDays(d, -1)) days.push(d);
@@ -2966,7 +3028,7 @@ function renderMetTable() {
   const flushGap = () => { if (!gap.length) return;
     rows.push(`<tr class="gap"><td colspan="11">${gap.length} day${gap.length === 1 ? '' : 's'} without a record (${gap.at(-1).slice(8)}–${gap[0].slice(8)} ${MON[+gap[0].slice(5, 7) - 1]}) · before ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}: activity days only</td></tr>`); gap = []; };
   const csv = [['date', 'place', 'location_from', 'source', 'desc', 'high_c', 'low_c', 'high_f', 'low_f', 'precip_in', 'precip_mm', 'precip_type', 'wind_mph', 'gust_mph', 'wind_dir',
-    'rh_pct', 'pressure_mbar', 'pressure_inhg', 'cloud_pct', 'sunrise', 'sunset', 'daylight', 'moon_phase', 'moon_pct', 'moonrise', 'moonset', 'aqi_max', 'pm25_max'].join(',')];
+    'rh_pct', 'pressure_mbar', 'pressure_inhg', 'cloud_pct', 'sunrise', 'sunset', 'daylight', 'moon_phase', 'moon_pct', 'moonrise', 'moonset', 'aqi_max', 'pm25_max', ...OBS_CSV_H].join(',')];
   for (let i = 0; i < days.length; i++) {
     const d = days[i], x = MET.days[d];
     if (!x || !x.model) { if (x?.pending) { flushGap(); rows.push(`<tr><td>${fmtDate(Date.parse(d + 'T12:00:00Z')).replace(/ \d{4}$/, '')}</td><td colspan="10" class="muted">loading…</td></tr>`); } else gap.push(d); continue; }
@@ -2985,13 +3047,15 @@ function renderMetTable() {
       <td>${x.model.aqi_max != null ? aqiChip(x.model.aqi_max, { bare: true, cat: false }) : '—'}<small>${x.model.pm25_max != null ? `PM2.5 ${x.model.pm25_max} µg/m³` : ''}</small></td>
       <td>${sk ? `${sk.rise}–${sk.set}<small>${sk.len}</small>` : '—'}</td>
       <td>${sk ? `${moonIc(sk.moon)} ${sk.moon.name} ${Math.round(sk.moon.fraction * 100)}%<small>↑ ${sk.mrise} ↓ ${sk.mset}</small>` : '—'}</td></tr>`);
+    rows.push(obsRows(x));
     csv.push([d, `"${(x.place || '').replace(/"/g, '""')}"`, x.src, x.station ? 'station:' + x.station.station : 'model', `"${v.desc || ''}"`, v.tmax_c, v.tmin_c, cF(v.tmax_c), cF(v.tmin_c),
       v.precip_in ?? '', v.precip_in != null ? mmOf(v.precip_in) : '', v.type || '', v.wind_mph ?? '', v.gust_mph ?? '', v.wind_dir ?? '', v.rh ?? '', v.msl_mb ?? '',
-      v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) : '', v.cloud ?? '', sk?.rise ?? '', sk?.set ?? '', sk?.len ?? '', sk?.moon.name ?? '', sk ? Math.round(sk.moon.fraction * 100) : '', sk?.mrise ?? '', sk?.mset ?? '', x.model.aqi_max ?? '', x.model.pm25_max ?? ''].join(','));
+      v.msl_mb != null ? (v.msl_mb / 33.8639).toFixed(2) : '', v.cloud ?? '', sk?.rise ?? '', sk?.set ?? '', sk?.len ?? '', sk?.moon.name ?? '', sk ? Math.round(sk.moon.fraction * 100) : '', sk?.mrise ?? '', sk?.mset ?? '', x.model.aqi_max ?? '', x.model.pm25_max ?? '', ...obsCsv(x)].join(','));
   }
   flushGap();
   $('#metTable').innerHTML = `<thead><tr><th>Day</th><th>Location</th><th>High / low</th><th>Precip</th><th>Wind / gust</th><th>RH</th><th>Pressure</th><th>Cloud</th><th>Air (max)</th><th>Sun</th><th>Moon</th></tr></thead><tbody>${rows.join('') || '<tr><td colspan="11" class="muted">No records this month</td></tr>'}</tbody>`;
-  $('#metNote').textContent = `Every day from ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}; before that, days with an activity. Model weather: Open-Meteo. Times are local to each day's location.`;
+  $('#metNote').textContent = `Every day from ${MET.cont.slice(8)} ${MON[+MET.cont.slice(5, 7) - 1]} ${MET.cont.slice(0, 4)}; before that, days with an activity. Model weather: Open-Meteo. Measured: Weather Underground, NRCS SNOTEL, NWS (MADIS once live); a station needs 80 % of the day's hours to count. Times are local to each day's location.`;
+  obsNetsBar(renderMetTable);
   $('#metTable').onclick = e => { const a = e.target.closest('[data-met-edit]'); if (!a) return; e.preventDefault(); MET_EDIT = a.dataset.metEdit; renderMetEdit(); };
   $('#metCsv').hidden = !isOwner();                               // v0.22.2: downloads for the owner only
   $('#metCsv').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv.join('\n')], { type: 'text/csv' }));
@@ -3026,13 +3090,22 @@ function renderMetEdit() {
       msg('Saved. Updating…'); await after(); } catch (e) { msg(e.message); } };
   if (cur) $('#metClear').onclick = async () => { try { await ownerPost('/admin/met/loc', { day: d, clear: true, mode: cur.mode, grp: cur.grp || undefined }); await after(); } catch (e) { msg(e.message); } };
 }
+function mockObs(i, part) {
+  const t = 8 + i % 3, w = (a, b) => ({ wind_mph: a, gust_mph: b, wind_dir: 230 }), oh = part ? 20 : 24;
+  return {
+    wu: i === 19 ? { net: 'wu', id: 'KCODURAN87', name: 'Crestview', ele_ft: 6530, ele_est: true, dist_mi: 0.9, dh_ft: 20, hrs: 14, of_hrs: 24, off: true, tmax_c: t - 1, tmin_c: -7 }
+      : { net: 'wu', id: 'KCODURAN112', name: 'Animas View', ele_ft: 6530, ele_est: true, dist_mi: 0.6, dh_ft: 20, hrs: oh, of_hrs: oh, tmax_c: t + 1, tmin_c: -7 - i % 2, precip_in: i % 4 === 3 ? 0.09 : 0, ...w(6 + i % 4, 15 + i % 5), rh: 38, msl_mb: 1016 + i % 5, x: { solar_wm2: 412, uv: 3 } },
+    snotel: { net: 'snotel', id: '386:CO:SNTL', name: 'Cascade #2', ele_ft: 8920, dist_mi: 25.9, dh_ft: 2410, daily: !part, hrs: oh, of_hrs: oh, tmax_c: t - 6, tmin_c: -13 - i % 3, tavg_c: -6, precip_in: i % 4 === 3 ? 0.3 : 0, rh: 61,
+      x: { snwd_in: 9 + (i > 18 ? 3 : 0), dsnwd_in: i % 4 === 3 ? 3 : 0, wteq_in: 1.4 + (i > 18 ? 0.3 : 0), dwteq_in: i % 4 === 3 ? 0.3 : 0, density_pct: 15, sms: [24, 27, 31], sto_c: [-0.4, 0.8, 2.1] } },
+    nws: { net: 'nws', id: 'KDRO', name: 'Durango-La Plata County Airport', ele_ft: 6685, dist_mi: 13.8, dh_ft: 173, hrs: oh, of_hrs: oh, tmax_c: t + 2, tmin_c: -9, precip_in: i % 4 === 3 ? 0.07 : 0, ...w(9 + i % 5, 22 + i % 6), rh: 33, msl_mb: 1017 + i % 5, x: { vis_min_mi: 10, ceil_min_ft: i % 4 === 3 ? 4500 : null } } };
+}
 function mockMet(from, to) {
   const today = mtDayKey(Date.now()), days = [];
   for (let d = from; d <= to; d = addDays(d, 1)) { const i = +d.slice(8), az = i >= 10 && i <= 14;
     days.push({ day: d, place: az ? 'Scottsdale, AZ' : 'Durango, CO', kind: 'town', src: i === 11 ? 'activity' : i === 10 ? 'set' : 'last', lat: az ? 33.49 : 37.28, lon: az ? -111.93 : -107.88,
       forecast: d > today, partial: d === today, model: { code: i % 4 === 3 ? 61 : i % 2 ? 2 : 0, desc: i % 4 === 3 ? 'Light rain' : 'Clear', tmax_c: az ? 26 + i % 3 : 8 + i % 3, tmin_c: az ? 12 : -6,
         precip_in: i % 4 === 3 ? 0.12 : 0, type: i % 4 === 3 ? 'rain' : null, wind_mph: 9 + i % 6, gust_mph: 18 + i % 7, wind_dir: 225, rh: az ? 22 : 35, msl_mb: 1014 + i % 5, cloud: 10 * (i % 5),
-        pop: 20, tz: az ? 'America/Phoenix' : 'America/Denver', utc_offset_s: -25200 }, station: !az && i === 9 ? { tmax_c: 10, tmin_c: -10, rh: 40, msl_mb: 1020, wind_mph: 11, gust_mph: 20, wind_dir: 240, precip_in: 0, station: 'home', station_name: 'Home' } : null }); }
+        pop: 20, tz: az ? 'America/Phoenix' : 'America/Denver', utc_offset_s: -25200 }, obs: az || d > today ? null : mockObs(i, d === today), station: !az && i === 9 ? { tmax_c: 10, tmin_c: -10, rh: 40, msl_mb: 1020, wind_mph: 11, gust_mph: 20, wind_dir: 240, precip_in: 0, station: 'home', station_name: 'Home' } : null }); }
   return { from, to, today, continuous_from: '2026-11-01', days, settings: [{ day: from.slice(0, 8) + '10', mode: 'day', label: 'Scottsdale, AZ' }], pending: 0 };
 }
 
@@ -3290,41 +3363,48 @@ async function renderTideAct(D, s) {
 
 /* ---- v0.19 Day page (#day/YYYY-MM-DD): one day at that day's weather location. The day (model values, station where it has one),
    hour by hour (Worker /api/metday, the place's local time), tides, NWS forecast text + alerts (US, today to 7 days ahead). ---- */
-const DAYV = { j: {}, busy: {}, mode: 'temp' };
+const DAYV = { j: {}, busy: {}, mode: 'temp', lines: { model: 1, wu: 1, snotel: 1, nws: 1 }, tab: 'model' };
 const dayLong = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 const hh = t => String(t).slice(11, 16);
-function daySvg(H, mode, W, Ht) {
+const OBS_COL = { wu: '#5cc8a8', snotel: '#b9a2e8', nws: '#e8e8e8' };
+function daySvg(H, mode, W, Ht, OH) {
   const n = H.time.length; if (n < 2) return '';
   const ml = 40, mr = 40, mt = 14, mb = 24, iw = W - ml - mr, ih = Ht - mt - mb, X = i => ml + i / (n - 1) * iw;
-  const S = mode === 'wind' ? [{ v: H.wind_mph, c: '#4299CC', w: 2.2, lab: 'wind mph' }, { v: H.gust_mph, c: '#CF7D40', w: 1.6, dash: '4 3', lab: 'gusts mph' }]
-    : mode === 'cloud' ? [{ v: H.cloud, c: '#cfd3d6', w: 2, area: true, lab: 'cloud %', fix: [0, 100] }, { v: H.rh, c: '#8fc3e6', w: 1.6, dash: '4 3', lab: 'humidity %', fix: [0, 100] }]
-    : mode === 'pres' ? [{ v: H.msl_mb, c: '#b9a2e8', w: 2.2, lab: 'pressure mbar' }]
-    : [{ v: H.temp_c, c: '#f2c14e', w: 2.4, lab: 'temperature °C' }, { v: H.feels_c, c: '#CF7D40', w: 1.6, dash: '4 3', lab: 'feels like °C' }];
-  const all = S.flatMap(s => s.v.filter(v => v != null));
-  let lo = S[0].fix ? S[0].fix[0] : Math.floor(Math.min(...all) - 1), hi = S[0].fix ? S[0].fix[1] : Math.ceil(Math.max(...all) + 1);
+  const st = (k, f, lab, extra = {}) => OH?.[k]?.[f] && DAYV.lines[k] ? [{ v: OH[k][f], c: OBS_COL[k], w: 1.5, lab: `${lab} · ${k === 'nws' ? 'NWS' : k.toUpperCase()}`, ...extra }] : [];
+  const nets = ['wu', 'snotel', 'nws'];
+  const M = DAYV.lines.model;
+  const S = mode === 'wind' ? [...(M ? [{ v: H.wind_mph, c: '#4299CC', w: 2.2, lab: 'model wind mph' }, { v: H.gust_mph, c: '#CF7D40', w: 1.6, dash: '4 3', lab: 'model gusts' }] : []), ...nets.flatMap(k => st(k, 'wind_mph', 'wind')), ...nets.flatMap(k => st(k, 'gust_mph', 'gusts', { dash: '2 3', w: 1.2 }))]
+    : mode === 'cloud' ? [...(M ? [{ v: H.cloud, c: '#cfd3d6', w: 2, area: true, lab: 'model cloud %', fix: [0, 100] }, { v: H.rh, c: '#8fc3e6', w: 1.6, dash: '4 3', lab: 'model humidity %', fix: [0, 100] }] : []),
+        ...st('nws', 'cloud', 'cloud cover (sky report)', { step: true, w: 2.2, c: '#f2c14e', fix: [0, 100] }), ...nets.flatMap(k => st(k, 'rh', 'humidity', { dash: '4 3', fix: [0, 100] }))]
+    : mode === 'pres' ? [...(M ? [{ v: H.msl_mb, c: '#b9a2e8', w: 2.2, lab: 'model pressure mbar' }] : []), ...nets.filter(k => k !== 'snotel').flatMap(k => st(k, 'msl_mb', 'pressure'))]
+    : mode === 'dew' ? [...(M ? [{ v: H.dew_c, c: '#8fc3e6', w: 2.4, lab: 'model dew point °C' }, { v: H.temp_c, c: '#f2c14e', w: 1, dash: '2 3', lab: 'model temperature °C' }] : []), ...nets.flatMap(k => st(k, 'dew_c', 'dew point'))]
+    : mode === 'snow' ? [...st('snotel', 'snwd_in', 'snow depth in', { w: 2.4 }), ...st('snotel', 'wteq_in', 'SWE in', { dash: '4 3', w: 2, c: '#8fc3e6' })]
+    : [...(M ? [{ v: H.temp_c, c: '#f2c14e', w: 2.4, lab: 'model temperature °C' }, { v: H.feels_c, c: '#CF7D40', w: 1.6, dash: '4 3', lab: 'model feels like' }] : []), ...nets.flatMap(k => st(k, 'temp_c', 'temperature'))];
+  const all = S.flatMap(s => s.v.filter(v => v != null)); if (!all.length) return '<p class="muted">Nothing to draw: tick a line above.</p>';
+  const fix = S.find(x => x.fix)?.fix;
+  let lo = fix ? fix[0] : Math.floor(Math.min(...all) - 1), hi = fix ? fix[1] : Math.ceil(Math.max(...all) + 1);
   if (mode === 'pres') { lo = Math.floor(Math.min(...all) - 2); hi = Math.ceil(Math.max(...all) + 2); }
-  if (mode === 'wind') lo = 0;
+  if (mode === 'wind' || mode === 'snow') lo = 0;
   const Y = v => mt + (1 - (v - lo) / Math.max(1, hi - lo)) * ih, step = Math.max(1, Math.round((hi - lo) / 5));
   const s = [`<svg class="day-svg" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Hour by hour: ${S.map(x => x.lab).join(', ')}">`];
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) s.push(`<line x1="${ml}" x2="${W - mr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="g"/><text x="${ml - 5}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end">${n0(v)}</text>`);
-  if (mode === 'temp') {                                         // rain chance (or amount when there is no chance) as bars, right axis
-    const pop = H.pop?.some(v => v != null), bw = iw / n * 0.6, YP = p => mt + (1 - p / 100) * ih;
-    if (pop) { for (const p of [0, 50, 100]) s.push(`<text x="${W - mr + 5}" y="${(YP(p) + 4).toFixed(1)}">${p}%</text>`);
-      H.pop.forEach((p, i) => { if (p) s.push(`<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${YP(p).toFixed(1)}" width="${bw.toFixed(1)}" height="${(YP(0) - YP(p)).toFixed(1)}" class="b"/>`); }); }
-    else { const mx = Math.max(0.1, ...H.precip_in.map(v => v || 0)), YQ = q => mt + (1 - q / mx) * ih;
-      s.push(`<text x="${W - mr + 5}" y="${(YQ(mx) + 4).toFixed(1)}">${mx.toFixed(2)} in</text>`);
-      H.precip_in.forEach((q, i) => { if (q) s.push(`<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${YQ(q).toFixed(1)}" width="${bw.toFixed(1)}" height="${(YQ(0) - YQ(q)).toFixed(1)}" class="b"/>`); }); }
+  if (mode === 'temp') {                                         // rain: model amount bars + measured bars beside them (right axis)
+    const bars = [...(M ? [['#4299CC', H.precip_in]] : []), ...nets.filter(k => OH?.[k]?.precip_in && DAYV.lines[k]).map(k => [OBS_COL[k], OH[k].precip_in])];
+    const mx = Math.max(0.05, ...bars.flatMap(b => b[1].map(v => v || 0))), YQ = q => mt + (1 - q / mx) * ih, bw = iw / n * 0.7 / Math.max(1, bars.length);
+    s.push(`<text x="${W - mr + 5}" y="${(YQ(mx) + 4).toFixed(1)}">${mx.toFixed(2)} in</text>`);
+    bars.forEach(([c, q], j) => q.forEach((v, i) => { if (v) s.push(`<rect x="${(X(i) - iw / n * 0.35 + j * bw).toFixed(1)}" y="${YQ(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(YQ(0) - YQ(v)).toFixed(1)}" fill="${c}" opacity=".5"/>`); }));
   }
   for (const sr of S) {
-    const pts = sr.v.map((v, i) => v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).filter(Boolean);
+    const pts = sr.v.map((v, i) => v == null ? null : [X(i), Y(v)]).filter(Boolean);
     if (pts.length < 2) continue;
-    if (sr.area) s.push(`<path d="M${pts.join(' L')} L${X(n - 1).toFixed(1)},${Y(lo).toFixed(1)} L${X(0).toFixed(1)},${Y(lo).toFixed(1)} Z" fill="${sr.c}" opacity=".15"/>`);
-    s.push(`<path d="M${pts.join(' L')}" fill="none" stroke="${sr.c}" stroke-width="${sr.w}"${sr.dash ? ` stroke-dasharray="${sr.dash}"` : ''}/>`);
+    const d = sr.step ? 'M' + pts.map((p, i) => i ? `${p[0].toFixed(1)},${pts[i - 1][1].toFixed(1)} L${p[0].toFixed(1)},${p[1].toFixed(1)}` : `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' L') : 'M' + pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' L');
+    if (sr.area) s.push(`<path d="${d} L${X(n - 1).toFixed(1)},${Y(lo).toFixed(1)} L${X(0).toFixed(1)},${Y(lo).toFixed(1)} Z" fill="${sr.c}" opacity=".15"/>`);
+    s.push(`<path d="${d}" fill="none" stroke="${sr.c}" stroke-width="${sr.w}"${sr.dash ? ` stroke-dasharray="${sr.dash}"` : ''}/>`);
   }
   const every = W < 500 ? 6 : 3;
   H.time.forEach((t, i) => { if (+hh(t).slice(0, 2) % every === 0) s.push(`<text x="${X(i).toFixed(1)}" y="${Ht - 6}" text-anchor="middle">${hh(t)}</text>`); });
   return s.join('') + '</svg><div class="day-leg">' + S.map(x => `<span><i style="border-top:${x.w > 2 ? 3 : 2}px ${x.dash ? 'dashed' : 'solid'} ${x.c}"></i>${x.lab}</span>`).join('') +
-    (mode === 'temp' ? `<span><i class="bx"></i>${H.pop?.some(v => v != null) ? 'rain chance' : 'rain amount'}</span>` : '') + '</div>';
+    (mode === 'temp' ? `<span><i class="bx"></i>rain amount (model blue, stations in their colour)</span>` : '') + '</div>';
 }
 function dayTideCard(st, d, today) {
   const tz = st.tz, evs = dayEvs(st, d), now = Date.now(), nx = d === today ? (st.hilo || []).find(e => e[0] > now) : null;
@@ -3334,6 +3414,28 @@ function dayTideCard(st, d, today) {
     ${tideSvg(st, tzMidnight(d, tz), tzMidnight(addDays(d, 1), tz), { now: d === today ? now : null, w: innerWidth < 600 ? 340 : 520, h: innerWidth < 600 ? 140 : 150 })}
     <div class="tide-evs"><span class="muted">${new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short' })} ${d.slice(8)}</span><div>${evs.map(e => evRow(e, tz)).join('') || '<span class="muted">—</span>'}</div></div>
     <div class="tide-w">${d === today ? (st.water ? `Water <b>${wC(st.water.c)}</b>` : '<span class="muted">No water temperature at this station</span>') : '<span class="muted">Water temperature shows on today\'s page only (live reading)</span>'}</div></div>`;
+}
+function obsDaySec(x) {
+  if (!x?.obs || !Object.values(x.obs).some(Boolean)) return '';
+  const rows = OBS_NETS.map(([k]) => [k, x.obs[k]]).filter(([, o]) => o).map(([k, o]) => { const c = obsCells(k, o);
+    return `<tr${o.off ? ' class="off"' : ''}><td class="loc">${c.loc}</td><td>${c.hl}</td><td>${c.pr}</td><td>${c.wd}</td><td>${c.rh}</td><td>${c.ps}</td><td class="ext">${c.ext || '<span class="muted">—</span>'}</td></tr>`; }).join('');
+  return `<section class="card day-sec"><div class="card-h"><h2>Measured · nearby stations</h2><span class="meta">${x.partial ? 'so far today · ' : ''}needs 80 % of the hours to count</span></div><div class="card-b">
+    <div class="table-wrap"><table class="obs-tab"><thead><tr><th>Station</th><th>High / low</th><th>Precip</th><th>Wind / gust</th><th>RH</th><th>Pressure</th><th class="ext">More</th></tr></thead><tbody>${rows}</tbody></table></div></div></section>`;
+}
+function mockDayJ(d) {
+  const n = 24, A = f => Array.from({ length: n }, (_, h) => f(h)), sn = h => Math.sin((h - 9) / 24 * 2 * Math.PI);
+  const time = A(h => `${d}T${String(h).padStart(2, '0')}:00`);
+  const hourly = { time, tz: 'America/Denver', src: 'archive', code: A(h => h > 15 && h < 19 ? 61 : h > 10 ? 2 : 0), desc: A(h => h > 15 && h < 19 ? 'Light rain' : h > 10 ? 'Partly cloudy' : 'Clear'),
+    temp_c: A(h => +(2 + 7 * sn(h)).toFixed(1)), feels_c: A(h => +(0 + 7 * sn(h)).toFixed(1)), dew_c: A(h => +(-6 + 1.5 * sn(h)).toFixed(1)), pop: A(() => null),
+    precip_in: A(h => h > 15 && h < 19 ? 0.03 : 0), rain_in: A(h => h > 15 && h < 19 ? 0.03 : 0), snow_in: A(() => 0), wind_mph: A(h => 6 + Math.round(6 * Math.max(0, sn(h)))), gust_mph: A(h => 14 + Math.round(8 * Math.max(0, sn(h)))),
+    wind_dir: A(() => 225), rh: A(h => Math.round(55 - 20 * sn(h))), cloud: A(h => h > 15 && h < 19 ? 80 : h > 10 ? 35 : 5), msl_mb: A(h => +(1018 - h * 0.15).toFixed(1)) };
+  const obs_hourly = {
+    wu: { temp_c: A(h => +(3 + 7.5 * sn(h)).toFixed(1)), dew_c: A(h => +(-5 + 1.2 * sn(h)).toFixed(1)), rh: A(h => Math.round(50 - 18 * sn(h))), wind_mph: A(h => 4 + Math.round(4 * Math.max(0, sn(h)))),
+      gust_mph: A(h => 10 + Math.round(6 * Math.max(0, sn(h)))), msl_mb: A(h => +(1019 - h * 0.14).toFixed(1)), precip_in: A(h => h === 16 || h === 17 ? 0.04 : h === 18 ? 0.01 : 0), cloud: null },
+    snotel: { temp_c: A(h => +(-4 + 6 * sn(h)).toFixed(1)), dew_c: null, rh: A(h => Math.round(70 - 15 * sn(h))), precip_in: A(h => h === 17 ? 0.1 : h === 18 ? 0.1 : 0), snwd_in: A(h => h < 17 ? 9 : 10), wteq_in: A(h => h < 17 ? 1.4 : 1.6) },
+    nws: { temp_c: A(h => +(3.5 + 7 * sn(h)).toFixed(1)), dew_c: A(h => +(-7 + 1 * sn(h)).toFixed(1)), rh: A(h => Math.round(45 - 18 * sn(h))), wind_mph: A(h => 8 + Math.round(7 * Math.max(0, sn(h)))),
+      gust_mph: A(h => h % 3 ? null : 22), msl_mb: A(h => +(1019.5 - h * 0.15).toFixed(1)), precip_in: A(h => h === 17 ? 0.05 : 0), cloud: A(h => h > 15 && h < 19 ? 75 : h > 11 ? 44 : 0), vis_mi: A(h => h === 17 ? 5 : 10) } };
+  return { ok: true, hourly, obs_hourly };
 }
 async function renderDayView(d) {
   const box = $('#dayBody'); if (!box) return;
@@ -3346,14 +3448,15 @@ async function renderDayView(d) {
     return;
   }
   const v = metVals(x), sk = metSky(x), fc = x.forecast, own = isOwner();
-  const jk = `${d}|${x.lat},${x.lon}`, J = DAYV.j[jk];
+  const jk = `${d}|${x.lat},${x.lon}`; let J = DAYV.j[jk];
   if (!J && !DAYV.busy[jk] && CONFIG.dataSource !== 'mock') {
     DAYV.busy[jk] = 1;
     fetch(`${CONFIG.api}/api/metday?day=${d}&lat=${x.lat}&lon=${x.lon}`, { cache: 'no-store' }).then(r => r.json()).then(j => { DAYV.j[jk] = j; })
       .catch(e => { DAYV.j[jk] = { ok: false, errors: { fetch: String(e) } }; }).finally(() => { DAYV.busy[jk] = 0; if (location.hash === '#day/' + d) renderDayView(d); });
   }
   loadTides([d], () => { if (location.hash === '#day/' + d) renderDayView(d); });
-  const H = J?.hourly, tz = H?.tz || x.model.tz || 'America/Denver';
+  if (CONFIG.dataSource === 'mock' && !DAYV.j[jk]) DAYV.j[jk] = mockDayJ(d);
+  J = DAYV.j[jk]; const J2 = J, H = J2?.hourly, tz = H?.tz || x.model.tz || 'America/Denver', OH = J2?.obs_hourly;
   const set = MET.settings.find(r => r.day === d), g = set?.grp ? set.grp.split('..') : null;
   const where = (SRC_TXT[x.src] || '') + (g ? ` ${g[0].slice(8)}–${g[1].slice(8)} ${MON[+g[1].slice(5, 7) - 1]}` : '');
   const prev = addDays(d, -1), next = addDays(d, 1);
@@ -3378,13 +3481,21 @@ async function renderDayView(d) {
   if (!H) hourly = `<p class="muted">${J ? 'Hour-by-hour data unavailable' + (J.errors?.hourly ? ` (${esc(J.errors.hourly).slice(0, 120)})` : '') : 'Loading hour by hour…'}</p>`;
   else {
     const W = innerWidth < 600 ? 360 : 1100, Ht = innerWidth < 600 ? 190 : 240;
-    const chips = [['temp', 'Temp · rain'], ['wind', 'Wind'], ['cloud', 'Cloud · humidity'], ['pres', 'Pressure']].map(([k, l]) => `<button type="button" class="chip${DAYV.mode === k ? ' on' : ''}" data-dmode="${k}" aria-pressed="${DAYV.mode === k}">${l}</button>`).join('');
-    const rows = H.time.map((t, i) => `<tr><td>${hh(t)}</td><td class="l">${wxIcon(H.code[i], (H.snow_in[i] || 0) > 0 ? 'snow' : (H.rain_in[i] || 0) > 0 ? 'rain' : null)} ${esc(H.desc[i] || '')}</td>
-      <td>${H.temp_c[i] != null ? Math.round(H.temp_c[i]) + '°' : '—'}<small>${H.temp_c[i] != null ? cF(H.temp_c[i]) + '°F' : ''}</small></td><td>${H.feels_c[i] != null ? Math.round(H.feels_c[i]) + '°' : '—'}</td>
-      <td>${H.pop[i] != null ? H.pop[i] + '%' : ''}${H.pop[i] != null ? ' · ' : ''}${(H.precip_in[i] ?? 0).toFixed(2)} in</td><td>${dirName(H.wind_dir[i])} ${H.wind_mph[i] ?? '—'} / ${H.gust_mph[i] ?? '—'}</td>
-      <td>${H.rh[i] ?? '—'}%</td><td>${H.cloud[i] ?? '—'}%</td><td>${H.msl_mb[i] != null ? n0(Math.round(H.msl_mb[i])) : '—'}</td></tr>`).join('');
-    hourly = `<div class="wx-chips day-chips" role="group" aria-label="Chart">${chips}</div>${daySvg(H, DAYV.mode, W, Ht)}
-      <div class="table-wrap day-table"><table><thead><tr><th>Time</th><th class="l">Sky</th><th>Temp</th><th>Feels</th><th>Rain</th><th>Wind / gust mph</th><th>RH</th><th>Cloud</th><th>mbar</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const chips = [['temp', 'Temp · rain'], ['dew', 'Dew point'], ['wind', 'Wind'], ['cloud', 'Cloud · humidity'], ['pres', 'Pressure'], ...(OH?.snotel?.snwd_in ? [['snow', 'Snow (SNOTEL)']] : [])].map(([k, l]) => `<button type="button" class="chip${DAYV.mode === k ? ' on' : ''}" data-dmode="${k}" aria-pressed="${DAYV.mode === k}">${l}</button>`).join('');
+    const T = DAYV.tab === 'model' || !OH?.[DAYV.tab] ? null : OH[DAYV.tab], g = (f, i) => T ? (T[f] ? T[f][+hh(H.time[i]).slice(0, 2)] : undefined) : H[f]?.[i], na = '<span class="muted">—</span>';
+    const cell = (v, fmt) => v === undefined ? na : v == null ? '—' : fmt(v);
+    const rows = H.time.map((t, i) => `<tr><td>${hh(t)}</td><td class="l">${T ? (T.vis_mi && T.vis_mi[i] != null ? `vis ${T.vis_mi[i]} mi` : na) : `${wxIcon(H.code[i], (H.snow_in[i] || 0) > 0 ? 'snow' : (H.rain_in[i] || 0) > 0 ? 'rain' : null)} ${esc(H.desc[i] || '')}`}</td>
+      <td>${cell(g('temp_c', i), v => Math.round(v) + '°<small>' + cF(v) + '°F</small>')}</td><td>${T ? na : H.feels_c[i] != null ? Math.round(H.feels_c[i]) + '°' : '—'}</td>
+      <td>${cell(g('dew_c', i), v => Math.round(v) + '°<small>' + cF(v) + '°F</small>')}</td>
+      <td>${cell(g('precip_in', i), v => v.toFixed(2) + ' in')}</td><td>${T ? cell(g('wind_mph', i), v => `${v} / ${T.gust_mph?.[i] ?? '—'}`) : `${dirName(H.wind_dir[i])} ${H.wind_mph[i] ?? '—'} / ${H.gust_mph[i] ?? '—'}`}</td>
+      <td>${cell(g('rh', i), v => v + '%')}</td><td>${cell(g('cloud', i), v => v + '%')}</td><td>${cell(g('msl_mb', i), v => n0(Math.round(v)))}</td>
+      ${DAYV.tab === 'snotel' ? `<td>${cell(g('snwd_in', i), v => v + ' in')}</td><td>${cell(g('wteq_in', i), v => v.toFixed(1) + ' in')}</td>` : ''}</tr>`).join('');
+    const lineChips = `<div class="wx-chips day-chips" role="group" aria-label="Lines">Lines: ${[['model', 'Model'], ['wu', 'WU'], ['snotel', 'SNOTEL'], ['nws', 'NWS']].filter(([k]) => k === 'model' || OH?.[k])
+      .map(([k, l]) => `<button type="button" class="chip${DAYV.lines[k] ? ' on' : ''}" data-dline="${k}" style="${DAYV.lines[k] && k !== 'model' ? `background:${OBS_COL[k]};border-color:${OBS_COL[k]};color:#222` : ''}">${l}</button>`).join('')}</div>`;
+    const tabChips = `<div class="wx-chips day-chips" role="group" aria-label="Table">Table: ${[['model', 'Model'], ['wu', 'WU'], ['snotel', 'SNOTEL'], ['nws', 'NWS']].filter(([k]) => k === 'model' || OH?.[k])
+      .map(([k, l]) => `<button type="button" class="chip${DAYV.tab === k ? ' on' : ''}" data-dtab="${k}">${l}</button>`).join('')}</div>`;
+    hourly = `<div class="wx-chips day-chips" role="group" aria-label="Chart">${chips}</div>${lineChips}${daySvg(H, DAYV.mode, W, Ht, OH)}${tabChips}
+      <div class="table-wrap day-table"><table><thead><tr><th>Time</th><th class="l">${DAYV.tab === 'model' ? 'Sky' : 'Visibility'}</th><th>Temp</th><th>Feels</th><th>Dew pt</th><th>Rain</th><th>Wind / gust mph</th><th>RH</th><th>Cloud</th><th>mbar</th>${DAYV.tab === 'snotel' ? '<th>Snow</th><th>SWE</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   // tides
   let tides = '';
@@ -3423,16 +3534,22 @@ async function renderDayView(d) {
     ${alerts}
     <div id="dayLog"></div>
     <section class="card day-sec"><div class="card-h"><h2>The day</h2><span class="meta">${x.station ? 'station where it has values, model for the rest' : 'model · Open-Meteo'}</span></div><div class="card-b"><div class="day-tiles">${tiles.join('')}</div></div></section>
+    ${obsDaySec(x)}
     <section class="card day-sec"><div class="card-h"><h2>Hour by hour</h2><span class="meta">${H ? `${tzLab(tz)} · Open-Meteo ${H.src === 'forecast' ? 'forecast' : 'history'}` : ''}${H && own ? ' · <a href="#" id="dayCsv">CSV</a>' : ''}</span></div><div class="card-b">${hourly}</div></section>
     ${tides}
     <section class="card day-sec"><div class="card-h"><h2>NWS forecast</h2><span class="meta">US · today to 7 days ahead</span></div><div class="card-b">${nws}${nowx}</div></section>`;
   renderDayLog(d);
   box.querySelectorAll('[data-dmode]').forEach(b => b.onclick = () => { DAYV.mode = b.dataset.dmode; renderDayView(d); });
+  box.querySelectorAll('[data-dline]').forEach(b => b.onclick = () => { DAYV.lines[b.dataset.dline] = DAYV.lines[b.dataset.dline] ? 0 : 1; renderDayView(d); });
+  box.querySelectorAll('[data-dtab]').forEach(b => b.onclick = () => { DAYV.tab = b.dataset.dtab; renderDayView(d); });
   const ds = $('#daySet'); if (ds) ds.onclick = () => { MET_EDIT = d; location.hash = 'weather'; setTimeout(() => $('#metEdit')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600); };
   const cv = $('#dayCsv'); if (cv) cv.onclick = e => { e.preventDefault();
-    const L = [['time_local', 'sky', 'temp_c', 'temp_f', 'feels_c', 'rain_chance_pct', 'precip_in', 'precip_mm', 'wind_mph', 'gust_mph', 'wind_dir', 'rh_pct', 'dew_c', 'cloud_pct', 'pressure_mbar'].join(',')];
+    const SF = { wu: ['temp_c', 'dew_c', 'rh', 'wind_mph', 'gust_mph', 'wind_dir', 'msl_mb', 'precip_in'], nws: ['temp_c', 'dew_c', 'rh', 'wind_mph', 'gust_mph', 'wind_dir', 'msl_mb', 'precip_in', 'cloud', 'vis_mi'],
+      snotel: ['temp_c', 'precip_in', 'snwd_in', 'wteq_in'] }, SN = ['wu', 'snotel', 'nws'].filter(k => OH?.[k]);      // v0.22.7: measured stations hour by hour
+    const L = [['time_local', 'sky', 'temp_c', 'temp_f', 'feels_c', 'rain_chance_pct', 'precip_in', 'precip_mm', 'wind_mph', 'gust_mph', 'wind_dir', 'rh_pct', 'dew_c', 'cloud_pct', 'pressure_mbar',
+      ...SN.flatMap(k => SF[k].map(f => `${k}_${f}`))].join(',')];
     H.time.forEach((t, i) => L.push([t, `"${H.desc[i] || ''}"`, H.temp_c[i] ?? '', H.temp_c[i] != null ? cF(H.temp_c[i]) : '', H.feels_c[i] ?? '', H.pop[i] ?? '', H.precip_in[i] ?? '', H.precip_in[i] != null ? mmOf(H.precip_in[i]) : '',
-      H.wind_mph[i] ?? '', H.gust_mph[i] ?? '', H.wind_dir[i] ?? '', H.rh[i] ?? '', H.dew_c[i] ?? '', H.cloud[i] ?? '', H.msl_mb[i] ?? ''].join(',')));
+      H.wind_mph[i] ?? '', H.gust_mph[i] ?? '', H.wind_dir[i] ?? '', H.rh[i] ?? '', H.dew_c[i] ?? '', H.cloud[i] ?? '', H.msl_mb[i] ?? '', ...SN.flatMap(k => SF[k].map(f => OH[k][f]?.[+hh(t).slice(0, 2)] ?? ''))].join(',')));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv' })); a.download = `ACLive_hourly_${d.replace(/-/g, '')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
 }
 
@@ -4566,7 +4683,7 @@ node[name][place~"^(neighbourhood|suburb|quarter|village|hamlet|locality|town)$"
    3. A complete result is stored (Worker + this browser). A partial one (live server busy) is shown, not stored, and
       retried every 5 min while the page is open. A suspiciously empty live answer counts as a failure. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
-const VERSION = 'v0.22.5';
+const VERSION = 'v0.22.7';
 let OSM = { id: null, at: 0, n: 0, data: null, busy: false, err: null, status: 'idle', next: 0, src: '' };
 function routeLine(pts) {             // track thinned to a vertex every ~80 m (keeps the 30-40 m corridor on the trail)
   const out = []; let last = null;
